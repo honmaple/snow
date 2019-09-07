@@ -1,0 +1,52 @@
+path = "theme/simple"
+pagination = 1
+
+[template.index]
+name = "index.html"
+pagination = 1
+save_path = "index{number}.html"
+
+[template.tags]
+name = "tags.html"
+pagination = 0
+save_path = "tags.html"
+
+[template.categories]
+name = "categories.html"
+pagination = 0
+save_path = "categories.html"
+
+[template.authors]
+name = "archives.html"
+pagination = 0
+save_path = "archives.html"
+
+[template.archives]
+name = "archives.html"
+pagination = 0
+save_path = "archives.html"
+
+[template.tag]
+name = "tag.html"
+pagination = 0
+save_path = "tag/{slug}/index{number}.html"
+
+[template.author]
+name = "author.html"
+pagination = 0
+save_path = "author/{slug}/index{number}.html"
+
+[template.category]
+name = "category.html"
+pagination = 0
+save_path = "category/{slug}/index{number}.html"
+
+[template.article]
+name = "article.html"
+pagination = 0
+save_path = "articles/{date:2006}/{date:01}/{slug}.html"
+
+[template.page]
+name = "page.html"
+pagination = 0
+save_path = "pages/{slug}.html"
