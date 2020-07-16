@@ -1,22 +1,20 @@
-/*********************************************************************************
- Copyright © 2019 jianglin
- File Name: server.go
- Author: jianglin
- Email: mail@honmaple.com
- Created: 2019-08-29 14:20:45 (CST)
- Last Update: Wednesday 2019-09-04 17:44:44 (CST)
-		  By:
- Description:
- *********************************************************************************/
-package pelican
+package server
 
-type Server struct {
-}
+import (
+	"fmt"
+	"net/http"
+	"net/url"
 
-func StartServer(host string, port int64) {
+	"github.com/honmaple/snow/config"
+)
 
-}
-
-func StartMonitor(files []string) {
-
+func Serve(conf *config.Config) error {
+	baseURL := conf.GetString("baseURL")
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return err
+	}
+	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.Dir(conf.GetString("output"))))
+	return http.ListenAndServe(fmt.Sprintf("%s:%d", u.Host, u.Port()), mux)
 }

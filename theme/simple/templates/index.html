@@ -1,28 +1,23 @@
-{% extends "base.html" %}
-{% block content %}
-  <section id="content">
-    {% block content_title %}
-      <h2>All articles</h2>
-    {% endblock %}
-
-    <ol id="post-list">
-      {% for article in articles.object_list %}
-        <li><article class="hentry">
-          <header> <h2 class="entry-title"><a href="{{ SITEURL }}/{{ article.url }}" rel="bookmark" title="Permalink to {{ article.title|striptags }}">{{ article.title }}</a></h2> </header>
-          <footer class="post-info">
-            <time class="published" datetime="{{ article.date.isoformat() }}"> {{ article.locale_date }} </time>
-            <address class="vcard author">By
-              {% for author in article.authors %}
-                <a class="url fn" href="{{ SITEURL }}/{{ author.url }}">{{ author }}</a>
-              {% endfor %}
-            </address>
-          </footer><!-- /.post-info -->
-          <div class="entry-content"> {{ article.summary | safe }} </div><!-- /.entry-content -->
-        </article></li>
-      {% endfor %}
-    </ol><!-- /#posts-list -->
-    {% if articles.has_other_pages %}
-      {% include 'pagination.html' %}
-    {% endif %}
-  </section><!-- /#content -->
-{% endblock content %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <title>Simple Theme</title>
+  </head>
+  <body>
+    {% for page in paginator.List %}
+      <article>
+        <div class="entry-header">
+          <h1 class="entry-title"><a href="{{ page.URL }}">{{ page.Title }}</a></h1>
+        </div>
+        <hr class="entry-hr" />
+        <div class="entry-content">
+          {{ page.Summary | safe }}
+        </div>
+        <div class="text-center">
+          <a class="btn entry-read-more" href="{{ page.URL }}">阅读 »</a>
+        </div>
+      </article>
+    {% endfor %}
+  </body>
+</html>
