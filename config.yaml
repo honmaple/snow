@@ -1,0 +1,45 @@
+baseURL: "http//127.0.0.1:8000"
+language: "zh"
+
+site:
+  title: "honmaple's blog"
+  subtitle: "花落"
+
+page_dirs:
+  - "content/posts"
+
+draft_dirs:
+  - "content/drafts"
+
+static_dirs:
+  - "static"
+
+extra_dirs:
+  extra/robots.txt: "robots.txt"
+
+layout_dirs:
+  - "layouts"
+
+output_dir: "output"
+
+theme:
+  path: "themes/simple"
+  paginate: 10
+  templates:
+    index:
+      paginate: 10
+      save_path: "index{number}.html"
+    tags:
+      save_path: "tags.html"
+    authors:
+      save_path: "authors.html"
+    categories:
+      save_path: "categories.html"
+    # search::
+    #   save_path: "search.html"
+
+params:
+  feed:
+    limit: 10
+    title: ""
+    format: ""

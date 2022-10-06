@@ -7,7 +7,7 @@ import (
 )
 
 func (b *Builder) Write(files []*StaticFile) error {
-	output := b.conf.GetString("output")
+	output := b.conf.GetString("output_dir")
 	for _, file := range files {
 		utils.CopyFile(file.File, filepath.Join(output, "static"))
 	}

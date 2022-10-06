@@ -1,9 +1,6 @@
 package page
 
 import (
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -11,17 +8,9 @@ import (
 	"github.com/honmaple/snow/utils"
 )
 
-func (b *Builder) writeFile(file, content string) error {
-	writefile := filepath.Join(b.conf.GetString("output"), file)
-	if dir := filepath.Dir(writefile); !utils.FileExists(dir) {
-		os.MkdirAll(dir, 0755)
-	}
-	return ioutil.WriteFile(writefile, []byte(content), 0755)
-}
-
-func (b *Builder) writeFeed(pages []*Page, dest string) {
+func (b *Builder) writeFeed(pages []*Page, output string) {
 	limit := b.conf.GetInt("feed.limit")
-	if len(pages) == 0 || limit == 0 || dest == "" {
+	if len(pages) == 0 || limit == 0 || output == "" {
 		return
 	}
 	if limit > len(pages) {
@@ -64,18 +53,18 @@ func (b *Builder) writeFeed(pages []*Page, dest string) {
 		return
 	}
 
-	b.writeFile(dest, content)
+	b.writeFile(output, content)
 }
 
-func (b *Builder) writeSectionFeed(key string, section Section) {
-	dest := b.conf.GetString(key)
-	if dest == "" {
+func (b *Builder) writeSectionFeed(key string, sections Sections) {
+	output := b.conf.GetString(key)
+	if output == "" {
 		return
 	}
-	for slug, label := range section {
+	for _, section := range sections {
 		vars := map[string]string{
-			"{slug}": slug,
+			"{slug}": section.Name,
 		}
-		b.writeFeed(label.Pages, utils.StringReplace(dest, vars))
+		b.writeFeed(section.Pages, utils.StringReplace(output, vars))
 	}
 }

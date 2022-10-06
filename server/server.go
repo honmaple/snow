@@ -15,6 +15,6 @@ func Serve(conf *config.Config) error {
 		return err
 	}
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir(conf.GetString("output"))))
+	mux.Handle("/", http.FileServer(http.Dir(conf.GetString("output_dir"))))
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", u.Host, u.Port()), mux)
 }

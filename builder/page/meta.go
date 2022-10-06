@@ -23,26 +23,25 @@ type (
 		Next     *Page
 		Previous *Page
 	}
-	label struct {
+	Pages []*Page
+
+	Section struct {
 		URL   string
 		Name  string
 		Pages []*Page
 	}
-	Section map[string]*label
+	Sections []Section
 )
 
-func (s *label) add(page *Page) {
-	if s.Pages == nil {
-		s.Pages = make([]*Page, 0)
+func (secs Sections) add(name string, page *Page) {
+	for _, sec := range secs {
+		if sec.Name != name {
+			continue
+		}
+		sec.Pages = append(sec.Pages, page)
+		return
 	}
-	s.Pages = append(s.Pages, page)
-}
-
-func (s Section) add(name string, page *Page) {
-	if _, ok := s[name]; !ok {
-		s[name] = &label{Name: name, Pages: make([]*Page, 0)}
-	}
-	s[name].add(page)
+	secs = append(secs, Section{Name: name, Pages: []*Page{page}})
 }
 
 type paginator struct {
@@ -59,7 +58,9 @@ func Paginator(pages []*Page, number int) []*paginator {
 	var maxpage int
 
 	length := len(pages)
-	if length%number == 0 {
+	if number == 0 {
+		maxpage = length
+	} else if length%number == 0 {
 		maxpage = length / number
 	} else {
 		maxpage = length/number + 1

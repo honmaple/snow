@@ -8,77 +8,84 @@ import (
 
 	"github.com/flosch/pongo2/v4"
 	"github.com/honmaple/snow/utils"
+	"io/ioutil"
+)
+
+const (
+	lookupTemplate   = "theme.templates.%s.lookup"
+	outputTemplate   = "theme.templates.%s.save_as"
+	paginateTemplate = "theme.templates.%s.paginate"
 )
 
 func (b *Builder) Write(pages []*Page) error {
-	b.writeIndex(pages)
-	b.writePage(pages)
-	b.writeArchives(pages)
-	b.writeTags(pages)
-	b.writeAuthors(pages)
-	b.writeCategories(pages)
+	templates := b.conf.GetStringMap("theme.templates")
+	for name := range templates {
+		switch name {
+		case "page":
+			b.writePage(pages)
+		case "index":
+			b.writeIndex(pages)
+		case "tags":
+			b.writeTags(pages)
+		case "authors":
+			b.writeAuthors(pages)
+		case "categories":
+			b.writeCategories(pages)
+		case "archives":
+			b.writeArchives(pages)
+		default:
+			b.writeOther(name, pages)
+		}
+	}
 	return nil
 }
 
-func (b *Builder) lookup(names ...string) string {
-	// layouts := b.conf1.LayoutDirs
-	layouts := b.conf.GetStringSlice("theme.layouts")
-	for _, name := range names {
-		for _, layout := range layouts {
+func (b *Builder) lookup(key string) (string, string) {
+	output := b.conf.GetString(fmt.Sprintf(outputTemplate, key))
+	if output == "" {
+		return "", ""
+	}
+
+	names := b.conf.GetStringSlice(fmt.Sprintf(lookupTemplate, key))
+	if len(names) == 0 {
+		return "", ""
+	}
+
+	layouts := b.conf.GetStringSlice("layout_dirs")
+	for _, layout := range layouts {
+		for _, name := range names {
 			file := filepath.Join(layout, name)
 			if utils.FileExists(file) {
-				return file
+				return file, output
 			}
 		}
 	}
-	return ""
-}
 
-func (b *Builder) writeIndex(pages []*Page) {
-	layout := b.lookup("index.html")
-	if layout == "" {
-		return
-	}
-
-	// layoutDest := "index{number}.html"
-	layoutDest := b.conf.GetString("theme.templates.index.save_as")
-
-	paginate := b.conf.GetInt("theme.paginate")
-	if k := "theme.templates.index.paginate"; b.conf.IsSet(k) {
-		paginate = b.conf.GetInt(k)
-	}
-
-	for index, por := range Paginator(pages, paginate) {
-		vars := map[string]string{
-			"{number}": strconv.Itoa(index + 1),
+	layout := filepath.Join(b.conf.GetString("theme.path"), "templates")
+	for _, name := range names {
+		file := filepath.Join(layout, name)
+		if utils.FileExists(file) {
+			return file, output
 		}
-		if index == 0 {
-			vars["{number}"] = ""
-		}
-		dest := utils.StringReplace(layoutDest, vars)
-		b.writeTemplate(layout, dest, map[string]interface{}{
-			"paginator": por,
-		})
 	}
+	return "", ""
 }
 
 func (b *Builder) writePage(pages []*Page) {
-	layout := b.lookup("article.html", "page.html")
-	if layout == "" {
+	layout, output := b.lookup("page")
+	if layout == "" || output == "" {
 		return
 	}
-	// layoutDest := "articles/{date:%Y}/{date:%m}/{slug}.html"
-	layoutDest := b.conf.GetString("theme.templates.page.save_as")
-
 	for _, page := range pages {
 		vars := map[string]string{
 			"{date:%Y}": page.Date.Format("2006"),
 			"{date:%m}": page.Date.Format("01"),
 			"{date:%d}": page.Date.Format("02"),
+			"{date:%H}": page.Date.Format("15"),
 			"{slug}":    page.Title,
 		}
 
-		dest := utils.StringReplace(layoutDest, vars)
+		dest := utils.StringReplace(output, vars)
 		if page.SaveAs != "" {
 			dest = page.SaveAs
 		}
@@ -89,29 +96,46 @@ func (b *Builder) writePage(pages []*Page) {
 	b.writeFeed(pages, b.conf.GetString("feed.all"))
 }
 
-func (b *Builder) writeSingle(layout, layoutDest string, section Section) {
-	if layout == "" || layoutDest == "" {
+func (b *Builder) writeOther(key string, pages []*Page) {
+	layout, output := b.lookup(key)
+	if layout == "" || output == "" {
 		return
 	}
-	b.writeTemplate(layout, layoutDest, nil)
+	b.writeTemplate(layout, output, map[string]interface{}{
+		"pages": pages,
+	})
 }
 
-func (b *Builder) writeSection(layout, key string, section Section) {
+func (b *Builder) writeSingle(key string, sections Sections) {
+	layout, output := b.lookup(key)
+	if layout == "" || output == "" {
+		return
+	}
+	b.writeTemplate(layout, output, map[string]interface{}{
+		"sections": sections,
+	})
+}
+
+func (b *Builder) writeSection(key string, sections Sections) {
+	layout, output := b.lookup(key)
+	if layout == "" || output == "" {
+		return
+	}
+
 	paginate := b.conf.GetInt("theme.paginate")
-	if k := fmt.Sprintf("%s.paginate", key); b.conf.IsSet(k) {
+	if k := fmt.Sprintf(paginateTemplate, key); b.conf.IsSet(k) {
 		paginate = b.conf.GetInt(k)
 	}
-	layoutDest := b.conf.GetString(fmt.Sprintf("%s.save_as", key))
-	for name, label := range section {
-		for index, por := range Paginator(label.Pages, paginate) {
+	for _, section := range sections {
+		for index, por := range Paginator(section.Pages, paginate) {
 			vars := map[string]string{
-				"{slug}":   name,
+				"{slug}":   section.Name,
 				"{number}": strconv.Itoa(index + 1),
 			}
 			if index == 0 {
 				vars["{number}"] = ""
 			}
-			dest := utils.StringReplace(layoutDest, vars)
+			dest := utils.StringReplace(output, vars)
 			b.writeTemplate(layout, dest, map[string]interface{}{
 				"paginator": por,
 			})
@@ -119,78 +143,78 @@ func (b *Builder) writeSection(layout, key string, section Section) {
 	}
 }
 
+func (b *Builder) writeIndex(pages []*Page) {
+	indexs := Sections{{Pages: pages}}
+	b.writeSection("index", indexs)
+}
+
 func (b *Builder) writeCategories(pages []*Page) {
-	categories := make(Section)
+	categories := make(Sections, 0)
 	for _, page := range pages {
 		for _, name := range page.Categories {
 			categories.add(name, page)
 		}
 	}
-	b.writeSingle(
-		b.lookup("categories.html"),
-		b.conf.GetString("theme.templates.categories.save_as"), categories)
-	b.writeSection(
-		b.lookup("category.html", "index.html"),
-		"theme.templates.category",
-		categories)
+	b.writeSingle("categories", categories)
+	b.writeSection("category", categories)
 	b.writeSectionFeed("feed.categories", categories)
 }
 
 func (b *Builder) writeTags(pages []*Page) {
-	tags := make(Section)
+	tags := make(Sections, 0)
 	for _, page := range pages {
 		for _, name := range page.Tags {
 			tags.add(name, page)
 		}
 	}
-	b.writeSingle(
-		b.lookup("tags.html"),
-		b.conf.GetString("theme.templates.tags.save_as"), tags)
-	b.writeSection(
-		b.lookup("tag.html", "index.html"),
-		"theme.templates.tag", tags)
+	b.writeSingle("tags", tags)
+	b.writeSection("tag", tags)
 	b.writeSectionFeed("feed.tags", tags)
 }
 
 func (b *Builder) writeAuthors(pages []*Page) {
-	authors := make(Section)
+	authors := make(Sections, 0)
 	for _, page := range pages {
 		for _, name := range page.Authors {
 			authors.add(name, page)
 		}
 	}
-	b.writeSingle(
-		b.lookup("authors.html"),
-		b.conf.GetString("theme.templates.authors.save_as"), authors)
-	b.writeSection(
-		b.lookup("author.html", "index.html"),
-		"theme.templates.author", authors)
+	b.writeSingle("authors", authors)
+	b.writeSection("author", authors)
 	b.writeSectionFeed("feed.authors", authors)
 }
 
 func (b *Builder) writeArchives(pages []*Page) {
-	year, month := make(Section), make(Section)
+	year, month := make(Sections, 0), make(Sections, 0)
 	for _, page := range pages {
 		year.add(page.Date.Format("2006"), page)
 		month.add(page.Date.Format("200601"), page)
 	}
+	b.writeSingle("archives", year)
 
-	// layoutDest := "archives/{date:%Y}/{date:%m}/index{number}.html"
-	b.writeSection(
-		b.lookup("year_archive.html", "archive.html", "index.html"),
-		"theme.templates.year_archive", year)
-	b.writeSection(
-		b.lookup("month_archive.html", "archive.html", "index.html"),
-		"theme.templates.month_archive", year)
+	// period_archives.html
+	b.writeSection("year_archive", year)
+	b.writeSection("month_archive", month)
 }
 
-func (b *Builder) writeTemplate(file string, dest string, context map[string]interface{}) error {
-	writefile := filepath.Join(b.conf.GetString("output"), dest)
+func (b *Builder) writeFile(file, content string) error {
+	writefile := filepath.Join(b.conf.GetString("output_dir"), file)
+	if dir := filepath.Dir(writefile); !utils.FileExists(dir) {
+		os.MkdirAll(dir, 0755)
+	}
+	return ioutil.WriteFile(writefile, []byte(content), 0755)
+}
+
+func (b *Builder) writeTemplate(tmpl string, file string, context map[string]interface{}) error {
+	if file == "" {
+		return nil
+	}
+	writefile := filepath.Join(b.conf.GetString("output_dir"), file)
 	if dir := filepath.Dir(writefile); !utils.FileExists(dir) {
 		os.MkdirAll(dir, 0755)
 	}
 
-	tpl := pongo2.Must(pongo2.FromFile(file))
+	tpl := pongo2.Must(pongo2.FromFile(tmpl))
 	f, err := os.OpenFile(writefile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		return err
@@ -198,12 +222,11 @@ func (b *Builder) writeTemplate(file string, dest string, context map[string]int
 	defer f.Close()
 
 	c := make(map[string]interface{})
+	for k, v := range b.context {
+		c[k] = v
+	}
 	for k, v := range context {
 		c[k] = v
 	}
-	// c["tags"] = ctx.Tags()
-	// c["archives"] = ctx.Archives()
-	// c["authors"] = ctx.Authors()
-	// c["categories"] = ctx.Categories()
 	return tpl.ExecuteWriter(c, f)
 }

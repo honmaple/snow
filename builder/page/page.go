@@ -11,12 +11,11 @@ import (
 	"github.com/honmaple/snow/utils"
 )
 
-type (
-	Builder struct {
-		conf   *config.Config
-		markup *markup.Markup
-	}
-)
+type Builder struct {
+	conf    *config.Config
+	markup  *markup.Markup
+	context map[string]interface{}
+}
 
 func (b *Builder) parse(meta map[string]string) *Page {
 	page := new(Page)
@@ -94,16 +93,38 @@ func NewBuilder(conf *config.Config) *Builder {
 	conf.SetDefault("feed.tags", "tags/{slug}/feeds.xml")
 	conf.SetDefault("feed.authors", "authors/{slug}/feeds.xml")
 	conf.SetDefault("feed.categories", "categories/{slug}/feeds.xml")
+	conf.SetDefault("theme.path", "themes/simple")
 	conf.SetDefault("theme.paginate", 10)
+
+	conf.SetDefault("theme.templates.page.lookup", []string{"page.html", "article.html"})
+	conf.SetDefault("theme.templates.page.save_as", "articles/{date:%Y}/{date:%m}/{slug}.html")
+
+	conf.SetDefault("theme.templates.index.lookup", []string{"index.html"})
 	conf.SetDefault("theme.templates.index.save_as", "index{number}.html")
+
+	conf.SetDefault("theme.templates.tag.lookup", []string{"tag.html", "index.html"})
 	conf.SetDefault("theme.templates.tag.save_as", "tags/{slug}/index{number}.html")
+	conf.SetDefault("theme.templates.tags.lookup", []string{"tags.html"})
 	conf.SetDefault("theme.templates.tags.save_as", "tags/index.html")
+
+	conf.SetDefault("theme.templates.category.lookup", []string{"category.html", "index.html"})
 	conf.SetDefault("theme.templates.category.save_as", "categories/{slug}/index{number}.html")
+	conf.SetDefault("theme.templates.categories.lookup", []string{"categories.html"})
 	conf.SetDefault("theme.templates.categories.save_as", "categories/index.html")
+
+	conf.SetDefault("theme.templates.author.lookup", []string{"author.html", "index.html"})
 	conf.SetDefault("theme.templates.author.save_as", "authors/{slug}/index{number}.html")
+	conf.SetDefault("theme.templates.authors.lookup", []string{"authors.html"})
 	conf.SetDefault("theme.templates.authors.save_as", "authors/index.html")
+
+	conf.SetDefault("theme.templates.archives.lookup", []string{"archives.html"})
 	conf.SetDefault("theme.templates.archives.save_as", "archives/index.html")
 	return &Builder{
-		conf: conf,
+		conf:   conf,
+		markup: markup.New(conf),
+		context: map[string]interface{}{
+			"site":   conf.GetStringMap("site"),
+			"params": conf.GetStringMap("params"),
+		},
 	}
 }

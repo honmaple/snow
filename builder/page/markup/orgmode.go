@@ -7,25 +7,23 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/honmaple/org-golang"
+	"github.com/honmaple/org-golang/render"
 	"github.com/honmaple/snow/utils"
-	"github.com/niklasfasching/go-org/org"
 )
 
 var (
-	orgProperty    = []byte("#+")
-	orgMore        = []byte("#+more")
-	KEYWORD_REGEXP = regexp.MustCompile(`^#\+([^:]+):(\s+(.*)|$)`)
+	ORGMODE_MORE = "#+more"
+	ORGMODE_META = regexp.MustCompile(`^#\+([^:]+):(\s+(.*)|$)`)
 )
 
-func (m *Markup) html(file string, content []byte) string {
-	d := org.New().Parse(bytes.NewReader(content), file)
-	writer := org.NewHTMLWriter()
-	writer.HighlightCodeBlock = highlightCodeBlock
-	out, err := d.Write(writer)
-	if err != nil {
-		return ""
+func orgmodeHTML(data []byte) string {
+	r := render.HTML{
+		Toc:       true,
+		Document:  org.New(bytes.NewReader(data)),
+		Highlight: highlightCodeBlock,
 	}
-	return out
+	return r.String()
 }
 
 func (m *Markup) orgmode(file string) (map[string]string, error) {
@@ -38,35 +36,40 @@ func (m *Markup) orgmode(file string) (map[string]string, error) {
 	var (
 		summary bytes.Buffer
 		meta    = make(map[string]string)
+		index   = 0
+		scanner = bufio.NewScanner(r)
 	)
-	scanner := bufio.NewScanner(r)
+	limit := m.conf.GetInt("params.orgmode.meta_limit")
+	if limit == 0 {
+		limit = 10
+	}
 	for scanner.Scan() {
-		b := scanner.Bytes()
-		if match := KEYWORD_REGEXP.FindStringSubmatch(string(b)); match != nil {
-			if match[1] == "PROPERTY" {
-				m := strings.SplitN(match[3], " ", 2)
-				k := strings.ToLower(m[0])
-				v := ""
-				if len(m) > 1 {
-					v = strings.TrimSpace(m[1])
+		line := scanner.Text()
+		if index <= limit {
+			if match := ORGMODE_META.FindStringSubmatch(line); match != nil {
+				if match[1] == "PROPERTY" {
+					m := strings.SplitN(match[3], " ", 2)
+					k := strings.ToLower(m[0])
+					v := ""
+					if len(m) > 1 {
+						v = strings.TrimSpace(m[1])
+					}
+					meta[k] = v
+				} else {
+					meta[strings.ToLower(match[1])] = strings.TrimSpace(match[3])
 				}
-				meta[k] = v
-			} else {
-				meta[strings.ToLower(match[1])] = strings.TrimSpace(match[3])
 			}
 		}
-		if bytes.Equal(b, orgMore) {
+		if line == ORGMODE_MORE {
 			break
 		}
-		if _, err := summary.Write(b); err != nil {
+		if _, err := summary.WriteString(line); err != nil {
 			return nil, err
 		}
+		index++
 	}
-	meta["summary"] = summary.String()
-	return meta, nil
-
-	meta["summary"] = m.html(file, []byte(meta["summary"]))
-	meta["content"] = m.html(file, data)
+	meta["summary"] = orgmodeHTML(summary.Bytes())
+	meta["content"] = orgmodeHTML(data)
 	if title, ok := meta["titie"]; !ok || title == "" {
 		meta["title"] = utils.FileBaseName(file)
 	}

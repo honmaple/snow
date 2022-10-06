@@ -10,12 +10,14 @@ import (
 	"github.com/alecthomas/chroma/formatters/html"
 	"github.com/alecthomas/chroma/lexers"
 	"github.com/alecthomas/chroma/styles"
+	"github.com/honmaple/snow/config"
 )
 
 type Markup struct {
+	conf *config.Config
 }
 
-func highlightCodeBlock(source, lang string, inline bool) string {
+func highlightCodeBlock(source, lang string) string {
 	var w strings.Builder
 	l := lexers.Get(lang)
 	if l == nil {
@@ -24,9 +26,6 @@ func highlightCodeBlock(source, lang string, inline bool) string {
 	l = chroma.Coalesce(l)
 	it, _ := l.Tokenise(nil, source)
 	_ = html.New().Format(&w, styles.Get("friendly"), it)
-	if inline {
-		return `<div class="highlight-inline">` + "\n" + w.String() + "\n" + `</div>`
-	}
 	return `<div class="highlight">` + "\n" + w.String() + "\n" + `</div>`
 }
 
@@ -41,4 +40,8 @@ func (m *Markup) Read(file string) (map[string]string, error) {
 		return nil, errors.New(fmt.Sprintf("no reader for %s: %s", ext, file))
 	}
 	return nil, nil
+}
+
+func New(conf *config.Config) *Markup {
+	return &Markup{conf}
 }
