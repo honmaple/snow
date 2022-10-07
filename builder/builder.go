@@ -1,9 +1,9 @@
 package builder
 
 import (
-	"github.com/honmaple/snow/builder/extra"
 	"github.com/honmaple/snow/builder/page"
-	"github.com/honmaple/snow/builder/static"
+	// "github.com/honmaple/snow/builder/static"
+	// "github.com/honmaple/snow/builder/extra"
 	"github.com/honmaple/snow/config"
 )
 
@@ -12,13 +12,17 @@ type Builder interface {
 }
 
 func Build(conf *config.Config) error {
+	registerFilter(conf)
+
 	bs := []Builder{
 		page.NewBuilder(conf),
-		extra.NewBuilder(conf),
-		static.NewBuilder(conf),
+		// extra.NewBuilder(conf),
+		// static.NewBuilder(conf),
 	}
 	for _, b := range bs {
-		b.Build()
+		if err := b.Build(); err != nil {
+			return err
+		}
 	}
 	return nil
 }

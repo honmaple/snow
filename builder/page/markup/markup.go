@@ -30,7 +30,7 @@ func highlightCodeBlock(source, lang string) string {
 }
 
 func (m *Markup) Read(file string) (map[string]string, error) {
-	ext := filepath.Ext(file)[1:]
+	ext := filepath.Ext(file)
 	switch ext {
 	case ".org":
 		return m.orgmode(file)
@@ -39,7 +39,6 @@ func (m *Markup) Read(file string) (map[string]string, error) {
 	default:
 		return nil, errors.New(fmt.Sprintf("no reader for %s: %s", ext, file))
 	}
-	return nil, nil
 }
 
 func New(conf *config.Config) *Markup {

@@ -8,7 +8,7 @@ import (
 	"github.com/honmaple/snow/utils"
 )
 
-func (b *Builder) writeFeed(pages []*Page, output string) {
+func (b *Builder) writeFeed(pages Pages, output string) {
 	limit := b.conf.GetInt("feed.limit")
 	if len(pages) == 0 || limit == 0 || output == "" {
 		return
@@ -56,15 +56,15 @@ func (b *Builder) writeFeed(pages []*Page, output string) {
 	b.writeFile(output, content)
 }
 
-func (b *Builder) writeSectionFeed(key string, sections Sections) {
+func (b *Builder) writeSectionFeed(key string, sections Section) {
 	output := b.conf.GetString(key)
 	if output == "" {
 		return
 	}
-	for _, section := range sections {
+	for label, pages := range sections {
 		vars := map[string]string{
-			"{slug}": section.Name,
+			"{slug}": label.Name,
 		}
-		b.writeFeed(section.Pages, utils.StringReplace(output, vars))
+		b.writeFeed(pages, utils.StringReplace(output, vars))
 	}
 }

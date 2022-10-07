@@ -50,6 +50,7 @@ func main() {
 			&cli.PathFlag{
 				Name:    "conf",
 				Aliases: []string{"c"},
+				Value:   "config.yaml",
 				Usage:   "Load configuration from `FILE`",
 			},
 		},
