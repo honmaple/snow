@@ -39,11 +39,8 @@ var defaultConfig = map[string]interface{}{
 	"site.baseURL":  "http://127.0.0.1:8080",
 	"site.title":    "snow",
 	"site.subtitle": "snow is a static site generator.",
-	"page_dirs":     []string{"content"},
-	"extra_dirs":    []string{"extra"},
-	"static_dirs":   []string{"static"},
-	"layouts_dirs":  []string{"layouts"},
 	"output_dir":    "output",
+	"theme.path":    "simple",
 }
 
 func (c *Config) Load(path string) error {

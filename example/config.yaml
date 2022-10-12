@@ -1,0 +1,89 @@
+baseURL: "http//127.0.0.1:8000"
+language: "zh"
+
+site:
+  title: "honmaple's blog"
+  subtitle: "花落"
+
+content_dir: "content"
+output_dir: "output"
+
+# page_dirs:
+#   - "content"
+page_meta:
+  drafts:
+    prefix: "(草稿)"
+  # extra:
+  #   static: true
+  # posts:
+  #   lookup:
+  #     - "posts.html"
+  #   output: "articles1/{date:%Y}/{date:%m}/{slug}.html"
+  pages:
+    lookup:
+      - "posts.html"
+    output: "pages/{slug}.html"
+  # index:
+  #   list.lookup:
+  #     - "index.html"
+  #   list.output: "index{number}.html"
+  tags:
+    # list.lookup:
+    #   - "index.html"
+    # list.output: "tags/{slug}/index{number}.html"
+    list.output: ""
+    lookup:
+      - "tags.html"
+    output: "tags/index.html"
+
+  archives:
+    lookup:
+      - "archives.html"
+    output: "archives/index.html"
+  year_archives:
+    list.lookup:
+      - "archives.html"
+    list.output: "archives/{slug}/index.html"
+    list.filter:
+      types: ["pages"]
+    list.groupby: "date:2006"
+    list.paginate: 0
+  month_archives:
+    list.lookup:
+      - "archives.html"
+    list.output: "archives/{slug}/index.html"
+    list.groupby: "date:2006/01"
+    list.paginate: 0
+page_paginate: 10
+
+static_url: "{path}"
+static_exts:
+  - ".js"
+  - ".css"
+static_dirs:
+  - "static/robots.txt"
+  - "static/favicon.ico"
+  - "static/CNAME"
+  - "static/css/"
+static_meta:
+  static/: "aa/"
+  static/css: "static/css/"
+
+theme:
+  path: "simple"
+  engine: "pongo2"
+  override: "layouts"
+
+params:
+  feed:
+    limit: 10
+    title: ""
+    format: ""
+# minify:
+#   disableCSS: false
+#   disableHTML: false
+#   disableJS: false
+#   disableJSON: false
+#   disableSVG: false
+#   disableXML: false
+#   minifyOutput: false

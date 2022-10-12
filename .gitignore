@@ -10,5 +10,6 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
-etc/content
-etc/output
+example/content/posts
+example/output
+example/snow

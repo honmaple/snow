@@ -1,0 +1,10 @@
+#+TITLE: Draft2
+#+AUTHOR: author
+#+DATE: 2022-10-06 14:57:51
+#+CATEGORY: Linux
+#+PROPERTY: MODIFIED 2022-10-12 20:06:48
+#+PROPERTY: TAGS linux
+
+
+* This is draft header
+* This is draft header2

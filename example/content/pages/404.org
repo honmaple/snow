@@ -1,0 +1,11 @@
+#+TITLE: 404 Not Found
+#+PROPERTY: TAGS travel
+#+PROPERTY: COMMENT False
+
+#+BEGIN_CENTER
+#+BEGIN_QUOTE
+路漫漫其修远兮 吾将上下而求索
+
+=The road ahead will be long, I shall search=
+#+END_QUOTE
+#+END_CENTER

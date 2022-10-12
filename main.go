@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"os"
 
@@ -18,6 +19,9 @@ const (
 
 var (
 	conf = config.DefaultConfig()
+
+	//go:embed themes
+	themesFS embed.FS
 )
 
 func before(ctx *cli.Context) error {

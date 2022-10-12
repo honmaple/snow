@@ -1,0 +1,12 @@
+<div class="entry-archive">
+  <ul class="inline">
+    {% for label, pages in section %}
+      <li>
+        <a class="label label-default" href="{{ site.baseURL }}/{{ label.URL }}">
+          {{ label.Name }}
+          <span class="badge">{{ pages | length }}</span>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+</div>
