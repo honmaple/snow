@@ -126,26 +126,25 @@ func (b *Builder) Build() error {
 
 var defaultConfig = map[string]interface{}{
 	"page_paginate":                          10,
-	"page_meta.extra.ignore":                 true,
 	"page_meta.pages.lookup":                 []string{"page.html", "single.html"},
 	"page_meta.pages.output":                 "pages/{slug}.html",
 	"page_meta.posts.lookup":                 []string{"post.html", "single.html"},
 	"page_meta.posts.output":                 "articles/{date:%Y}/{date:%m}/{slug}.html",
 	"page_meta.drafts.lookup":                []string{"draft.html", "single.html"},
 	"page_meta.drafts.output":                "drafts/{date:%Y}/{date:%m}/{slug}.html",
-	"page_meta.index.list.lookup":            []string{"index.html"},
+	"page_meta.index.list.lookup":            []string{"index.html", "section.html"},
 	"page_meta.index.list.output":            "index{number}.html",
 	"page_meta.tags.lookup":                  []string{"tags.html"},
 	"page_meta.tags.output":                  "tags/index.html",
-	"page_meta.tags.list.lookup":             []string{"tag.html", "index.html"},
+	"page_meta.tags.list.lookup":             []string{"tag.html", "section.html"},
 	"page_meta.tags.list.output":             "tags/{slug}/index{number}.html",
 	"page_meta.categories.lookup":            []string{"categories.html"},
 	"page_meta.categories.output":            "categories/index.html",
-	"page_meta.categories.list.lookup":       []string{"category.html", "index.html"},
+	"page_meta.categories.list.lookup":       []string{"category.html", "section.html"},
 	"page_meta.categories.list.output":       "categories/{slug}/index{number}.html",
 	"page_meta.authors.lookup":               []string{"authors.html"},
 	"page_meta.authors.output":               "authors/index.html",
-	"page_meta.authors.list.lookup":          []string{"author.html", "index.html"},
+	"page_meta.authors.list.lookup":          []string{"author.html", "section.html"},
 	"page_meta.authors.list.output":          "authors/{slug}/index{number}.html",
 	"page_meta.archives.lookup":              []string{"archives.html"},
 	"page_meta.archives.output":              "archives/index.html",
@@ -157,25 +156,30 @@ var defaultConfig = map[string]interface{}{
 	"page_meta.month_archives.list.output":   "archives/{slug}/index.html",
 	"page_meta.month_archives.list.groupby":  "date:2006/01",
 	"page_meta.month_archives.list.paginate": 0,
+
+	"feed.limit":      10,
+	"feed.format":     "atom",
+	"feed.all":        "feeds.xml",
+	"feed.tags":       "tags/{slug}/feeds.xml",
+	"feed.authors":    "authors/{slug}/feeds.xml",
+	"feed.categories": "categories/{slug}/feeds.xml",
 }
 
 func NewBuilder(conf *config.Config, tmpl template.Template) *Builder {
-	conf.SetDefault("feed.limit", 10)
-	conf.SetDefault("feed.format", "atom")
-	conf.SetDefault("feed.all", "feeds.xml")
-	conf.SetDefault("feed.tags", "tags/{slug}/feeds.xml")
-	conf.SetDefault("feed.authors", "authors/{slug}/feeds.xml")
-	conf.SetDefault("feed.categories", "categories/{slug}/feeds.xml")
-
+	keys := conf.AllKeys()
 	for k, v := range defaultConfig {
 		if conf.IsSet(k) {
 			continue
 		}
 		conf.Set(k, v)
 	}
+	for _, k := range keys {
+		conf.Set(k, conf.Get(k))
+	}
 	return &Builder{
-		conf:   conf,
-		types:  make(map[string]bool),
-		markup: markup.New(conf),
+		conf:     conf,
+		types:    make(map[string]bool),
+		markup:   markup.New(conf),
+		template: tmpl,
 	}
 }

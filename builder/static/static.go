@@ -29,7 +29,7 @@ func (b *Builder) parse(file string, meta map[string]string) *StaticFile {
 	})
 	for _, m := range metaList {
 		if strings.HasPrefix(file, m) {
-			return &StaticFile{URL: meta[m]}
+			return &StaticFile{URL: meta[m], File: file}
 		}
 	}
 	return &StaticFile{URL: file, File: file}
@@ -44,6 +44,9 @@ func (b *Builder) Read() ([]*StaticFile, error) {
 
 	meta := b.conf.GetStringMapString("static_meta")
 	dirs := b.conf.GetStringSlice("static_dirs")
+
+	// 默认添加主题的静态文件
+	dirs = append(dirs, filepath.Join(b.conf.GetString("theme.path"), "static"))
 	// url := b.conf.GetStringSlice("static_url")
 	files := make([]*StaticFile, 0)
 	for _, dir := range dirs {

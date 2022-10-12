@@ -13,41 +13,40 @@ output_dir: "output"
 page_meta:
   drafts:
     prefix: "(草稿)"
+    lookup:
+      - "post.html"
   # extra:
   #   static: true
-  # posts:
-  #   lookup:
-  #     - "posts.html"
-  #   output: "articles1/{date:%Y}/{date:%m}/{slug}.html"
+  posts:
+    lookup:
+      - "post.html"
   pages:
     lookup:
-      - "posts.html"
-    output: "pages/{slug}.html"
+      - "post.html"
   # index:
   #   list.lookup:
   #     - "index.html"
   #   list.output: "index{number}.html"
-  tags:
-    # list.lookup:
-    #   - "index.html"
-    # list.output: "tags/{slug}/index{number}.html"
-    list.output: ""
-    lookup:
-      - "tags.html"
-    output: "tags/index.html"
-
-  archives:
-    lookup:
-      - "archives.html"
-    output: "archives/index.html"
-  year_archives:
-    list.lookup:
-      - "archives.html"
-    list.output: "archives/{slug}/index.html"
-    list.filter:
-      types: ["pages"]
-    list.groupby: "date:2006"
-    list.paginate: 0
+  # tags:
+  #   lookup:
+  #     - "tags.html"
+  #   output: "tags/index.html"
+  #   list.lookup:
+  #     - "index.html"
+  #   list.output: "tags/{slug}/index{number}.html"
+  # list.output: ""
+  # archives:
+  #   lookup:
+  #     - "archives.html"
+  #   output: "archives/index.html"
+  # year_archives:
+  #   list.lookup:
+  #     - "archives.html"
+  #   list.output: "archives/{slug}/index.html"
+  #   list.filter:
+  #     types: ["pages"]
+  #   list.groupby: "date:2006"
+  #   list.paginate: 0
   month_archives:
     list.lookup:
       - "archives.html"

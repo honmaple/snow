@@ -1,27 +1,34 @@
 package builder
 
 import (
+	"embed"
 	"fmt"
 	"sync"
 
-	// "github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/builder/static"
 	"github.com/honmaple/snow/builder/template"
 	"github.com/honmaple/snow/config"
 )
 
-type (
-	Builder interface {
-		Build() error
-	}
+type Builder interface {
+	Build() error
+}
+
+var (
+	//go:embed themes
+	themeFS embed.FS
 )
 
 func Build(conf *config.Config) error {
-	tmpl := template.New(conf)
+	tmpl, err := template.New(conf, themeFS)
+	if err != nil {
+		return err
+	}
 	_ = tmpl
 
 	bs := []Builder{
-		// page.NewBuilder(conf, tmpl),
+		page.NewBuilder(conf, tmpl),
 		static.NewBuilder(conf),
 	}
 	var wg sync.WaitGroup

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 )
 
 const (

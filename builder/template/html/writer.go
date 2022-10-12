@@ -8,11 +8,7 @@ type Template struct {
 	context map[string]interface{}
 }
 
-func (t *Template) Lookup(names ...string) string {
-	return ""
-}
-
-func (t *Template) Write(tmpl string, file string, context map[string]interface{}) error {
+func (t *Template) Write(names []string, file string, context map[string]interface{}) error {
 	return nil
 }
 

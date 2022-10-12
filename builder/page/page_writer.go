@@ -22,6 +22,7 @@ func (b *Builder) Write(pages Pages) error {
 
 	types := pages.GroupBy("type")
 	for name := range metas {
+		// fmt.Println(name)
 		// 如果是已知类型，只写入详情页, 列表页由其他模板提供
 		if b.types[name] {
 			b.write(name, types)
@@ -32,28 +33,21 @@ func (b *Builder) Write(pages Pages) error {
 	return nil
 }
 
-func (b *Builder) lookup(key string) (string, string) {
+func (b *Builder) lookup(key string) ([]string, string) {
 	output := b.conf.GetString(fmt.Sprintf(outputTemplate, key))
 	if output == "" {
-		return "", ""
+		return nil, ""
 	}
 
 	names := b.conf.GetStringSlice(fmt.Sprintf(lookupTemplate, key))
-	if len(names) == 0 {
-		return "", ""
-	}
-	return b.template.Lookup(names...), output
+	return names, output
 }
 
 func (b *Builder) write(key string, section Section) {
-	pages := section[Label{Name: key}]
-	for label, pages := range section {
-		fmt.Println(label.Name, key, len(pages))
-	}
-
-	if layout, output := b.lookup(key); layout != "" && output != "" {
+	if layouts, output := b.lookup(key); len(layouts) > 0 && output != "" {
+		pages := section[Label{Name: key}]
 		for _, page := range pages {
-			b.template.Write(layout, page.URL, map[string]interface{}{
+			b.template.Write(layouts, page.URL, map[string]interface{}{
 				"page": page,
 			})
 		}
@@ -73,7 +67,7 @@ func (b *Builder) writeOther(key string, pages Pages) {
 	} else {
 		section = Section{Label{}: pages}
 	}
-	if layout, output := b.lookup(listk); layout != "" && output != "" {
+	if layouts, output := b.lookup(listk); len(layouts) > 0 && output != "" {
 		paginate := b.conf.GetInt("page_paginate")
 		if k := fmt.Sprintf(paginateTemplate, listk); b.conf.IsSet(k) {
 			paginate = b.conf.GetInt(k)
@@ -82,6 +76,9 @@ func (b *Builder) writeOther(key string, pages Pages) {
 		newSection := make(Section)
 		for label, pages := range section {
 			for index, por := range pages.Paginator(paginate) {
+				// if label.Name == "" {
+				//	continue
+				// }
 				num := strconv.Itoa(index + 1)
 				vars := map[string]string{
 					"{slug}":       label.Name,
@@ -92,7 +89,7 @@ func (b *Builder) writeOther(key string, pages Pages) {
 					vars["{number}"] = ""
 				}
 				dest := utils.StringReplace(output, vars)
-				b.template.Write(layout, dest, map[string]interface{}{
+				b.template.Write(layouts, dest, map[string]interface{}{
 					"slug":      label.Name,
 					"pages":     pages,
 					"paginator": por,
@@ -110,8 +107,8 @@ func (b *Builder) writeOther(key string, pages Pages) {
 		}
 		section = newSection
 	}
-	if layout, output := b.lookup(key); layout != "" && output != "" {
-		b.template.Write(layout, output, map[string]interface{}{
+	if layouts, output := b.lookup(key); len(layouts) > 0 && output != "" {
+		b.template.Write(layouts, output, map[string]interface{}{
 			"pages":   pages,
 			"section": section,
 		})
