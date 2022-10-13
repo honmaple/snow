@@ -17,11 +17,11 @@ type (
 		List    Pages
 	}
 	Page struct {
+		Meta       map[string]string
 		Type       string
 		Title      string
 		Date       time.Time
 		Modified   time.Time
-		Status     string
 		Categories []string
 		Authors    []string
 		Tags       []string
@@ -32,8 +32,8 @@ type (
 		Content string
 		Summary string
 
-		Next     *Page
-		Previous *Page
+		Prev *Page
+		Next *Page
 	}
 	Pages []*Page
 
@@ -53,63 +53,164 @@ func (sec Section) add(name string, page *Page) {
 	sec[label] = append(pages, page)
 }
 
-func matchList(list []interface{}, k string) bool {
-	for _, t := range list {
-		if t == k {
+func (pages Pages) Filter(filter interface{}) Pages {
+	matchList := func(value string) func(string) int {
+		include := make(map[string]bool)
+		exclude := make(map[string]bool)
+		for _, typ := range strings.Split(value, ",") {
+			if strings.HasPrefix(typ, "-") {
+				exclude[typ[1:]] = true
+			} else {
+				include[typ] = true
+			}
+		}
+		return func(typ string) int {
+			if include[typ] {
+				return 1
+			}
+			if exclude[typ] {
+				return -1
+			}
+			return 0
+		}
+	}
+	switch fs := filter.(type) {
+	case string:
+		matcher := matchList(fs)
+		newPages := make(Pages, 0)
+		for _, page := range pages {
+			if matcher(page.Type) >= 0 {
+				newPages = append(newPages, page)
+			}
+		}
+		return newPages
+	case map[string]interface{}:
+		matchers := make([]func(*Page) bool, 0)
+		for k, v := range fs {
+			switch k {
+			case "type":
+				matcher := matchList(v.(string))
+				matchers = append(matchers, func(page *Page) bool {
+					return matcher(page.Type) >= 0
+				})
+			case "tag":
+				matcher := matchList(v.(string))
+				matchers = append(matchers, func(page *Page) bool {
+					matched := false
+					for _, name := range page.Tags {
+						if m := matcher(name); m < 0 {
+							return false
+						} else if m > 0 {
+							matched = true
+						}
+					}
+					return matched
+				})
+			case "category":
+				matcher := matchList(v.(string))
+				matchers = append(matchers, func(page *Page) bool {
+					matched := false
+					for _, name := range page.Categories {
+						if m := matcher(name); m < 0 {
+							return false
+						} else if m > 0 {
+							matched = true
+						}
+					}
+					return matched
+				})
+			}
+		}
+		matchAll := func(page *Page) bool {
+			for _, m := range matchers {
+				if !m(page) {
+					return false
+				}
+			}
 			return true
 		}
+		newPages := make(Pages, 0)
+		for _, page := range pages {
+			if matchAll(page) {
+				newPages = append(newPages, page)
+			}
+		}
+		return newPages
+	default:
+		return pages
 	}
-	return false
 }
 
-func (pages Pages) Filter(filter map[string]interface{}) Pages {
-	newPages := make(Pages, 0)
-	for _, page := range pages {
-		matched := true
-		for k, v := range filter {
-			switch k {
-			case "types":
-				matched = matchList(v.([]interface{}), page.Type)
-			}
-			if !matched {
-				break
-			}
-		}
-		if !matched {
-			continue
-		}
-		newPages = append(newPages, page)
+func (pages Pages) OrderBy(key string) Pages {
+	if key == "" {
+		return pages
 	}
-	return newPages
-}
-
-func (pages Pages) OrderBy(key string, reverse bool) Pages {
-	switch key {
-	case "date":
-		sortf := func(i, j int) bool {
-			if reverse {
-				return pages[i].Date.Before(pages[j].Date)
-			}
-			return pages[i].Date.After(pages[j].Date)
+	sortfs := make([]func(int, int) int, 0)
+	for _, k := range strings.Split(key, ",") {
+		var (
+			sortf   func(int, int) int
+			reverse bool
+		)
+		if strings.HasSuffix(k, " desc") || strings.HasSuffix(k, " DESC") {
+			k = k[:len(k)-5]
+			reverse = true
 		}
-		sort.SliceStable(pages, sortf)
-	case "type":
-		sortf := func(i, j int) bool {
-			if reverse {
-				return pages[i].Type < pages[j].Type
+		switch k {
+		case "title":
+			sortf = func(i, j int) int {
+				return strings.Compare(pages[i].Title, pages[j].Title)
 			}
-			return pages[i].Type > pages[j].Type
-		}
-		sort.SliceStable(pages, sortf)
-	case "title":
-		sortf := func(i, j int) bool {
-			if reverse {
-				return pages[i].Title < pages[j].Title
+		case "date":
+			sortf = func(i, j int) int {
+				d1 := pages[i].Date
+				d2 := pages[j].Date
+				if d1 == d2 {
+					return 0
+				}
+				if d1.Before(d2) {
+					return 1
+				}
+				return -1
 			}
-			return pages[i].Title > pages[j].Title
+		case "modified":
+			sortf = func(i, j int) int {
+				d1 := pages[i].Modified
+				d2 := pages[j].Modified
+				if d1 == d2 {
+					return 0
+				}
+				if d1.Before(d2) {
+					return 1
+				}
+				return -1
+			}
+		case "type":
+			sortf = func(i, j int) int {
+				return strings.Compare(pages[i].Type, pages[j].Type)
+			}
+		default:
+			sortf = func(i, j int) int {
+				return strings.Compare(pages[i].Meta[k], pages[j].Meta[k])
+			}
 		}
-		sort.SliceStable(pages, sortf)
+		if reverse {
+			sortfs = append(sortfs, func(i, j int) int {
+				return 0 - sortf(i, j)
+			})
+		} else {
+			sortfs = append(sortfs, sortf)
+		}
 	}
+	sort.SliceStable(pages, func(i, j int) bool {
+		var result int
+		for _, f := range sortfs {
+			result = f(i, j)
+			if result != 0 {
+				return result > 0
+			}
+		}
+		return result >= 0
+	})
 	return pages
 }
 

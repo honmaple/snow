@@ -1,0 +1,14 @@
+{% for label, pages1 in pages.GroupBy('date:2006') %}
+  <h1><a href="{{ label.URL}}">{{ label.Name }}({{ pages1 | count }})</a></h1>
+  <ul>
+    {% for page in pages1 %}
+      <li>
+        <h2><a href="{{ page.URL }}">{{ page.Title }}</a></h2>
+        <hr />
+        <div>
+          {{ page.Content | safe }}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% endfor %}

@@ -17,12 +17,12 @@ page_meta:
       - "post.html"
   # extra:
   #   static: true
-  posts:
-    lookup:
-      - "post.html"
-  pages:
-    lookup:
-      - "post.html"
+  # posts:
+  #   lookup:
+  #     - "post.html"
+  # pages:
+  #   lookup:
+  #     - "post.html"
   # index:
   #   list.lookup:
   #     - "index.html"
@@ -65,8 +65,12 @@ static_dirs:
   - "static/CNAME"
   - "static/css/"
 static_meta:
-  static/: "aa/"
-  static/css: "static/css/"
+  # static: "/"
+  # "static/css/main.css": "static/css/"
+  theme/static: "t/static/"
+
+hooks:
+  - "feed"
 
 theme:
   path: "simple"
@@ -76,8 +80,6 @@ theme:
 params:
   feed:
     limit: 10
-    title: ""
-    format: ""
 # minify:
 #   disableCSS: false
 #   disableHTML: false

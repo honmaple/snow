@@ -45,14 +45,14 @@ func (t *Template) Write(names []string, file string, context map[string]interfa
 	if file == "" {
 		return nil
 	}
-	writefile := filepath.Join(t.output, file)
-	if dir := filepath.Dir(writefile); !utils.FileExists(dir) {
-		os.MkdirAll(dir, 0755)
-	}
-
 	tpl := t.lookup(names...)
 	if tpl == nil {
 		return nil
+	}
+
+	writefile := filepath.Join(t.output, file)
+	if dir := filepath.Dir(writefile); !utils.FileExists(dir) {
+		os.MkdirAll(dir, 0755)
 	}
 
 	f, err := os.OpenFile(writefile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)

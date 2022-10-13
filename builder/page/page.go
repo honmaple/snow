@@ -10,16 +10,17 @@ import (
 	"os"
 
 	"github.com/honmaple/snow/builder/page/markup"
-	"github.com/honmaple/snow/builder/template"
+	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
 	"github.com/honmaple/snow/utils"
 )
 
 type Builder struct {
-	conf     *config.Config
-	types    map[string]bool
-	markup   *markup.Markup
-	template template.Template
+	conf   *config.Config
+	types  map[string]bool
+	theme  *theme.Theme
+	markup *markup.Markup
+	hooks  Hooks
 }
 
 func (b *Builder) getDirs(root string) ([]os.FileInfo, error) {
@@ -39,35 +40,34 @@ func (b *Builder) getDirs(root string) ([]os.FileInfo, error) {
 }
 
 func (b *Builder) parse(typ string, meta map[string]string) *Page {
-	page := &Page{Type: typ}
+	now := time.Now()
+	page := &Page{Type: typ, Meta: meta, Date: now, Modified: now}
 	for k, v := range meta {
 		switch strings.ToLower(k) {
 		case "type":
 			page.Type = v
 		case "title":
-			page.Title = v
+			page.Title = strings.TrimSpace(v)
 		case "date":
-			if t, err := utils.ParseTime(v); err != nil {
-				page.Date = time.Now()
-			} else {
+			if t, err := utils.ParseTime(v); err == nil {
 				page.Date = t
 			}
 		case "modified":
-			if t, err := utils.ParseTime(v); err != nil {
-				page.Modified = time.Now()
-			} else {
+			if t, err := utils.ParseTime(v); err == nil {
 				page.Modified = t
 			}
 		case "tags":
-			page.Tags = strings.Split(v, ",")
+			page.Tags = utils.SplitTrim(v, ",")
 		case "category", "categories":
 			page.Categories = []string{v}
 		case "authors":
-			page.Authors = strings.Split(v, ",")
-		case "status":
-			page.Status = v
+			page.Authors = utils.SplitTrim(v, ",")
 		case "output":
 			page.SaveAs = v
+		case "summary":
+			page.Summary = v
+		case "content":
+			page.Content = v
 		}
 	}
 	if page.SaveAs != "" {
@@ -121,51 +121,53 @@ func (b *Builder) Build() error {
 	if err != nil {
 		return err
 	}
+	pages.OrderBy(b.conf.GetString("page_order"))
+	pages = b.hooks.BeforePageList(pages)
 	return b.Write(pages)
 }
 
 var defaultConfig = map[string]interface{}{
+	"page_order":                             "date desc",
 	"page_paginate":                          10,
 	"page_meta.pages.lookup":                 []string{"page.html", "single.html"},
 	"page_meta.pages.output":                 "pages/{slug}.html",
 	"page_meta.posts.lookup":                 []string{"post.html", "single.html"},
-	"page_meta.posts.output":                 "articles/{date:%Y}/{date:%m}/{slug}.html",
+	"page_meta.posts.output":                 "posts/{date:%Y}/{date:%m}/{slug}.html",
 	"page_meta.drafts.lookup":                []string{"draft.html", "single.html"},
 	"page_meta.drafts.output":                "drafts/{date:%Y}/{date:%m}/{slug}.html",
-	"page_meta.index.list.lookup":            []string{"index.html", "section.html"},
+	"page_meta.index.list.lookup":            []string{"index.html", "list.html"},
+	"page_meta.index.list.filter":            "-pages",
 	"page_meta.index.list.output":            "index{number}.html",
 	"page_meta.tags.lookup":                  []string{"tags.html"},
 	"page_meta.tags.output":                  "tags/index.html",
-	"page_meta.tags.list.lookup":             []string{"tag.html", "section.html"},
+	"page_meta.tags.list.lookup":             []string{"tag.html", "list.html"},
+	"page_meta.tags.list.filter":             "-pages",
 	"page_meta.tags.list.output":             "tags/{slug}/index{number}.html",
 	"page_meta.categories.lookup":            []string{"categories.html"},
 	"page_meta.categories.output":            "categories/index.html",
-	"page_meta.categories.list.lookup":       []string{"category.html", "section.html"},
+	"page_meta.categories.list.lookup":       []string{"category.html", "list.html"},
+	"page_meta.categories.list.filter":       "-pages",
 	"page_meta.categories.list.output":       "categories/{slug}/index{number}.html",
 	"page_meta.authors.lookup":               []string{"authors.html"},
 	"page_meta.authors.output":               "authors/index.html",
-	"page_meta.authors.list.lookup":          []string{"author.html", "section.html"},
+	"page_meta.authors.list.lookup":          []string{"author.html", "list.html"},
+	"page_meta.authors.list.filter":          "-pages",
 	"page_meta.authors.list.output":          "authors/{slug}/index{number}.html",
 	"page_meta.archives.lookup":              []string{"archives.html"},
 	"page_meta.archives.output":              "archives/index.html",
 	"page_meta.year_archives.list.lookup":    []string{"period_archives.html"},
 	"page_meta.year_archives.list.output":    "archives/{slug}/index.html",
+	"page_meta.year_archives.list.filter":    "-pages",
 	"page_meta.year_archives.list.groupby":   "date:2006",
 	"page_meta.year_archives.list.paginate":  0,
 	"page_meta.month_archives.list.lookup":   []string{"period_archives.html"},
 	"page_meta.month_archives.list.output":   "archives/{slug}/index.html",
+	"page_meta.month_archives.list.filter":   "-pages",
 	"page_meta.month_archives.list.groupby":  "date:2006/01",
 	"page_meta.month_archives.list.paginate": 0,
-
-	"feed.limit":      10,
-	"feed.format":     "atom",
-	"feed.all":        "feeds.xml",
-	"feed.tags":       "tags/{slug}/feeds.xml",
-	"feed.authors":    "authors/{slug}/feeds.xml",
-	"feed.categories": "categories/{slug}/feeds.xml",
 }
 
-func NewBuilder(conf *config.Config, tmpl template.Template) *Builder {
+func NewBuilder(conf *config.Config, theme *theme.Theme, hooks Hooks) *Builder {
 	keys := conf.AllKeys()
 	for k, v := range defaultConfig {
 		if conf.IsSet(k) {
@@ -177,9 +179,10 @@ func NewBuilder(conf *config.Config, tmpl template.Template) *Builder {
 		conf.Set(k, conf.Get(k))
 	}
 	return &Builder{
-		conf:     conf,
-		types:    make(map[string]bool),
-		markup:   markup.New(conf),
-		template: tmpl,
+		conf:   conf,
+		types:  make(map[string]bool),
+		markup: markup.New(conf),
+		theme:  theme,
+		hooks:  hooks,
 	}
 }

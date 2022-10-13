@@ -46,10 +46,17 @@ func (b *Builder) lookup(key string) ([]string, string) {
 func (b *Builder) write(key string, section Section) {
 	if layouts, output := b.lookup(key); len(layouts) > 0 && output != "" {
 		pages := section[Label{Name: key}]
-		for _, page := range pages {
-			b.template.Write(layouts, page.URL, map[string]interface{}{
-				"page": page,
+
+		var prev *Page
+		for i, page := range pages {
+			page.Prev = prev
+			if i < len(pages)-1 {
+				page.Next = pages[i+1]
+			}
+			b.theme.WriteTemplate(layouts, page.URL, map[string]interface{}{
+				"page": b.hooks.BeforePage(page),
 			})
+			prev = page
 		}
 	}
 }
@@ -60,7 +67,7 @@ func (b *Builder) writeOther(key string, pages Pages) {
 	listk := fmt.Sprintf("%s.list", key)
 
 	if k := fmt.Sprintf(filterTemplate, listk); b.conf.IsSet(k) {
-		pages = pages.Filter(b.conf.GetStringMap(k))
+		pages = pages.Filter(b.conf.Get(k))
 	}
 	if by := b.conf.GetString(fmt.Sprintf(groupbyTemplate, listk)); by != "" {
 		section = pages.GroupBy(by)
@@ -74,6 +81,7 @@ func (b *Builder) writeOther(key string, pages Pages) {
 		}
 
 		newSection := make(Section)
+		section = b.hooks.BeforePageSection(section)
 		for label, pages := range section {
 			for index, por := range pages.Paginator(paginate) {
 				// if label.Name == "" {
@@ -89,7 +97,7 @@ func (b *Builder) writeOther(key string, pages Pages) {
 					vars["{number}"] = ""
 				}
 				dest := utils.StringReplace(output, vars)
-				b.template.Write(layouts, dest, map[string]interface{}{
+				b.theme.WriteTemplate(layouts, dest, map[string]interface{}{
 					"slug":      label.Name,
 					"pages":     pages,
 					"paginator": por,
@@ -108,7 +116,7 @@ func (b *Builder) writeOther(key string, pages Pages) {
 		section = newSection
 	}
 	if layouts, output := b.lookup(key); len(layouts) > 0 && output != "" {
-		b.template.Write(layouts, output, map[string]interface{}{
+		b.theme.WriteTemplate(layouts, output, map[string]interface{}{
 			"pages":   pages,
 			"section": section,
 		})

@@ -1,0 +1,9 @@
+<ul>
+  {% for page in paginator.List %}
+    <li>
+      <h2><a href="{{ page.URL }}">{{ page.Title }}</a></h2>
+      <hr />
+      {% include "post.html" %}
+    </li>
+  {% endfor %}
+</ul>

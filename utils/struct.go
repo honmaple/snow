@@ -85,3 +85,11 @@ func AssertOrExit(err error) {
 		Exit(err.Error(), 1)
 	}
 }
+
+func SplitTrim(key string, split string) []string {
+	result := make([]string, 0)
+	for _, s := range strings.Split(key, ",") {
+		result = append(result, strings.TrimSpace(s))
+	}
+	return result
+}
