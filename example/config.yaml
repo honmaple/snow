@@ -1,9 +1,12 @@
-baseURL: "http//127.0.0.1:8000"
-language: "zh"
-
 site:
+  url: "http://127.0.0.1:8000"
   title: "honmaple's blog"
   subtitle: "花落"
+  language: "zh"
+
+mode.publish:
+  site:
+    url: "http://127.0.0.1:8001"
 
 content_dir: "content"
 output_dir: "output"
@@ -69,8 +72,8 @@ static_meta:
   # "static/css/main.css": "static/css/"
   theme/static: "t/static/"
 
-hooks:
-  - "feed"
+# hooks:
+#   - "feed"
 
 theme:
   path: "simple"

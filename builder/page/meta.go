@@ -37,20 +37,15 @@ type (
 	}
 	Pages []*Page
 
-	Label struct {
-		URL  string
-		Name string
-	}
-	Section map[Label]Pages
+	Section map[string]Pages
 )
 
 func (sec Section) add(name string, page *Page) {
-	label := Label{Name: name}
-	pages, ok := sec[label]
+	pages, ok := sec[name]
 	if !ok {
 		pages = make(Pages, 0)
 	}
-	sec[label] = append(pages, page)
+	sec[name] = append(pages, page)
 }
 
 func (pages Pages) Filter(filter interface{}) Pages {
@@ -215,15 +210,14 @@ func (pages Pages) OrderBy(key string) Pages {
 }
 
 func (pages Pages) GroupBy(key string) Section {
+	sec := make(Section)
 	switch key {
 	case "type":
-		sec := make(Section)
 		for _, page := range pages {
 			sec.add(page.Type, page)
 		}
 		return sec
 	case "tag":
-		sec := make(Section)
 		for _, page := range pages {
 			for _, name := range page.Tags {
 				sec.add(name, page)
@@ -231,7 +225,6 @@ func (pages Pages) GroupBy(key string) Section {
 		}
 		return sec
 	case "author":
-		sec := make(Section)
 		for _, page := range pages {
 			for _, name := range page.Authors {
 				sec.add(name, page)
@@ -239,7 +232,6 @@ func (pages Pages) GroupBy(key string) Section {
 		}
 		return sec
 	case "category":
-		sec := make(Section)
 		for _, page := range pages {
 			for _, name := range page.Categories {
 				sec.add(name, page)
@@ -249,13 +241,13 @@ func (pages Pages) GroupBy(key string) Section {
 	default:
 		if strings.HasPrefix(key, "date:") {
 			format := key[5:]
-			sec := make(Section)
 			for _, page := range pages {
 				sec.add(page.Date.Format(format), page)
 			}
 			return sec
 		}
-		return Section{Label{}: pages}
+		sec[""] = pages
+		return sec
 	}
 }
 

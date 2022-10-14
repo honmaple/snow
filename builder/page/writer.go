@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	prefixTemplate   = "page_meta.%s.prefix"
 	ignoreTemplate   = "page_meta.%s.ignore"
 	lookupTemplate   = "page_meta.%s.lookup"
 	outputTemplate   = "page_meta.%s.output"
@@ -22,10 +23,9 @@ func (b *Builder) Write(pages Pages) error {
 
 	types := pages.GroupBy("type")
 	for name := range metas {
-		// fmt.Println(name)
 		// 如果是已知类型，只写入详情页, 列表页由其他模板提供
-		if b.types[name] {
-			b.write(name, types)
+		if ps, ok := types[name]; ok {
+			b.write(name, ps)
 			continue
 		}
 		b.writeOther(name, pages)
@@ -43,10 +43,8 @@ func (b *Builder) lookup(key string) ([]string, string) {
 	return names, output
 }
 
-func (b *Builder) write(key string, section Section) {
+func (b *Builder) write(key string, pages Pages) {
 	if layouts, output := b.lookup(key); len(layouts) > 0 && output != "" {
-		pages := section[Label{Name: key}]
-
 		var prev *Page
 		for i, page := range pages {
 			page.Prev = prev
@@ -72,7 +70,7 @@ func (b *Builder) writeOther(key string, pages Pages) {
 	if by := b.conf.GetString(fmt.Sprintf(groupbyTemplate, listk)); by != "" {
 		section = pages.GroupBy(by)
 	} else {
-		section = Section{Label{}: pages}
+		section = Section{"": pages}
 	}
 	if layouts, output := b.lookup(listk); len(layouts) > 0 && output != "" {
 		paginate := b.conf.GetInt("page_paginate")
@@ -80,16 +78,12 @@ func (b *Builder) writeOther(key string, pages Pages) {
 			paginate = b.conf.GetInt(k)
 		}
 
-		newSection := make(Section)
 		section = b.hooks.BeforePageSection(section)
-		for label, pages := range section {
+		for slug, pages := range section {
 			for index, por := range pages.Paginator(paginate) {
-				// if label.Name == "" {
-				//	continue
-				// }
 				num := strconv.Itoa(index + 1)
 				vars := map[string]string{
-					"{slug}":       label.Name,
+					"{slug}":       slug,
 					"{number}":     num,
 					"{number:one}": num,
 				}
@@ -98,22 +92,12 @@ func (b *Builder) writeOther(key string, pages Pages) {
 				}
 				dest := utils.StringReplace(output, vars)
 				b.theme.WriteTemplate(layouts, dest, map[string]interface{}{
-					"slug":      label.Name,
+					"slug":      slug,
 					"pages":     pages,
 					"paginator": por,
 				})
 			}
-			newLabel := Label{
-				URL: utils.StringReplace(output, map[string]string{
-					"{slug}":       label.Name,
-					"{number}":     "",
-					"{number:one}": "1",
-				}),
-				Name: label.Name,
-			}
-			newSection[newLabel] = pages
 		}
-		section = newSection
 	}
 	if layouts, output := b.lookup(key); len(layouts) > 0 && output != "" {
 		b.theme.WriteTemplate(layouts, output, map[string]interface{}{

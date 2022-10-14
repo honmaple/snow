@@ -9,13 +9,16 @@ import (
 	"github.com/gorilla/feeds"
 	"github.com/honmaple/snow/builder/hook"
 	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
 	"github.com/honmaple/snow/utils"
 )
 
 type Feed struct {
 	hook.BaseHook
-	conf *config.Config
+	feed  *feeds.Feed
+	conf  config.Config
+	theme theme.Theme
 }
 
 func (f *Feed) Name() string {
@@ -35,25 +38,28 @@ func (f *Feed) write(pages page.Pages, output string) {
 		err     error
 		content string
 	)
-	site := f.conf.Site
 	feed := &feeds.Feed{
-		Title:       site.Title,
-		Description: site.SubTitle,
-		Link:        &feeds.Link{Href: site.URL},
-		Author:      &feeds.Author{Name: site.Author, Email: site.Email},
+		Title:       f.feed.Title,
+		Description: f.feed.Description,
+		Link:        f.feed.Link,
+		Author:      f.feed.Author,
 		Created:     time.Now(),
 	}
 	for _, page := range pages[:limit] {
 		feed.Add(&feeds.Item{
 			Title:       page.Title,
 			Description: page.Summary,
-			Link:        &feeds.Link{Href: page.URL},
-			Author:      &feeds.Author{Name: strings.Join(page.Authors, ","), Email: ""},
-			Created:     page.Date,
+			Link: &feeds.Link{
+				Href: page.URL,
+			},
+			Author: &feeds.Author{
+				Name:  strings.Join(page.Authors, ","),
+				Email: "",
+			},
+			Created: page.Date,
 		})
 	}
-	format := f.conf.GetString("params.feed.format")
-	switch format {
+	switch f.conf.GetString("params.feed.format") {
 	case "rss":
 		content, err = feed.ToRss()
 	case "atom":
@@ -67,21 +73,21 @@ func (f *Feed) write(pages page.Pages, output string) {
 		return
 	}
 	_ = content
+
 	output = filepath.Join(f.conf.GetString("output_dir"), output)
 	fmt.Println("Writing Feed to", output)
-	// writefile := filepath.Join(b.conf.GetString("output_dir"), file)
-	// if dir := filepath.Dir(writefile); !utils.FileExists(dir) {
-	//	os.MkdirAll(dir, 0755)
+	// if dir := filepath.Dir(output); !utils.FileExists(dir) {
+	// 	os.MkdirAll(dir, 0755)
 	// }
-	// return ioutil.WriteFile(writefile, []byte(content), 0755)
+	// ioutil.WriteFile(output, []byte(content), 0755)
 }
 
 func (f *Feed) BeforePageList(pages page.Pages) page.Pages {
-	out := f.conf.GetStringMapString("params.feed.output")
-	for k, v := range out {
-		for label, pages := range pages.GroupBy(k) {
+	output := f.conf.GetStringMapString("params.feed.output")
+	for k, v := range output {
+		for slug, pages := range pages.GroupBy(k) {
 			vars := map[string]string{
-				"{slug}": label.Name,
+				"{slug}": slug,
 			}
 			f.write(pages, utils.StringReplace(v, vars))
 		}
@@ -89,7 +95,7 @@ func (f *Feed) BeforePageList(pages page.Pages) page.Pages {
 	return pages
 }
 
-func newFeed(conf *config.Config) hook.Hook {
+func newFeed(conf config.Config, theme theme.Theme) hook.Hook {
 	defaultConfig := map[string]interface{}{
 		"params.feed.limit":  10,
 		"params.feed.format": "atom",
@@ -106,5 +112,18 @@ func newFeed(conf *config.Config) hook.Hook {
 		}
 		conf.Set(k, v)
 	}
-	return &Feed{conf: conf}
+	return &Feed{
+		conf: conf,
+		feed: &feeds.Feed{
+			Title:       conf.GetString("site.title"),
+			Description: conf.GetString("site.subtitle"),
+			Link: &feeds.Link{
+				Href: conf.GetString("site.url"),
+			},
+			Author: &feeds.Author{
+				Name:  conf.GetString("site.author"),
+				Email: conf.GetString("site.email"),
+			},
+		},
+	}
 }

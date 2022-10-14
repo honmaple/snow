@@ -3,6 +3,7 @@ package hook
 import (
 	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/builder/static"
+	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
 )
 
@@ -13,7 +14,7 @@ type (
 		static.Hook
 	}
 	Hooks       []Hook
-	hookCreator func(*config.Config) Hook
+	hookCreator func(config.Config, theme.Theme) Hook
 )
 
 var (
@@ -34,13 +35,13 @@ func (hooks Hooks) StaticHooks() (result []static.Hook) {
 	return
 }
 
-func New(conf *config.Config) Hooks {
+func New(conf config.Config, theme theme.Theme) Hooks {
 	names := conf.GetStringSlice("hooks")
 
 	hooks := make([]Hook, 0)
 	for _, name := range names {
 		if hook, ok := _hooks[name]; ok {
-			hooks = append(hooks, hook(conf))
+			hooks = append(hooks, hook(conf, theme))
 		}
 	}
 	return hooks

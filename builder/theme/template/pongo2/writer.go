@@ -12,7 +12,7 @@ import (
 )
 
 type Template struct {
-	conf    *config.Config
+	conf    config.Config
 	theme   *pongo2.TemplateSet
 	output  string
 	context map[string]interface{}
@@ -74,14 +74,10 @@ func (t *Template) Write(names []string, file string, context map[string]interfa
 	// return tpl.ExecuteWriter(c, f)
 }
 
-func New(conf *config.Config, theme fs.FS) *Template {
-	output := conf.GetString("output_dir")
-	if output == "" {
-		output = "output"
-	}
+func New(conf config.Config, theme fs.FS) *Template {
 	t := &Template{
 		conf:   conf,
-		output: output,
+		output: conf.GetString("output_dir"),
 		context: map[string]interface{}{
 			"site":   conf.GetStringMap("site"),
 			"params": conf.GetStringMap("params"),

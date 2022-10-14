@@ -1,12 +1,14 @@
 package static
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
 )
@@ -18,8 +20,8 @@ type (
 	}
 	Statics []*Static
 	Builder struct {
-		conf  *config.Config
-		theme *theme.Theme
+		conf  config.Config
+		theme theme.Theme
 		hooks Hooks
 	}
 )
@@ -37,9 +39,6 @@ func (b *Builder) parser() func(string) *Static {
 	if _, ok := meta["theme/static"]; !ok {
 		meta["theme/static"] = "static/"
 	}
-	// fmt.Println(b.conf.Sub("static_meta").AllSettings())
-	// fmt.Println(b.conf.Sub("static_meta").AllKeys())
-
 	metaList := make([]string, 0)
 	for m := range meta {
 		metaList = append(metaList, m)
@@ -52,8 +51,9 @@ func (b *Builder) parser() func(string) *Static {
 		if extsIsSet && !exts[filepath.Ext(file)] {
 			return nil
 		}
-		// viper 无法处理带.的key
-		if output, ok := meta[file]; ok {
+		// viper 无法处理带.的key, 无法直接使用meta[file]
+		if k := fmt.Sprintf("static_meta.%s", file); b.conf.IsSet(k) {
+			output := b.conf.GetString(k)
 			if output == "" {
 				return nil
 			}
@@ -80,7 +80,7 @@ func (b *Builder) parser() func(string) *Static {
 
 }
 
-func (b *Builder) Read() ([]*Static, error) {
+func (b *Builder) Read(watcher *fsnotify.Watcher) ([]*Static, error) {
 	parse := b.parser()
 
 	files := make([]*Static, 0)
@@ -98,6 +98,11 @@ func (b *Builder) Read() ([]*Static, error) {
 
 	dirs := b.conf.GetStringSlice("static_dirs")
 	for _, dir := range dirs {
+		if watcher != nil {
+			if err := watcher.Add(dir); err != nil {
+				return nil, err
+			}
+		}
 		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() {
 				return err
@@ -111,8 +116,8 @@ func (b *Builder) Read() ([]*Static, error) {
 	return files, nil
 }
 
-func (b *Builder) Build() error {
-	files, err := b.Read()
+func (b *Builder) Build(watcher *fsnotify.Watcher) error {
+	files, err := b.Read(watcher)
 	if err != nil {
 		return err
 	}
@@ -120,6 +125,6 @@ func (b *Builder) Build() error {
 	return b.Write(files)
 }
 
-func NewBuilder(conf *config.Config, theme *theme.Theme, hooks Hooks) *Builder {
+func NewBuilder(conf config.Config, theme theme.Theme, hooks Hooks) *Builder {
 	return &Builder{conf: conf, theme: theme, hooks: hooks}
 }

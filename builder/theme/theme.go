@@ -12,12 +12,16 @@ import (
 )
 
 type (
-	Theme struct {
-		root     fs.FS
-		template Template
+	Theme interface {
+		Root() fs.FS
+		WriteTemplate([]string, string, map[string]interface{}) error
 	}
 	Template interface {
 		Write([]string, string, map[string]interface{}) error
+	}
+	theme struct {
+		root     fs.FS
+		template Template
 	}
 )
 
@@ -26,15 +30,15 @@ var (
 	themeFS embed.FS
 )
 
-func (t *Theme) Root() fs.FS {
+func (t *theme) Root() fs.FS {
 	return t.root
 }
 
-func (t *Theme) WriteTemplate(names []string, file string, context map[string]interface{}) error {
+func (t *theme) WriteTemplate(names []string, file string, context map[string]interface{}) error {
 	return t.template.Write(names, file, context)
 }
 
-func New(conf *config.Config) (*Theme, error) {
+func New(conf config.Config) (Theme, error) {
 	var (
 		err  error
 		root fs.FS
@@ -44,10 +48,7 @@ func New(conf *config.Config) (*Theme, error) {
 	name := conf.GetString("theme.path")
 	switch name {
 	case "simple":
-		root, err = fs.Sub(themeFS, filepath.Join("internal", name))
-		if err != nil {
-			return nil, err
-		}
+		root, _ = fs.Sub(themeFS, filepath.Join("internal", name))
 	default:
 		root = os.DirFS(name)
 	}
@@ -63,7 +64,7 @@ func New(conf *config.Config) (*Theme, error) {
 	default:
 		tmpl = html.New(conf)
 	}
-	return &Theme{
+	return &theme{
 		root:     root,
 		template: tmpl,
 	}, nil

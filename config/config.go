@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -11,54 +12,78 @@ import (
 
 type Config struct {
 	*viper.Viper
-	Site Site
 }
 
-type Site struct {
-	URL         string `yaml:"url"`
-	Title       string `yaml:"title"`
-	SubTitle    string `yaml:"subtitle"`
-	Keywords    string `yaml:"keywords"`
-	Description string `yaml:"description"`
-	Author      string `yaml:"author"`
-	Email       string `yaml:"email"`
-	Relative    bool   `yaml:"relative"`
-	Language    string `yaml:"language"`
-}
-
-type Dir struct {
-	Root       string   `yaml:"root"`
-	PageDirs   []string `yaml:"page_dirs"`
-	ExtraDirs  []string `yaml:"extra_dirs"`
-	StaticDirs []string `yaml:"static_dirs"`
-	LayoutDirs []string `yaml:"layout_dirs"`
-	OutputDir  string   `yaml:"output_dir"`
-}
-
-var defaultConfig = map[string]interface{}{
-	"site.baseURL":  "http://127.0.0.1:8080",
-	"site.title":    "snow",
-	"site.subtitle": "snow is a static site generator.",
-	"output_dir":    "output",
-	"theme.path":    "simple",
-}
-
-func (c *Config) Load(path string) error {
-	if utils.FileExists(path) {
+func (conf Config) Load(path string) error {
+	if path != "" && utils.FileExists(path) {
 		content, err := ioutil.ReadFile(path)
 		if err != nil {
 			return err
 		}
-		c.SetConfigFile(path)
-		if err := c.ReadConfig(strings.NewReader(os.ExpandEnv(string(content)))); err != nil {
+		conf.SetConfigFile(path)
+		if err := conf.ReadConfig(strings.NewReader(os.ExpandEnv(string(content)))); err != nil {
 			return err
 		}
 	}
-	return c.Viper.Unmarshal(c)
+	return nil
 }
 
-func DefaultConfig() *Config {
-	c := &Config{
+func (conf Config) GetOutput() string {
+	return conf.GetString("output_dir")
+}
+
+func (conf Config) SetOutput(output string) {
+	if output != "" {
+		conf.Set("output", output)
+	}
+}
+
+func (conf Config) SetMode(mode string) error {
+	if mode == "" {
+		return nil
+	}
+	key := fmt.Sprintf("mode.%s", mode)
+	if !conf.IsSet(key) {
+		return fmt.Errorf("mode %s not found", key)
+	}
+	var c *Config
+	if file := conf.GetString(fmt.Sprintf("%s.include", key)); file != "" {
+		c = &Config{
+			Viper: viper.New(),
+		}
+		if err := c.Load(file); err != nil {
+			return err
+		}
+	} else {
+		c = &Config{
+			Viper: conf.Sub(key),
+		}
+	}
+	keys := conf.AllKeys()
+	for _, k := range c.AllKeys() {
+		conf.Set(k, c.Get(k))
+	}
+	for _, k := range keys {
+		if !c.IsSet(k) {
+			conf.Set(k, conf.Get(k))
+		}
+	}
+	return nil
+}
+
+var defaultConfig = map[string]interface{}{
+	"site.url":       "http://127.0.0.1:8080",
+	"site.title":     "snow",
+	"site.subtitle":  "snow is a static site generator.",
+	"theme.path":     "simple",
+	"theme.engine":   "pongo2",
+	"theme.override": "layouts",
+	"output_dir":     "output",
+	"content_dir":    "content",
+}
+
+func DefaultConfig() Config {
+	c := Config{
 		Viper: viper.New(),
 	}
 	for k, v := range defaultConfig {

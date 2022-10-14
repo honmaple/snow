@@ -14,7 +14,7 @@ import (
 )
 
 type Markup struct {
-	conf *config.Config
+	conf config.Config
 }
 
 func highlightCodeBlock(source, lang string) string {
@@ -41,6 +41,6 @@ func (m *Markup) Read(file string) (map[string]string, error) {
 	}
 }
 
-func New(conf *config.Config) *Markup {
+func New(conf config.Config) *Markup {
 	return &Markup{conf}
 }

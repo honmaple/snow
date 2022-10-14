@@ -6,7 +6,6 @@ import (
 
 	"github.com/honmaple/snow/builder"
 	"github.com/honmaple/snow/config"
-	"github.com/honmaple/snow/server"
 	"github.com/urfave/cli/v2"
 )
 
@@ -20,25 +19,30 @@ var (
 	conf = config.DefaultConfig()
 )
 
-func before(ctx *cli.Context) error {
-	path := ctx.String("conf")
+func before(clx *cli.Context) error {
+	path := clx.String("conf")
 	return conf.Load(path)
 }
 
-func newAction(ctx *cli.Context) error {
+func newAction(clx *cli.Context) error {
 	return nil
 }
 
-func initAction(ctx *cli.Context) error {
+func initAction(clx *cli.Context) error {
 	return nil
 }
 
-func buildAction(ctx *cli.Context) error {
+func buildAction(clx *cli.Context) error {
+	if err := conf.SetMode(clx.String("mode")); err != nil {
+		return err
+	}
+	conf.SetOutput(clx.String("output"))
 	return builder.Build(conf)
 }
 
-func serveAction(ctx *cli.Context) error {
-	return server.Serve(conf)
+func serveAction(clx *cli.Context) error {
+	conf.SetOutput(clx.String("output"))
+	return builder.Serve(conf, clx.String("listen"), clx.Bool("autoload"))
 }
 
 func main() {
@@ -67,13 +71,52 @@ func main() {
 				Action: initAction,
 			},
 			{
-				Name:   "build",
-				Usage:  "build and output",
+				Name:  "build",
+				Usage: "build and output",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "mode",
+						Aliases: []string{"m"},
+						Value:   "",
+						Usage:   "Build site with mode",
+					},
+					&cli.StringFlag{
+						Name:    "output",
+						Aliases: []string{"o"},
+						Value:   "output",
+						Usage:   "Build output content",
+					},
+				},
 				Action: buildAction,
 			},
 			{
-				Name:   "serve",
-				Usage:  "serve host",
+				Name:  "serve",
+				Usage: "serve host",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "mode",
+						Aliases: []string{"m"},
+						Value:   "",
+						Usage:   "Build site with mode",
+					},
+					&cli.StringFlag{
+						Name:    "output",
+						Aliases: []string{"o"},
+						Value:   "output",
+						Usage:   "Build output content",
+					},
+					&cli.StringFlag{
+						Name:    "listen",
+						Aliases: []string{"l"},
+						Value:   "",
+						Usage:   "Listen address",
+					},
+					&cli.BoolFlag{
+						Name:    "autoload",
+						Aliases: []string{"r"},
+						Usage:   "Autoload when file change",
+					},
+				},
 				Action: serveAction,
 			},
 		},

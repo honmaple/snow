@@ -12,7 +12,7 @@ func (t *Template) Write(names []string, file string, context map[string]interfa
 	return nil
 }
 
-func New(conf *config.Config) *Template {
+func New(conf config.Config) *Template {
 	return &Template{
 		context: map[string]interface{}{
 			"site":   conf.GetStringMap("site"),

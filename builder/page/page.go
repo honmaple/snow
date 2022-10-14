@@ -9,6 +9,7 @@ import (
 
 	"os"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/honmaple/snow/builder/page/markup"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
@@ -16,9 +17,8 @@ import (
 )
 
 type Builder struct {
-	conf   *config.Config
-	types  map[string]bool
-	theme  *theme.Theme
+	conf   config.Config
+	theme  theme.Theme
 	markup *markup.Markup
 	hooks  Hooks
 }
@@ -87,7 +87,7 @@ func (b *Builder) parse(typ string, meta map[string]string) *Page {
 	return page
 }
 
-func (b *Builder) Read() (Pages, error) {
+func (b *Builder) Read(watcher *fsnotify.Watcher) (Pages, error) {
 	root := b.conf.GetString("content_dir")
 	dirs, err := b.getDirs(root)
 	if err != nil {
@@ -100,6 +100,11 @@ func (b *Builder) Read() (Pages, error) {
 			continue
 		}
 		abs := filepath.Join(root, d.Name())
+		if watcher != nil {
+			if err := watcher.Add(abs); err != nil {
+				return nil, err
+			}
+		}
 		filepath.Walk(abs, func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() {
 				return err
@@ -109,15 +114,14 @@ func (b *Builder) Read() (Pages, error) {
 				return err
 			}
 			pages = append(pages, b.parse(d.Name(), meta))
-			b.types[d.Name()] = true
 			return nil
 		})
 	}
 	return pages, nil
 }
 
-func (b *Builder) Build() error {
-	pages, err := b.Read()
+func (b *Builder) Build(watcher *fsnotify.Watcher) error {
+	pages, err := b.Read(watcher)
 	if err != nil {
 		return err
 	}
@@ -167,7 +171,7 @@ var defaultConfig = map[string]interface{}{
 	"page_meta.month_archives.list.paginate": 0,
 }
 
-func NewBuilder(conf *config.Config, theme *theme.Theme, hooks Hooks) *Builder {
+func NewBuilder(conf config.Config, theme theme.Theme, hooks Hooks) *Builder {
 	keys := conf.AllKeys()
 	for k, v := range defaultConfig {
 		if conf.IsSet(k) {
@@ -180,7 +184,6 @@ func NewBuilder(conf *config.Config, theme *theme.Theme, hooks Hooks) *Builder {
 	}
 	return &Builder{
 		conf:   conf,
-		types:  make(map[string]bool),
 		markup: markup.New(conf),
 		theme:  theme,
 		hooks:  hooks,

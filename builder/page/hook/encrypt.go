@@ -8,12 +8,13 @@ import (
 
 	"github.com/honmaple/snow/builder/hook"
 	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
 )
 
 type Encrypt struct {
 	hook.BaseHook
-	conf *config.Config
+	conf config.Config
 }
 
 func (e *Encrypt) Name() string {
@@ -80,6 +81,6 @@ func (e *Encrypt) decrypt(data []byte, key []byte) ([]byte, error) {
 	return crypted, nil
 }
 
-func newEncrypy(conf *config.Config) hook.Hook {
+func newEncrypy(conf config.Config, theme theme.Theme) hook.Hook {
 	return &Encrypt{conf: conf}
 }

@@ -3,7 +3,6 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 )
@@ -73,17 +72,6 @@ func CheckInList(f []string, v string) bool {
 func PrettyPrint(i interface{}) {
 	s, _ := json.MarshalIndent(i, "", "  ")
 	fmt.Println(string(s))
-}
-
-func Exit(message string, code int) {
-	fmt.Println(message)
-	os.Exit(code)
-}
-
-func AssertOrExit(err error) {
-	if err != nil {
-		Exit(err.Error(), 1)
-	}
 }
 
 func SplitTrim(key string, split string) []string {
