@@ -37,6 +37,7 @@ func (t *Template) lookup(names ...string) *pongo2.Template {
 		if err == nil {
 			return tpl
 		}
+		// fmt.Println(err.Error())
 	}
 	return nil
 }
@@ -69,9 +70,9 @@ func (t *Template) Write(names []string, file string, context map[string]interfa
 		c[k] = v
 	}
 	fmt.Println("Writing", writefile)
-	_ = tpl
-	return nil
-	// return tpl.ExecuteWriter(c, f)
+	// _ = tpl
+	// return nil
+	return tpl.ExecuteWriter(c, f)
 }
 
 func New(conf config.Config, theme fs.FS) *Template {

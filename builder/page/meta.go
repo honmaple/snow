@@ -7,15 +7,6 @@ import (
 )
 
 type (
-	paginator struct {
-		HasNext bool
-		HasPrev bool
-		Next    *paginator
-		Prev    *paginator
-		Pages   int
-		Page    int
-		List    Pages
-	}
 	Page struct {
 		Meta       map[string]string
 		Type       string
@@ -40,12 +31,24 @@ type (
 	Section map[string]Pages
 )
 
+// func (sec Section) Paginator(number int) map[string][]*paginator {
+//	return nil
+// }
+
 func (sec Section) add(name string, page *Page) {
 	pages, ok := sec[name]
 	if !ok {
 		pages = make(Pages, 0)
 	}
 	sec[name] = append(pages, page)
+}
+
+func (page Page) HasPrev() bool {
+	return page.Prev != nil
+}
+
+func (page Page) HasNext() bool {
+	return page.Next != nil
 }
 
 func (pages Pages) Filter(filter interface{}) Pages {
@@ -249,38 +252,4 @@ func (pages Pages) GroupBy(key string) Section {
 		sec[""] = pages
 		return sec
 	}
-}
-
-func (pages Pages) Paginator(number int) []*paginator {
-	paginators := make([]*paginator, 0)
-	if number <= 0 {
-		paginators = append(paginators, &paginator{
-			Page:  1,
-			Pages: 1,
-			List:  pages,
-		})
-		return paginators
-	}
-	var maxpage int
-
-	length := len(pages)
-	if length%number == 0 {
-		maxpage = length / number
-	} else {
-		maxpage = length/number + 1
-	}
-
-	for i := 0; i*number < length; i++ {
-		por := &paginator{
-			Page:  i + 1,
-			Pages: maxpage,
-		}
-		end := (i + 1) * number
-		if end > length {
-			end = length
-		}
-		por.List = pages[i*number : end]
-		paginators = append(paginators, por)
-	}
-	return paginators
 }

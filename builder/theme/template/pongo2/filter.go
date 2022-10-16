@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/flosch/pongo2/v6"
+	"github.com/honmaple/snow/utils"
 )
 
 const (
@@ -47,9 +48,35 @@ func (t *Template) timeSince(in *pongo2.Value, param *pongo2.Value) (out *pongo2
 }
 
 func (t *Template) absURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
-	return nil, nil
+	out, err = t.relURL(in, param)
+	if err != nil {
+		return
+	}
+	absURL := fmt.Sprintf("%s/%s", t.conf.GetString("site.url"), out.Interface().(string))
+	return pongo2.AsValue(absURL), nil
 }
 
 func (t *Template) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
-	return nil, nil
+	v, ok := in.Interface().(string)
+	if !ok {
+		return nil, &pongo2.Error{
+			Sender:    "filter:relURL",
+			OrigError: errors.New("filter input argument must be of type 'string'"),
+		}
+	}
+	vars := map[string]string{
+		"{slug}":       v,
+		"{number}":     "",
+		"{number:one}": "1",
+	}
+
+	key, ok := param.Interface().(string)
+	if !ok {
+		return nil, &pongo2.Error{
+			Sender:    "filter:relURL",
+			OrigError: errors.New("filter input argument must be of type 'string'"),
+		}
+	}
+	output := t.conf.GetString(fmt.Sprintf("page_meta.%s.output", key))
+	return pongo2.AsValue(utils.StringReplace(output, vars)), nil
 }

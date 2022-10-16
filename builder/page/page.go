@@ -125,6 +125,7 @@ func (b *Builder) Build(watcher *fsnotify.Watcher) error {
 	if err != nil {
 		return err
 	}
+
 	pages.OrderBy(b.conf.GetString("page_order"))
 	pages = b.hooks.BeforePageList(pages)
 	return b.Write(pages)
@@ -142,20 +143,23 @@ var defaultConfig = map[string]interface{}{
 	"page_meta.index.list.lookup":            []string{"index.html", "list.html"},
 	"page_meta.index.list.filter":            "-pages",
 	"page_meta.index.list.output":            "index{number}.html",
-	"page_meta.tags.lookup":                  []string{"tags.html"},
+	"page_meta.tags.lookup":                  []string{"tags.html", "section.html"},
 	"page_meta.tags.output":                  "tags/index.html",
 	"page_meta.tags.list.lookup":             []string{"tag.html", "list.html"},
+	"page_meta.tags.list.groupby":            "tag",
 	"page_meta.tags.list.filter":             "-pages",
 	"page_meta.tags.list.output":             "tags/{slug}/index{number}.html",
-	"page_meta.categories.lookup":            []string{"categories.html"},
+	"page_meta.categories.lookup":            []string{"categories.html", "section.html"},
 	"page_meta.categories.output":            "categories/index.html",
 	"page_meta.categories.list.lookup":       []string{"category.html", "list.html"},
 	"page_meta.categories.list.filter":       "-pages",
+	"page_meta.categories.list.groupby":      "category",
 	"page_meta.categories.list.output":       "categories/{slug}/index{number}.html",
-	"page_meta.authors.lookup":               []string{"authors.html"},
+	"page_meta.authors.lookup":               []string{"authors.html", "section.html"},
 	"page_meta.authors.output":               "authors/index.html",
 	"page_meta.authors.list.lookup":          []string{"author.html", "list.html"},
 	"page_meta.authors.list.filter":          "-pages",
+	"page_meta.authors.list.groupby":         "author",
 	"page_meta.authors.list.output":          "authors/{slug}/index{number}.html",
 	"page_meta.archives.lookup":              []string{"archives.html"},
 	"page_meta.archives.output":              "archives/index.html",

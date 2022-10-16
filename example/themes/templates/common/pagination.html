@@ -1,0 +1,23 @@
+<ul class="entry-pagination">
+  {%- if paginator.HasPrev() %}
+    <li class="prev"><a href="{{ site.url }}/{{ paginator.Prev.URL }}">&laquo;</a></li>
+  {%- endif %}
+  {%- with isWrite = 0 %}
+    {%- for por in paginator.All %}
+      {%- if por.PageNum <= 3 or (por.PageNum >= paginator.PageNum - 1 and por.PageNum <= paginator.PageNum + 1) or (por.PageNum > paginator.Total - 3) %}
+        <li><a href="{{ site.url }}/{{ por.URL }}">{{ por.PageNum }}</a></li>
+        {%- if isWrite == 1 %}
+          {%- set isWrite = 0 %}
+        {%- endif %}
+      {%- else %}
+        {%- if isWrite == 0 %}
+          <li>......</li>
+          {%- set isWrite = 1 %}
+        {%- endif %}
+      {%- endif %}
+    {%- endfor %}
+  {%- endwith %}
+  {%- if paginator.HasNext() %}
+    <li class="next"><a href="{{ site.url }}/{{ paginator.Next.URL }}">&raquo;</a></li>
+  {%- endif %}
+</ul>

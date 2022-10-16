@@ -26,6 +26,10 @@ type (
 	}
 )
 
+func (b *Builder) GetDirs() []string {
+	return b.conf.GetStringSlice("static_dirs")
+}
+
 func (b *Builder) parser() func(string) *Static {
 	exts := make(map[string]bool)
 	extsIsSet := b.conf.IsSet("static_exts")

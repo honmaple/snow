@@ -2,10 +2,6 @@ package page
 
 import (
 	"fmt"
-	// "io/ioutil"
-	"strconv"
-
-	"github.com/honmaple/snow/utils"
 )
 
 const (
@@ -25,10 +21,14 @@ func (b *Builder) Write(pages Pages) error {
 	for name := range metas {
 		// 如果是已知类型，只写入详情页, 列表页由其他模板提供
 		if ps, ok := types[name]; ok {
-			b.write(name, ps)
+			if err := b.write(name, ps); err != nil {
+				return err
+			}
 			continue
 		}
-		b.writeOther(name, pages)
+		if err := b.writeOther(name, pages); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -43,7 +43,7 @@ func (b *Builder) lookup(key string) ([]string, string) {
 	return names, output
 }
 
-func (b *Builder) write(key string, pages Pages) {
+func (b *Builder) write(key string, pages Pages) error {
 	if layouts, output := b.lookup(key); len(layouts) > 0 && output != "" {
 		var prev *Page
 		for i, page := range pages {
@@ -51,15 +51,18 @@ func (b *Builder) write(key string, pages Pages) {
 			if i < len(pages)-1 {
 				page.Next = pages[i+1]
 			}
-			b.theme.WriteTemplate(layouts, page.URL, map[string]interface{}{
+			if err := b.theme.WriteTemplate(layouts, page.URL, map[string]interface{}{
 				"page": b.hooks.BeforePage(page),
-			})
+			}); err != nil {
+				return err
+			}
 			prev = page
 		}
 	}
+	return nil
 }
 
-func (b *Builder) writeOther(key string, pages Pages) {
+func (b *Builder) writeOther(key string, pages Pages) error {
 	var section Section
 
 	listk := fmt.Sprintf("%s.list", key)
@@ -80,39 +83,23 @@ func (b *Builder) writeOther(key string, pages Pages) {
 
 		section = b.hooks.BeforePageSection(section)
 		for slug, pages := range section {
-			for index, por := range pages.Paginator(paginate) {
-				num := strconv.Itoa(index + 1)
-				vars := map[string]string{
-					"{slug}":       slug,
-					"{number}":     num,
-					"{number:one}": num,
-				}
-				if index == 0 {
-					vars["{number}"] = ""
-				}
-				dest := utils.StringReplace(output, vars)
-				b.theme.WriteTemplate(layouts, dest, map[string]interface{}{
+			pors := pages.Paginator(paginate, slug, output)
+			for _, por := range pors {
+				if err := b.theme.WriteTemplate(layouts, por.URL, map[string]interface{}{
 					"slug":      slug,
-					"pages":     pages,
+					"pages":     por.List,
 					"paginator": por,
-				})
+				}); err != nil {
+					return err
+				}
 			}
 		}
 	}
 	if layouts, output := b.lookup(key); len(layouts) > 0 && output != "" {
-		b.theme.WriteTemplate(layouts, output, map[string]interface{}{
+		return b.theme.WriteTemplate(layouts, output, map[string]interface{}{
 			"pages":   pages,
 			"section": section,
 		})
 	}
-}
-
-func (b *Builder) writeFile(file, content string) error {
-	fmt.Println(file)
 	return nil
-	// writefile := filepath.Join(b.conf.GetString("output_dir"), file)
-	// if dir := filepath.Dir(writefile); !utils.FileExists(dir) {
-	//	os.MkdirAll(dir, 0755)
-	// }
-	// return ioutil.WriteFile(writefile, []byte(content), 0755)
 }

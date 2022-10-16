@@ -1,0 +1,16 @@
+{% extends "common/base.html" %}
+{% block title %}{{ "标签" }} · {{ block.Super }}{% endblock %}
+{% block content %}
+  <div class="entry-archive">
+    <ul class="inline">
+      {% for name, pages in section %}
+        <li>
+          <a class="label label-default" href="{{ site.url }}/{{ name | relURL:"tags.list" }}">
+            {{ name }}
+            <span class="badge">{{ pages | length }}</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endblock %}

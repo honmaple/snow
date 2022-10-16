@@ -56,27 +56,27 @@ page_meta:
     list.output: "archives/{slug}/index.html"
     list.groupby: "date:2006/01"
     list.paginate: 0
-page_paginate: 10
+page_paginate: 3
 
 static_url: "{path}"
 static_exts:
   - ".js"
   - ".css"
-static_dirs:
-  - "static/robots.txt"
-  - "static/favicon.ico"
-  - "static/CNAME"
-  - "static/css/"
+# static_dirs:
+  # - "static/robots.txt"
+  # - "static/favicon.ico"
+  # - "static/CNAME"
+  # - "static/css/"
 static_meta:
   # static: "/"
   # "static/css/main.css": "static/css/"
-  theme/static: "t/static/"
+  theme/static: "static/"
 
 # hooks:
 #   - "feed"
 
 theme:
-  path: "simple"
+  path: "themes"
   engine: "pongo2"
   override: "layouts"
 

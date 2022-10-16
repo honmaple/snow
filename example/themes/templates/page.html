@@ -1,0 +1,14 @@
+{% extends "common/base.html" %}
+{% block title %}{{ page.Title }} · {{ block.Super }}{% endblock %}
+{% block content %}
+  <article>
+    <div class="entry-header">
+      <h1 class="entry-title"><a href="{{ site.URL }}/{{ page.URL }}">{{ page.Title }}</a></h1>
+    </div>
+    <hr class="entry-hr" />
+    <div class="entry-content">
+      {{ page.Content }}
+    </div>
+    {% include "post.comment.html" %}
+  </article>
+{% endblock %}
