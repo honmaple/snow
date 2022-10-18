@@ -21,8 +21,8 @@ func (e *Encrypt) Name() string {
 	return "encrypt"
 }
 
-func (e *Encrypt) Write(page *page.Page) *page.Page {
-	password := page.Meta["password"]
+func (e *Encrypt) AfterPageParse(meta map[string]string, page *page.Page) *page.Page {
+	password := meta["password"]
 	if password == "" {
 		return page
 	}

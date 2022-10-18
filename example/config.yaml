@@ -7,6 +7,7 @@ site:
 mode.publish:
   site:
     url: "http://127.0.0.1:8001"
+  page_filter: "-drafts"
 
 content_dir: "content"
 output_dir: "output"
@@ -63,10 +64,10 @@ static_exts:
   - ".js"
   - ".css"
 # static_dirs:
-  # - "static/robots.txt"
-  # - "static/favicon.ico"
-  # - "static/CNAME"
-  # - "static/css/"
+# - "static/robots.txt"
+# - "static/favicon.ico"
+# - "static/CNAME"
+# - "static/css/"
 static_meta:
   # static: "/"
   # "static/css/main.css": "static/css/"

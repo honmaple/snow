@@ -7,4 +7,5 @@ import (
 func init() {
 	hook.Register("feed", newFeed)
 	hook.Register("encrypt", newEncrypy)
+	hook.Register("pelican", newPelican)
 }

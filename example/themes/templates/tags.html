@@ -3,11 +3,11 @@
 {% block content %}
   <div class="entry-archive">
     <ul class="inline">
-      {% for name, pages in section %}
+      {% for label in labels %}
         <li>
-          <a class="label label-default" href="{{ site.url }}/{{ name | relURL:"tags.list" }}">
-            {{ name }}
-            <span class="badge">{{ pages | length }}</span>
+          <a class="label label-default" href="{{ site.url }}/{{ label.Name | relURL:"tags.list" }}">
+            {{ label.Name }}
+            <span class="badge">{{ label.List | length }}</span>
           </a>
         </li>
       {% endfor %}

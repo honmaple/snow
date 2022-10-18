@@ -2,6 +2,8 @@ package hook
 
 import (
 	"github.com/honmaple/snow/builder/hook"
+	"github.com/honmaple/snow/builder/static"
+	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
 )
 
@@ -14,7 +16,11 @@ func (Minify) Name() string {
 	return "minify"
 }
 
-func newMinify(conf config.Config) hook.Hook {
+func (Minify) BeforeStaticsWrite(statics static.Statics) static.Statics {
+	return statics
+}
+
+func newMinify(conf config.Config, theme theme.Theme) hook.Hook {
 	defaultConfig := map[string]interface{}{
 		"params.minify.types": []string{"css", "js", "html"},
 	}

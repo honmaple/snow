@@ -74,10 +74,20 @@ func PrettyPrint(i interface{}) {
 	fmt.Println(string(s))
 }
 
-func SplitTrim(key string, split string) []string {
+func SplitTrim(str string, split string) []string {
 	result := make([]string, 0)
-	for _, s := range strings.Split(key, ",") {
+	for _, s := range strings.Split(str, ",") {
 		result = append(result, strings.TrimSpace(s))
+	}
+	return result
+}
+
+func SplitPrefix(str string, split string) []string {
+	result := make([]string, 0)
+	for i := 0; i < len(str); i++ {
+		for ; i < len(str) && str[i] != '/'; i++ {
+		}
+		result = append(result, str[:i])
 	}
 	return result
 }

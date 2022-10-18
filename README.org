@@ -1,2 +1,199 @@
 * Snow
   静态博客生成器
+
+** 文章列表
+   文章列表配置:
+   #+begin_src yaml
+     content_dir: "content"
+     page_dirs:
+       - "drafts"
+       - "posts"
+     page_meta:
+       index:
+         list.lookup:
+           - "index.html"
+         list.output: "index{number}.html"
+     page_filter: "-drafts"
+     page_orderby: "date desc,title"
+   #+end_src
+   - *content_dir*: 文章目录所在, 其中该目录下应该包括一系列子目录，这些子目录的名称对应为*文章的类型*, 比如 *content/drafts/* 目录下的文章类型为*drafts*, 当然也可以直接在文章文件头添加 =type: drafts=
+   - *page_dirs*: 所有类型的文章列表，当 *page_dirs*为空时，snow将会搜索 *content* 目录下的所有子目录
+   - *page_meta*: 文章页面元数据，所有页面的生成都和该配置有关，具体见下文
+   - *page_filter*: 全局的文章列表筛选，格式见下文
+   - *page_orderby*: 全局的文章列表排序
+   - *page_paginate*: 全局的文章列表分页大小
+** 静态文件
+   静态文件配置:
+   #+begin_src yaml
+     static_exts:
+       - ".js"
+       - ".css"
+     static_dirs:
+       - "static/"
+       - "static/css/"
+     static_meta:
+       static/CNAME: "/"
+       static/css/main.css: "static/css/"
+       theme/static: "static/"
+     output_dir: "output"
+   #+end_src
+   - *static_dirs*: 静态文件目录, 该目录区分主题的静态文件static
+   - *static_exts*: 静态文件扩展，不配置将会使用静态文件目录下的所有文件
+   - *static_meta*: 静态文件元数据，用于指定静态文件或静态目录的保存目录, 当有多条路径时，长度优先
+     - */*: 保存到 *output*
+     - *theme/static*: 指定主题的静态文件保存目录
+** 主题
+   主题配置:
+   #+begin_src yaml
+     theme:
+       path: "themes/test-theme"
+       engine: "pongo2"
+       override: "layouts"
+   #+end_src
+   - *path*: 主题目录, 如果 *path* 为 *simple*则为内置的*simple*主题
+   - *engine*: 主题模版引擎, 当前只支持 *pongo2*
+   - *override*: 主题模版覆盖目录, 比如一个存在的主题(其中*templates*和*static*名称不可修改)
+     #+begin_example
+       simple/
+       ├── templates
+       │   ├── post.html
+       │   ├── index.html
+       │   ├── archives.html
+       ├── static
+       │   ├── main.css
+     #+end_example
+     可以增加同名的文件到*override*配置的目录, snow将会优先使用该文件
+
+** 动态页
+   在snow中所有的页面都是根据配置和主题模板进行生成, 其中动态页面分为三类:
+*** 详情页
+    详情页的配置为=page_meta.xxx=, 其中*xxx*必须是所有页面类型中的一种, 比如=page_meta.posts=，=page_meta.pages=等, 示例:
+    #+begin_src yaml
+      page_meta:
+        posts:
+          lookup:
+            - "post.html"
+          output: "posts/{date:%Y}/{date:%m}/{slug}.html"
+        pages:
+          lookup:
+            - "page.html"
+            - "post.html"
+          output: "pages/{slug}.html"
+        drafts:
+          lookup:
+            - "post.html"
+          output: "drafts/{date:%Y}/{date:%m}/{slug}.html"
+    #+end_src
+    - *lookup*: 主题中查找的模版文件
+    - *output*: 写入的文件路径，*slug*为页面标题
+    - *模版变量*:
+    |-----------------+----------------|
+    | 变量            | 描述           |
+    |-----------------+----------------|
+    | page            |                |
+    | page.Title      | 页面标题       |
+    | page.URL        | 页面链接       |
+    | page.Categories | 页面分类       |
+    | page.Tags       | 页面标签       |
+    | page.Authors    | 页面作者       |
+    | page.Summary    | 页面简介       |
+    | page.Content    | 页面内容       |
+    | page.Meta.xxx   | 自定义的元数据 |
+    | page.Prev       | 上一篇         |
+    | page.Next       | 下一篇         |
+    | page.HasPrev()  | 是否有上一篇   |
+    | page.HasNext()  | 是否有下一篇   |
+
+*** 列表页
+    列表页的配置为=page_meta.xxx.list=, 其中*xxx*可以是除页面类型以外的任意名称, 比如=page_meta.tags.list=，=page_meta.mycustom.list=等, 示例:
+    #+begin_src yaml
+      page_meta:
+        index:
+          list.lookup:
+            - "index.html"
+          list.output: "index{number}.html"
+          list.filter: "-pages"
+          list.paginate: 5
+        tags:
+          list.lookup:
+            - "tag.html"
+          list.output: "tags/{slug}/index{number}.html"
+          list.filter: "-pages"
+          list.groupby: "tag"
+          list.paginate: 10
+    #+end_src
+    - *output*: 列表页和详情页不同，列表页可能会根据不同的分页大小写入多个文件, 其中分页由 *output* 中的={number}=决定, 比如上述的 =tags.list.output=, 假如有36篇*tag*为*linux*的页面, 写入的文件为:
+        #+begin_example
+        [output_dir]/tags/linux/index.html
+        [output_dir]/tags/linux/index1.html
+        [output_dir]/tags/linux/index2.html
+        [output_dir]/tags/linux/index3.html
+        #+end_example
+        ={number}= 在第一页时会自动配置成空字符串，如果需要禁止该动作，可以使用={number:one}=代替
+    - *groupby*: 如果想要配置按标签或者分类进行分组, 并写入不同的分组文件，可以配置 *groupby*字段，目前可选: *type*、*tag*、*category*、*author* 和 *date:xxx*, 其中*date:xxx*中的xxx为Go格式化时间格式, 比如*date:2006*表示按年分组
+    - *filter*: 列表显示需要提前筛选不想展示的页面，可以配置*filter*字段。*filter*的格式:
+      - 字符串, =type1=表示只展示类型为type1的页面, =-type2=表示排除类型为type1的页面, 多个类型使用英文逗号分隔
+      - 字典格式:
+        #+begin_src yaml
+          page_meta:
+            tags:
+              list.filter:
+                type: "type1,-type2"
+                tag: "tag1,tag2,-tag3"
+                author: "author1"
+                category: "category"
+        #+end_src
+        其中任意字段都可以使用前缀=-=排除相应的页面
+    - *paginate*: 分页大小, 0代表不分页，默认的分页在*page_pagniate*
+    - *模版变量*:
+    |---------------------+----------------|
+    | 变量                | 描述           |
+    | paginator           |                |
+    | paginator.URL       | 分页链接       |
+    | paginator.PageNum   | 当前页         |
+    | paginator.Total     | 总页数         |
+    | paginator.HasPrev() | 是否有上一页   |
+    | paginator.Prev      | 上一页         |
+    | paginator.Prev.URL  | 上一页链接     |
+    | paginator.HasNext() | 是否有下一页   |
+    | paginator.Next      | 下一页         |
+    | paginator.Next.URL  | 下一页链接     |
+    | paginator.All       | 所有页         |
+    | paginator.List      | 当前页文章列表 |
+    | slug                | 分组key        |
+
+*** 归档页
+    归档页表示所有分组页面的集合, 比如所有的标签，所有的作者或类型
+    #+begin_src yaml
+      page_meta:
+        tags:
+          lookup:
+            - "tags.html"
+          output: "tags/index.html"
+        archives:
+          lookup:
+            - "archives.html"
+          output: "archives/index.html"
+    #+end_src
+    - *模版变量*:
+    |--------+----------|
+    | 变量   | 描述     |
+    | labels | 分组列表 |
+    | pages  | 文章列表 |
+
+** 本地测试和正式发布
+   snow 提供了 *mode* 配置用于区分本地测试和正式发布
+   #+begin_src yaml
+     site:
+       url: "http://127.0.0.1:8000"
+     output_dir: "output"
+
+     mode.publish:
+       site:
+         url: "https://example.com"
+       output_dir: "xxx"
+
+     mode.develop:
+       include: "develop.yaml"
+   #+end_src
+   只要在构建时使用 =snow build --mode publish= 即可覆盖本地默认配置

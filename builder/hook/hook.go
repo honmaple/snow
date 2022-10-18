@@ -1,6 +1,10 @@
 package hook
 
 import (
+	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/builder/static"
 	"github.com/honmaple/snow/builder/theme"
@@ -45,6 +49,15 @@ func New(conf config.Config, theme theme.Theme) Hooks {
 		}
 	}
 	return hooks
+}
+
+func Print() {
+	names := make([]string, 0)
+	for name := range _hooks {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	fmt.Println(strings.Join(names, ", "))
 }
 
 func Register(name string, creator hookCreator) {

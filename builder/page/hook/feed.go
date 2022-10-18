@@ -77,19 +77,19 @@ func (f *Feed) write(pages page.Pages, output string) {
 	output = filepath.Join(f.conf.GetString("output_dir"), output)
 	fmt.Println("Writing Feed to", output)
 	// if dir := filepath.Dir(output); !utils.FileExists(dir) {
-	// 	os.MkdirAll(dir, 0755)
+	//	os.MkdirAll(dir, 0755)
 	// }
 	// ioutil.WriteFile(output, []byte(content), 0755)
 }
 
-func (f *Feed) BeforePageList(pages page.Pages) page.Pages {
+func (f *Feed) BeforePagesWrite(pages page.Pages) page.Pages {
 	output := f.conf.GetStringMapString("params.feed.output")
 	for k, v := range output {
-		for slug, pages := range pages.GroupBy(k) {
+		for _, label := range pages.GroupBy(k) {
 			vars := map[string]string{
-				"{slug}": slug,
+				"{slug}": label.Name,
 			}
-			f.write(pages, utils.StringReplace(v, vars))
+			f.write(label.List, utils.StringReplace(v, vars))
 		}
 	}
 	return pages

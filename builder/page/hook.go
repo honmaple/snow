@@ -2,30 +2,38 @@ package page
 
 type (
 	Hook interface {
-		BeforePage(*Page) *Page
-		BeforePageSection(Section) Section
-		BeforePageList(Pages) Pages
+		AfterPageParse(map[string]string, *Page) *Page
+		BeforePageWrite(*Page) *Page
+		BeforePagesWrite(Pages) Pages
+		BeforeLabelsWrite(Labels) Labels
 	}
 	Hooks []Hook
 )
 
-func (hooks Hooks) BeforePage(page *Page) *Page {
+func (hooks Hooks) AfterPageParse(meta map[string]string, page *Page) *Page {
 	for _, hook := range hooks {
-		page = hook.BeforePage(page)
+		page = hook.AfterPageParse(meta, page)
 	}
 	return page
 }
 
-func (hooks Hooks) BeforePageList(pages Pages) Pages {
+func (hooks Hooks) BeforePageWrite(page *Page) *Page {
 	for _, hook := range hooks {
-		pages = hook.BeforePageList(pages)
+		page = hook.BeforePageWrite(page)
+	}
+	return page
+}
+
+func (hooks Hooks) BeforePagesWrite(pages Pages) Pages {
+	for _, hook := range hooks {
+		pages = hook.BeforePagesWrite(pages)
 	}
 	return pages
 }
 
-func (hooks Hooks) BeforePageSection(section Section) Section {
+func (hooks Hooks) BeforeLabelsWrite(labels Labels) Labels {
 	for _, hook := range hooks {
-		section = hook.BeforePageSection(section)
+		labels = hook.BeforeLabelsWrite(labels)
 	}
-	return section
+	return labels
 }

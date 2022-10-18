@@ -4,6 +4,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/honmaple/snow/utils"
 )
 
 type (
@@ -17,7 +19,6 @@ type (
 		Authors    []string
 		Tags       []string
 		Slug       string
-		SaveAs     string
 
 		URL     string
 		Content string
@@ -28,19 +29,51 @@ type (
 	}
 	Pages []*Page
 
-	Section map[string]Pages
+	Label struct {
+		Name     string
+		List     Pages
+		Children Labels
+	}
+	Labels  []*Label
 )
 
-// func (sec Section) Paginator(number int) map[string][]*paginator {
-//	return nil
-// }
-
-func (sec Section) add(name string, page *Page) {
-	pages, ok := sec[name]
-	if !ok {
-		pages = make(Pages, 0)
+func (ls Labels) Has(name string) bool {
+	for _, l := range ls {
+		if l.Name == name {
+			return true
+		}
 	}
-	sec[name] = append(pages, page)
+	return false
+}
+
+func (labels Labels) add(name string, page *Page, labelm map[string]*Label, tree bool) Labels {
+	if !tree {
+		label, ok := labelm[name]
+		if !ok {
+			label = &Label{Name: name}
+			labels = append(labels, label)
+		}
+		label.List = append(label.List, page)
+		labelm[name] = label
+		return labels
+	}
+	var parent *Label
+	for _, subname := range utils.SplitPrefix(name, "/") {
+		label, ok := labelm[subname]
+		if !ok {
+			label = &Label{Name: subname}
+			labels = append(labels, label)
+		}
+		label.List = append(label.List, page)
+		labelm[subname] = label
+		if parent != nil {
+			if !parent.Children.Has(subname) {
+				parent.Children = append(parent.Children, label)
+			}
+		}
+		parent = label
+	}
+	return labels
 }
 
 func (page Page) HasPrev() bool {
@@ -109,6 +142,19 @@ func (pages Pages) Filter(filter interface{}) Pages {
 				matchers = append(matchers, func(page *Page) bool {
 					matched := false
 					for _, name := range page.Categories {
+						if m := matcher(name); m < 0 {
+							return false
+						} else if m > 0 {
+							matched = true
+						}
+					}
+					return matched
+				})
+			case "author":
+				matcher := matchList(v.(string))
+				matchers = append(matchers, func(page *Page) bool {
+					matched := false
+					for _, name := range page.Authors {
 						if m := matcher(name); m < 0 {
 							return false
 						} else if m > 0 {
@@ -212,44 +258,47 @@ func (pages Pages) OrderBy(key string) Pages {
 	return pages
 }
 
-func (pages Pages) GroupBy(key string) Section {
-	sec := make(Section)
+func (pages Pages) groupBy(key string) (map[string]*Label, Labels) {
+	labels := make(Labels, 0)
+	labelm := make(map[string]*Label)
 	switch key {
 	case "type":
 		for _, page := range pages {
-			sec.add(page.Type, page)
+			labels.add(page.Type, page, labelm, false)
 		}
-		return sec
+	case "category":
+		for _, page := range pages {
+			// 增加子分类功能 Linux/Python/Flask
+			for _, name := range page.Categories {
+				labels = labels.add(name, page, labelm, true)
+			}
+		}
 	case "tag":
 		for _, page := range pages {
 			for _, name := range page.Tags {
-				sec.add(name, page)
+				labels = labels.add(name, page, labelm, false)
 			}
 		}
-		return sec
 	case "author":
 		for _, page := range pages {
 			for _, name := range page.Authors {
-				sec.add(name, page)
+				labels = labels.add(name, page, labelm, false)
 			}
 		}
-		return sec
-	case "category":
-		for _, page := range pages {
-			for _, name := range page.Categories {
-				sec.add(name, page)
-			}
-		}
-		return sec
 	default:
 		if strings.HasPrefix(key, "date:") {
 			format := key[5:]
 			for _, page := range pages {
-				sec.add(page.Date.Format(format), page)
+				labels = labels.add(page.Date.Format(format), page, labelm, false)
 			}
-			return sec
+		} else {
+			labels = append(labels, &Label{List: pages})
 		}
-		sec[""] = pages
-		return sec
 	}
+	return labelm, labels
+}
+
+func (pages Pages) GroupBy(key string) Labels {
+	_, labels := pages.groupBy(key)
+	return labels
 }

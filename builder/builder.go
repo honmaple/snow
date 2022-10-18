@@ -10,8 +10,6 @@ import (
 	"github.com/honmaple/snow/builder/static"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
-
-	_ "github.com/honmaple/snow/builder/page/hook"
 )
 
 type (

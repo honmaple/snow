@@ -125,7 +125,7 @@ func (b *Builder) Build(watcher *fsnotify.Watcher) error {
 	if err != nil {
 		return err
 	}
-	files = b.hooks.BeforeStaticList(files)
+	files = b.hooks.BeforeStaticsWrite(files)
 	return b.Write(files)
 }
 

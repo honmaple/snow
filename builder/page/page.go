@@ -43,6 +43,9 @@ func (b *Builder) parse(typ string, meta map[string]string) *Page {
 	now := time.Now()
 	page := &Page{Type: typ, Meta: meta, Date: now, Modified: now}
 	for k, v := range meta {
+		if v == "" {
+			continue
+		}
 		switch strings.ToLower(k) {
 		case "type":
 			page.Type = v
@@ -58,23 +61,27 @@ func (b *Builder) parse(typ string, meta map[string]string) *Page {
 			}
 		case "tags":
 			page.Tags = utils.SplitTrim(v, ",")
-		case "category", "categories":
+		case "category":
 			page.Categories = []string{v}
+		case "categories":
+			page.Categories = utils.SplitTrim(v, ",")
 		case "authors":
 			page.Authors = utils.SplitTrim(v, ",")
-		case "output":
-			page.SaveAs = v
+		case "url":
+			page.URL = v
+		case "slug":
+			page.Slug = v
 		case "summary":
 			page.Summary = v
 		case "content":
 			page.Content = v
 		}
 	}
-	if page.SaveAs != "" {
-		page.URL = page.SaveAs
-	} else if output := b.conf.GetString(fmt.Sprintf(outputTemplate, page.Type)); output == "" {
-		page.URL = fmt.Sprintf("pages/%s.html", page.Title)
-	} else {
+	if page.URL == "" {
+		output := b.conf.GetString(fmt.Sprintf(outputTemplate, page.Type))
+		if output == "" {
+			output = fmt.Sprintf("%s/{slug}.html", page.Type)
+		}
 		vars := map[string]string{
 			"{date:%Y}": page.Date.Format("2006"),
 			"{date:%m}": page.Date.Format("01"),
@@ -82,9 +89,12 @@ func (b *Builder) parse(typ string, meta map[string]string) *Page {
 			"{date:%H}": page.Date.Format("15"),
 			"{slug}":    page.Title,
 		}
+		if page.Slug != "" {
+			vars["{slug}"] = page.Slug
+		}
 		page.URL = utils.StringReplace(output, vars)
 	}
-	return page
+	return b.hooks.AfterPageParse(meta, page)
 }
 
 func (b *Builder) Read(watcher *fsnotify.Watcher) (Pages, error) {
@@ -125,9 +135,13 @@ func (b *Builder) Build(watcher *fsnotify.Watcher) error {
 	if err != nil {
 		return err
 	}
-
-	pages.OrderBy(b.conf.GetString("page_order"))
-	pages = b.hooks.BeforePageList(pages)
+	if filter := b.conf.GetString("page_filter"); filter != "" {
+		pages = pages.Filter(filter)
+	}
+	if order := b.conf.GetString("page_orderby"); order != "" {
+		pages.OrderBy(order)
+	}
+	pages = b.hooks.BeforePagesWrite(pages)
 	return b.Write(pages)
 }
 
@@ -143,19 +157,25 @@ var defaultConfig = map[string]interface{}{
 	"page_meta.index.list.lookup":            []string{"index.html", "list.html"},
 	"page_meta.index.list.filter":            "-pages",
 	"page_meta.index.list.output":            "index{number}.html",
-	"page_meta.tags.lookup":                  []string{"tags.html", "section.html"},
+	"page_meta.tags.lookup":                  []string{"tags.html"},
+	"page_meta.tags.filter":                  "-pages",
+	"page_meta.tags.groupby":                 "tag",
 	"page_meta.tags.output":                  "tags/index.html",
 	"page_meta.tags.list.lookup":             []string{"tag.html", "list.html"},
 	"page_meta.tags.list.groupby":            "tag",
 	"page_meta.tags.list.filter":             "-pages",
 	"page_meta.tags.list.output":             "tags/{slug}/index{number}.html",
-	"page_meta.categories.lookup":            []string{"categories.html", "section.html"},
+	"page_meta.categories.lookup":            []string{"categories.html"},
+	"page_meta.categories.filter":            "-pages",
+	"page_meta.categories.groupby":           "category",
 	"page_meta.categories.output":            "categories/index.html",
 	"page_meta.categories.list.lookup":       []string{"category.html", "list.html"},
 	"page_meta.categories.list.filter":       "-pages",
 	"page_meta.categories.list.groupby":      "category",
 	"page_meta.categories.list.output":       "categories/{slug}/index{number}.html",
-	"page_meta.authors.lookup":               []string{"authors.html", "section.html"},
+	"page_meta.authors.lookup":               []string{"authors.html"},
+	"page_meta.authors.filter":               "-pages",
+	"page_meta.authors.groupby":              "author",
 	"page_meta.authors.output":               "authors/index.html",
 	"page_meta.authors.list.lookup":          []string{"author.html", "list.html"},
 	"page_meta.authors.list.filter":          "-pages",

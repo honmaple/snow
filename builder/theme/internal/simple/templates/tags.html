@@ -1,7 +1,7 @@
-{% for slug, pages in section %}
-  <h1><a href="">{{ slug }}({{ pages | count }})</a></h1>
+{% for label in labels %}
+  <h1><a href="">{{ label.Name }}({{ label.List | count }})</a></h1>
   <ul>
-    {% for page in pages %}
+    {% for page in label.List %}
       <li>
         <h2><a href="{{ page.URL }}">{{ page.Title }}</a></h2>
         <hr />
