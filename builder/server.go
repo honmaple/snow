@@ -1,15 +1,16 @@
 package builder
 
 import (
-	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/honmaple/snow/config"
 )
 
-func watchBuilder(b Builder) (*fsnotify.Watcher, error) {
+func watchBuilder(conf config.Config, b Builder) (*fsnotify.Watcher, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
@@ -22,17 +23,17 @@ func watchBuilder(b Builder) (*fsnotify.Watcher, error) {
 				if !ok {
 					return
 				}
-				fmt.Println("Autoload", event.Name)
 				if event.Op == fsnotify.Write {
+					conf.Log.Infoln("The", event.Name, "has been modified. Rebuilding...")
 					if err := b.Build(nil); err != nil {
-						fmt.Println("Build error", err.Error())
+						conf.Log.Errorln("Build error", err.Error())
 					}
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
 				}
-				fmt.Println(err)
+				conf.Log.Fatalln("Watch error", err.Error())
 			}
 		}
 	}()
@@ -41,6 +42,33 @@ func watchBuilder(b Builder) (*fsnotify.Watcher, error) {
 	}
 	// fmt.Println("Watching", strings.Join(watcher.WatchList(), ", "))
 	return watcher, nil
+}
+
+type fileServer struct {
+	output string
+	server http.Handler
+}
+
+func (s *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	// 默认index.html会重定向到到./
+	if strings.HasSuffix(path, "/index.html") {
+		file, err := os.Open(filepath.Join(s.output, filepath.Clean(path)))
+		if err != nil {
+			http.Error(w, err.Error(), 404)
+			return
+		}
+		defer file.Close()
+
+		info, err := file.Stat()
+		if err != nil {
+			http.Error(w, err.Error(), 404)
+			return
+		}
+		http.ServeContent(w, r, info.Name(), info.ModTime(), file)
+		return
+	}
+	s.server.ServeHTTP(w, r)
 }
 
 func Serve(conf config.Config, listen string, autoload bool) error {
@@ -57,7 +85,7 @@ func Serve(conf config.Config, listen string, autoload bool) error {
 		return err
 	}
 	if autoload {
-		watcher, err := watchBuilder(b)
+		watcher, err := watchBuilder(conf, b)
 		if err != nil {
 			return err
 		}
@@ -66,8 +94,11 @@ func Serve(conf config.Config, listen string, autoload bool) error {
 		return err
 	}
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir(conf.GetOutput())))
+	mux.Handle("/", &fileServer{
+		output: conf.GetOutput(),
+		server: http.FileServer(http.Dir(conf.GetOutput())),
+	})
 
-	fmt.Println("Listen", listen, "...")
+	conf.Log.Infoln("Listen", listen, "...")
 	return http.ListenAndServe(listen, mux)
 }

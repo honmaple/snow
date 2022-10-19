@@ -45,6 +45,14 @@ func GetField(obj interface{}, name string) (interface{}, error) {
 	return field.Interface(), nil
 }
 
+func StringConcat(strs ...string) string {
+	var b strings.Builder
+	for _, str := range strs {
+		b.WriteString(str)
+	}
+	return b.String()
+}
+
 func StringReplace(s string, vars map[string]string) string {
 	if vars == nil || s == "" {
 		return s
@@ -56,7 +64,6 @@ func StringReplace(s string, vars map[string]string) string {
 	}
 	r := strings.NewReplacer(args...)
 	return r.Replace(s)
-
 }
 
 // CheckInList ..

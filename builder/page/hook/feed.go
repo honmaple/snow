@@ -74,7 +74,7 @@ func (f *Feed) write(pages page.Pages, output string) {
 	}
 	_ = content
 
-	output = filepath.Join(f.conf.GetString("output_dir"), output)
+	output = filepath.Join(f.conf.GetOutput(), output)
 	fmt.Println("Writing Feed to", output)
 	// if dir := filepath.Dir(output); !utils.FileExists(dir) {
 	//	os.MkdirAll(dir, 0755)

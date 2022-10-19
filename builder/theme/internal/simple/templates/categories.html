@@ -1,8 +1,9 @@
 {% extends "common/layout.html" %}
-{% block title %}{{ "标签" }} · {{ block.Super }}{% endblock %}
+{% block title %}{{ "分类" }} · {{ block.Super }}{% endblock %}
 {% block content %}
-  {% for label in labels %}
-    <h1><a href="{{ label.Name|absURL:"tags.list" }}">{{ label.Name }}({{ label.List | length }})</a></h1>
+
+  {% macro page_list(label) %}
+    <h1><a href="{{ label.Name|absURL:"categories.list" }}">{{ label.Name }}({{ label.List | length }})</a></h1>
     <ul>
       {% for page in label.List %}
         <li>
@@ -11,10 +12,18 @@
         </li>
       {% endfor %}
     </ul>
+
+    {% for sublabel in label.Children %}
+      {{ page_list(sublabel) }}
+    {% endfor %}
+  {% endmacro %}
+
+  {% for label in labels %}
+    {{ page_list(label) }}
   {% endfor %}
   {% if labels | length == 0 %}
     <div style="text-align: center; font-size: 1.2rem; margin-top: 2rem;">
-      No Tags
+      No Categories
     </div>
   {% endif %}
 {% endblock %}

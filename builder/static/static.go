@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/honmaple/snow/builder/theme"
@@ -15,8 +16,9 @@ import (
 
 type (
 	Static struct {
-		URL  string
-		File string
+		URL     string
+		File    string
+		IsTheme bool
 	}
 	Statics []*Static
 	Builder struct {
@@ -26,11 +28,18 @@ type (
 	}
 )
 
+func (s *Static) src() string {
+	if s.IsTheme {
+		return fmt.Sprintf("theme/%s", s.File)
+	}
+	return s.File
+}
+
 func (b *Builder) GetDirs() []string {
 	return b.conf.GetStringSlice("static_dirs")
 }
 
-func (b *Builder) parser() func(string) *Static {
+func (b *Builder) parser() func(string, bool) *Static {
 	exts := make(map[string]bool)
 	extsIsSet := b.conf.IsSet("static_exts")
 	if extsIsSet {
@@ -51,9 +60,13 @@ func (b *Builder) parser() func(string) *Static {
 		return len(metaList[i]) > len(metaList[j])
 	})
 
-	return func(file string) *Static {
+	return func(file string, isTheme bool) *Static {
 		if extsIsSet && !exts[filepath.Ext(file)] {
 			return nil
+		}
+		rawFile := file
+		if isTheme {
+			file = fmt.Sprintf("theme/%s", file)
 		}
 		// viper 无法处理带.的key, 无法直接使用meta[file]
 		if k := fmt.Sprintf("static_meta.%s", file); b.conf.IsSet(k) {
@@ -64,7 +77,7 @@ func (b *Builder) parser() func(string) *Static {
 			if strings.HasSuffix(output, "/") {
 				output = filepath.Join(output, filepath.Base(file))
 			}
-			return &Static{URL: output, File: file}
+			return &Static{URL: output, File: rawFile, IsTheme: isTheme}
 		}
 		for _, m := range metaList {
 			if !strings.HasPrefix(file, m) {
@@ -77,9 +90,9 @@ func (b *Builder) parser() func(string) *Static {
 			if strings.HasSuffix(output, "/") {
 				output = filepath.Join(output, strings.TrimPrefix(file, m))
 			}
-			return &Static{URL: output, File: file}
+			return &Static{URL: output, File: rawFile, IsTheme: isTheme}
 		}
-		return &Static{URL: file, File: file}
+		return &Static{URL: file, File: rawFile, IsTheme: isTheme}
 	}
 
 }
@@ -94,7 +107,7 @@ func (b *Builder) Read(watcher *fsnotify.Watcher) ([]*Static, error) {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		if file := parse(filepath.Join("theme", path)); file != nil {
+		if file := parse(path, true); file != nil {
 			files = append(files, file)
 		}
 		return nil
@@ -111,7 +124,7 @@ func (b *Builder) Read(watcher *fsnotify.Watcher) ([]*Static, error) {
 			if err != nil || info.IsDir() {
 				return err
 			}
-			if file := parse(path); file != nil {
+			if file := parse(path, false); file != nil {
 				files = append(files, file)
 			}
 			return nil
@@ -121,11 +134,15 @@ func (b *Builder) Read(watcher *fsnotify.Watcher) ([]*Static, error) {
 }
 
 func (b *Builder) Build(watcher *fsnotify.Watcher) error {
+	now := time.Now()
 	files, err := b.Read(watcher)
 	if err != nil {
 		return err
 	}
 	files = b.hooks.BeforeStaticsWrite(files)
+	defer func() {
+		b.conf.Log.Infoln("Done: Processed", len(files), "static files", "in", time.Now().Sub(now))
+	}()
 	return b.Write(files)
 }
 

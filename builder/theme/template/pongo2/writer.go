@@ -1,10 +1,10 @@
 package pongo2
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/flosch/pongo2/v6"
 	"github.com/honmaple/snow/config"
@@ -13,31 +13,31 @@ import (
 
 type Template struct {
 	conf    config.Config
-	theme   *pongo2.TemplateSet
 	output  string
 	context map[string]interface{}
+	tplset  *pongo2.TemplateSet
+	loader  *loader
+	cache   sync.Map
 }
 
 func (t *Template) lookup(names ...string) *pongo2.Template {
-	override := t.conf.GetString("theme.override")
-	if override != "" {
-		for _, name := range names {
-			file := filepath.Join(override, name)
-			if !utils.FileExists(file) {
-				continue
-			}
-			tpl, err := pongo2.FromFile(file)
-			if err == nil {
-				return tpl
-			}
-		}
-	}
 	for _, name := range names {
-		tpl, err := t.theme.FromCache(name)
-		if err == nil {
-			return tpl
+		v, ok := t.cache.Load(name)
+		if ok {
+			return v.(*pongo2.Template)
 		}
-		// fmt.Println(err.Error())
+		buf, err := t.loader.GetBytes(name)
+		if err != nil {
+			continue
+		}
+		// 模版未找到不输出日志, 编译模版有问题才输出
+		tpl, err := t.tplset.FromBytes(buf)
+		if err != nil {
+			t.conf.Log.Errorln("Parse template:", err.Error())
+			return nil
+		}
+		t.cache.Store(name, tpl)
+		return tpl
 	}
 	return nil
 }
@@ -69,7 +69,7 @@ func (t *Template) Write(names []string, file string, context map[string]interfa
 	for k, v := range context {
 		c[k] = v
 	}
-	fmt.Println("Writing", writefile)
+	t.conf.Log.Debugln("Writing", writefile)
 	// _ = tpl
 	// return nil
 	return tpl.ExecuteWriter(c, f)
@@ -78,22 +78,14 @@ func (t *Template) Write(names []string, file string, context map[string]interfa
 func New(conf config.Config, theme fs.FS) *Template {
 	t := &Template{
 		conf:   conf,
-		output: conf.GetString("output_dir"),
+		output: conf.GetOutput(),
 		context: map[string]interface{}{
 			"site":   conf.GetStringMap("site"),
 			"params": conf.GetStringMap("params"),
 		},
 	}
-	t.theme = pongo2.NewSet("app", pongo2.NewFSLoader(theme))
-
-	// https://github.com/flosch/pongo2/issues/313
-	// fsLoader := pongo2.NewFSLoader(theme)
-	// override := t.conf.GetString("theme.override")
-	// if override != "" && utils.FileExists(override) {
-	//	loader := pongo2.MustNewLocalFileSystemLoader(override)
-	//	set := pongo2.NewSet("app", loader, fsLoader)
-	//	fmt.Println(set.FromCache("post.html"))
-	// }
+	t.loader = newLoader(theme, conf.GetString("theme.override"))
+	t.tplset = pongo2.NewSet("app", t.loader)
 
 	pongo2.RegisterFilter("absURL", t.absURL)
 	pongo2.RegisterFilter("relURL", t.relURL)

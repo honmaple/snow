@@ -17,15 +17,42 @@ const (
 )
 
 func (b *Builder) Write(pages Pages) error {
+	var prev *Page
+
+	labels := pages.GroupBy("type")
+	for _, label := range labels {
+		var prevInType *Page
+		for _, page := range label.List {
+			page.PrevInType = prevInType
+			if prevInType != nil {
+				prevInType.NextInType = page
+			}
+			prevInType = page
+
+			page.Prev = prev
+			if prev != nil {
+				prev.Next = page
+			}
+			prev = page
+		}
+	}
+	types := make(map[string]bool)
 	metas := b.conf.GetStringMap("page_meta")
 
-	types, _ := pages.groupBy("type")
+	// 如果是已知类型，只写入详情页, 列表页由其他模板提供
+	for _, label := range labels {
+		types[label.Name] = true
+		if _, ok := metas[label.Name]; !ok {
+			continue
+		}
+		if err := b.write(label.Name, label.List); err != nil {
+			return err
+		}
+	}
+
+	// 写入列表页或者归档页
 	for name := range metas {
-		// 如果是已知类型，只写入详情页, 列表页由其他模板提供
-		if label, ok := types[name]; ok {
-			if err := b.write(name, label.List); err != nil {
-				return err
-			}
+		if types[name] {
 			continue
 		}
 		if err := b.writeSingle(name, pages); err != nil {
@@ -61,20 +88,12 @@ func (b *Builder) list(key string, pages Pages) Pages {
 
 func (b *Builder) write(key string, pages Pages) error {
 	if layouts, output := b.lookup(key); len(layouts) > 0 && output != "" {
-		pages = b.list(key, pages)
-
-		var prev *Page
-		for i, page := range pages {
-			page.Prev = prev
-			if i < len(pages)-1 {
-				page.Next = pages[i+1]
-			}
+		for _, page := range b.list(key, pages) {
 			if err := b.theme.WriteTemplate(layouts, page.URL, map[string]interface{}{
 				"page": b.hooks.BeforePageWrite(page),
 			}); err != nil {
 				return err
 			}
-			prev = page
 		}
 	}
 	return nil
@@ -113,17 +132,30 @@ func (b *Builder) writeList(key string, pages Pages) error {
 		}
 
 		labels = b.hooks.BeforeLabelsWrite(labels)
-		for _, label := range labels {
-			pors := label.List.Paginator(paginate, strings.ToLower(label.Name), output)
-			for _, por := range pors {
-				if err := b.theme.WriteTemplate(layouts, por.URL, map[string]interface{}{
-					"slug":      label.Name,
-					"pages":     por.List,
-					"paginator": por,
-				}); err != nil {
-					return err
-				}
+		if err := b.writeLabels(labels, paginate, layouts, output); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *Builder) writeLabels(labels Labels, paginate int, layouts []string, output string) error {
+	for _, label := range labels {
+		pors := label.List.Paginator(paginate, strings.ToLower(label.Name), output)
+		for _, por := range pors {
+			if err := b.theme.WriteTemplate(layouts, por.URL, map[string]interface{}{
+				"slug":      label.Name,
+				"pages":     por.List,
+				"paginator": por,
+			}); err != nil {
+				return err
 			}
+		}
+		if len(label.Children) == 0 {
+			continue
+		}
+		if err := b.writeLabels(label.Children, paginate, layouts, output); err != nil {
+			return err
 		}
 	}
 	return nil

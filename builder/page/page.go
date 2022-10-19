@@ -39,7 +39,7 @@ func (b *Builder) getDirs(root string) ([]os.FileInfo, error) {
 	return ioutil.ReadDir(root)
 }
 
-func (b *Builder) parse(typ string, meta map[string]string) *Page {
+func (b *Builder) parse(file string, typ string, meta map[string]string) *Page {
 	now := time.Now()
 	page := &Page{Type: typ, Meta: meta, Date: now, Modified: now}
 	for k, v := range meta {
@@ -83,11 +83,12 @@ func (b *Builder) parse(typ string, meta map[string]string) *Page {
 			output = fmt.Sprintf("%s/{slug}.html", page.Type)
 		}
 		vars := map[string]string{
-			"{date:%Y}": page.Date.Format("2006"),
-			"{date:%m}": page.Date.Format("01"),
-			"{date:%d}": page.Date.Format("02"),
-			"{date:%H}": page.Date.Format("15"),
-			"{slug}":    page.Title,
+			"{date:%Y}":  page.Date.Format("2006"),
+			"{date:%m}":  page.Date.Format("01"),
+			"{date:%d}":  page.Date.Format("02"),
+			"{date:%H}":  page.Date.Format("15"),
+			"{filename}": filepath.Base(file),
+			"{slug}":     page.Title,
 		}
 		if page.Slug != "" {
 			vars["{slug}"] = page.Slug
@@ -123,7 +124,8 @@ func (b *Builder) Read(watcher *fsnotify.Watcher) (Pages, error) {
 			if err != nil {
 				return err
 			}
-			pages = append(pages, b.parse(d.Name(), meta))
+			page := b.parse(info.Name(), d.Name(), meta)
+			pages = append(pages, page)
 			return nil
 		})
 	}
@@ -131,81 +133,26 @@ func (b *Builder) Read(watcher *fsnotify.Watcher) (Pages, error) {
 }
 
 func (b *Builder) Build(watcher *fsnotify.Watcher) error {
+	now := time.Now()
 	pages, err := b.Read(watcher)
 	if err != nil {
 		return err
 	}
-	if filter := b.conf.GetString("page_filter"); filter != "" {
+	if filter := b.conf.Get("page_filter"); filter != nil {
 		pages = pages.Filter(filter)
 	}
 	if order := b.conf.GetString("page_orderby"); order != "" {
 		pages.OrderBy(order)
 	}
 	pages = b.hooks.BeforePagesWrite(pages)
+
+	defer func() {
+		b.conf.Log.Infoln("Done: Processed", len(pages), "pages", "in", time.Now().Sub(now))
+	}()
 	return b.Write(pages)
 }
 
-var defaultConfig = map[string]interface{}{
-	"page_order":                             "date desc",
-	"page_paginate":                          10,
-	"page_meta.pages.lookup":                 []string{"page.html", "single.html"},
-	"page_meta.pages.output":                 "pages/{slug}.html",
-	"page_meta.posts.lookup":                 []string{"post.html", "single.html"},
-	"page_meta.posts.output":                 "posts/{date:%Y}/{date:%m}/{slug}.html",
-	"page_meta.drafts.lookup":                []string{"draft.html", "single.html"},
-	"page_meta.drafts.output":                "drafts/{date:%Y}/{date:%m}/{slug}.html",
-	"page_meta.index.list.lookup":            []string{"index.html", "list.html"},
-	"page_meta.index.list.filter":            "-pages",
-	"page_meta.index.list.output":            "index{number}.html",
-	"page_meta.tags.lookup":                  []string{"tags.html"},
-	"page_meta.tags.filter":                  "-pages",
-	"page_meta.tags.groupby":                 "tag",
-	"page_meta.tags.output":                  "tags/index.html",
-	"page_meta.tags.list.lookup":             []string{"tag.html", "list.html"},
-	"page_meta.tags.list.groupby":            "tag",
-	"page_meta.tags.list.filter":             "-pages",
-	"page_meta.tags.list.output":             "tags/{slug}/index{number}.html",
-	"page_meta.categories.lookup":            []string{"categories.html"},
-	"page_meta.categories.filter":            "-pages",
-	"page_meta.categories.groupby":           "category",
-	"page_meta.categories.output":            "categories/index.html",
-	"page_meta.categories.list.lookup":       []string{"category.html", "list.html"},
-	"page_meta.categories.list.filter":       "-pages",
-	"page_meta.categories.list.groupby":      "category",
-	"page_meta.categories.list.output":       "categories/{slug}/index{number}.html",
-	"page_meta.authors.lookup":               []string{"authors.html"},
-	"page_meta.authors.filter":               "-pages",
-	"page_meta.authors.groupby":              "author",
-	"page_meta.authors.output":               "authors/index.html",
-	"page_meta.authors.list.lookup":          []string{"author.html", "list.html"},
-	"page_meta.authors.list.filter":          "-pages",
-	"page_meta.authors.list.groupby":         "author",
-	"page_meta.authors.list.output":          "authors/{slug}/index{number}.html",
-	"page_meta.archives.lookup":              []string{"archives.html"},
-	"page_meta.archives.output":              "archives/index.html",
-	"page_meta.year_archives.list.lookup":    []string{"period_archives.html"},
-	"page_meta.year_archives.list.output":    "archives/{slug}/index.html",
-	"page_meta.year_archives.list.filter":    "-pages",
-	"page_meta.year_archives.list.groupby":   "date:2006",
-	"page_meta.year_archives.list.paginate":  0,
-	"page_meta.month_archives.list.lookup":   []string{"period_archives.html"},
-	"page_meta.month_archives.list.output":   "archives/{slug}/index.html",
-	"page_meta.month_archives.list.filter":   "-pages",
-	"page_meta.month_archives.list.groupby":  "date:2006/01",
-	"page_meta.month_archives.list.paginate": 0,
-}
-
 func NewBuilder(conf config.Config, theme theme.Theme, hooks Hooks) *Builder {
-	keys := conf.AllKeys()
-	for k, v := range defaultConfig {
-		if conf.IsSet(k) {
-			continue
-		}
-		conf.Set(k, v)
-	}
-	for _, k := range keys {
-		conf.Set(k, conf.Get(k))
-	}
 	return &Builder{
 		conf:   conf,
 		markup: markup.New(conf),

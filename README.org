@@ -16,8 +16,8 @@
      page_filter: "-drafts"
      page_orderby: "date desc,title"
    #+end_src
-   - *content_dir*: 文章目录所在, 其中该目录下应该包括一系列子目录，这些子目录的名称对应为*文章的类型*, 比如 *content/drafts/* 目录下的文章类型为*drafts*, 当然也可以直接在文章文件头添加 =type: drafts=
-   - *page_dirs*: 所有类型的文章列表，当 *page_dirs*为空时，snow将会搜索 *content* 目录下的所有子目录
+   - *content_dir*: 文章目录所在, 其中该目录下应该包括一系列子目录，这些子目录的名称对应为 *文章的类型*, 比如 *content/drafts/* 目录下的文章类型为 *drafts*, 当然也可以直接在文章文件头添加 =type: drafts=
+   - *page_dirs*: 所有类型的文章列表，当 *page_dirs* 为空时，snow将会搜索 *content* 目录下的所有子目录
    - *page_meta*: 文章页面元数据，所有页面的生成都和该配置有关，具体见下文
    - *page_filter*: 全局的文章列表筛选，格式见下文
    - *page_orderby*: 全局的文章列表排序
@@ -50,9 +50,11 @@
        engine: "pongo2"
        override: "layouts"
    #+end_src
-   - *path*: 主题目录, 如果 *path* 为 *simple*则为内置的*simple*主题
+   - *path*: 主题目录, 内置主题: *simple*
    - *engine*: 主题模版引擎, 当前只支持 *pongo2*
-   - *override*: 主题模版覆盖目录, 比如一个存在的主题(其中*templates*和*static*名称不可修改)
+   - *override*: 主题模版覆盖目录, 比如一个存在的主题可以增加同名的文件到 *override* 配置的目录, snow将会优先使用该文件
+   - *主题目录结构*:
+     其中 *templates* 和 *static* 名称不可修改
      #+begin_example
        simple/
        ├── templates
@@ -62,12 +64,11 @@
        ├── static
        │   ├── main.css
      #+end_example
-     可以增加同名的文件到*override*配置的目录, snow将会优先使用该文件
 
 ** 动态页
    在snow中所有的页面都是根据配置和主题模板进行生成, 其中动态页面分为三类:
 *** 详情页
-    详情页的配置为=page_meta.xxx=, 其中*xxx*必须是所有页面类型中的一种, 比如=page_meta.posts=，=page_meta.pages=等, 示例:
+    详情页的配置为 =page_meta.xxx=, 其中 *xxx* 必须是所有页面类型中的一种, 比如 =page_meta.posts=, =page_meta.pages= 等, 示例:
     #+begin_src yaml
       page_meta:
         posts:
@@ -85,27 +86,41 @@
           output: "drafts/{date:%Y}/{date:%m}/{slug}.html"
     #+end_src
     - *lookup*: 主题中查找的模版文件
-    - *output*: 写入的文件路径，*slug*为页面标题
+    - *output*: 写入的文件路径, *slug* 为页面标题
+    - *output变量*:
+    |------------+----------------------|
+    | 变量       | 描述                 |
+    |------------+----------------------|
+    | {date:%Y}  | 创建文章的年份       |
+    | {date:%m}  | 创建文章的月份       |
+    | {date:%d}  | 创建文章的日期       |
+    | {date:%H}  | 创建文章的小时       |
+    | {slug}     | 文章标题或自定义slug |
+    | {filename} | 文件名称(不带后缀名) |
     - *模版变量*:
-    |-----------------+----------------|
-    | 变量            | 描述           |
-    |-----------------+----------------|
-    | page            |                |
-    | page.Title      | 页面标题       |
-    | page.URL        | 页面链接       |
-    | page.Categories | 页面分类       |
-    | page.Tags       | 页面标签       |
-    | page.Authors    | 页面作者       |
-    | page.Summary    | 页面简介       |
-    | page.Content    | 页面内容       |
-    | page.Meta.xxx   | 自定义的元数据 |
-    | page.Prev       | 上一篇         |
-    | page.Next       | 下一篇         |
-    | page.HasPrev()  | 是否有上一篇   |
-    | page.HasNext()  | 是否有下一篇   |
+    |----------------------+----------------------|
+    | 变量                 | 描述                 |
+    |----------------------+----------------------|
+    | page                 |                      |
+    | page.Title           | 页面标题             |
+    | page.URL             | 页面链接             |
+    | page.Categories      | 页面分类             |
+    | page.Tags            | 页面标签             |
+    | page.Authors         | 页面作者             |
+    | page.Summary         | 页面简介             |
+    | page.Content         | 页面内容             |
+    | page.Meta.xxx        | 自定义的元数据       |
+    | page.Prev            | 上一篇               |
+    | page.Next            | 下一篇               |
+    | page.HasPrev()       | 是否有上一篇         |
+    | page.HasNext()       | 是否有下一篇         |
+    | page.PrevInType      | 同一类型上一篇       |
+    | page.NextInType      | 同一类型下一篇       |
+    | page.HasPrevInType() | 是否有同一类型上一篇 |
+    | page.HasNextInType() | 是否有同一类型下一篇 |
 
 *** 列表页
-    列表页的配置为=page_meta.xxx.list=, 其中*xxx*可以是除页面类型以外的任意名称, 比如=page_meta.tags.list=，=page_meta.mycustom.list=等, 示例:
+    列表页的配置为 =page_meta.xxx.list=, 其中 *xxx* 可以是除页面类型以外的任意名称, 比如 =page_meta.tags.list=, =page_meta.mycustom.list= 等, 示例:
     #+begin_src yaml
       page_meta:
         index:
@@ -122,17 +137,17 @@
           list.groupby: "tag"
           list.paginate: 10
     #+end_src
-    - *output*: 列表页和详情页不同，列表页可能会根据不同的分页大小写入多个文件, 其中分页由 *output* 中的={number}=决定, 比如上述的 =tags.list.output=, 假如有36篇*tag*为*linux*的页面, 写入的文件为:
+    - *output*: 列表页和详情页不同，列表页可能会根据不同的分页大小写入多个文件, 其中分页由 *output* 中的 ={number}= 决定, 比如上述的 =tags.list.output=, 假如有36篇 *tag* 为 *linux* 的页面, 写入的文件为:
         #+begin_example
         [output_dir]/tags/linux/index.html
         [output_dir]/tags/linux/index1.html
         [output_dir]/tags/linux/index2.html
         [output_dir]/tags/linux/index3.html
         #+end_example
-        ={number}= 在第一页时会自动配置成空字符串，如果需要禁止该动作，可以使用={number:one}=代替
-    - *groupby*: 如果想要配置按标签或者分类进行分组, 并写入不同的分组文件，可以配置 *groupby*字段，目前可选: *type*、*tag*、*category*、*author* 和 *date:xxx*, 其中*date:xxx*中的xxx为Go格式化时间格式, 比如*date:2006*表示按年分组
-    - *filter*: 列表显示需要提前筛选不想展示的页面，可以配置*filter*字段。*filter*的格式:
-      - 字符串, =type1=表示只展示类型为type1的页面, =-type2=表示排除类型为type1的页面, 多个类型使用英文逗号分隔
+        ={number}= 在第一页时会自动配置成空字符串，如果需要禁止该动作，可以使用 ={number:one}= 代替
+    - *groupby*: 如果想要配置按标签或者分类进行分组, 并写入不同的分组文件，可以配置 *groupby* 字段，目前可选: type、tag、category、author 和 date:xxx, 其中 *date:xxx* 中的xxx为Go格式化时间格式, 比如 *date:2006* 表示按年分组
+    - *filter*: 列表显示需要提前筛选不想展示的页面，可以配置 *filter* 字段, 格式:
+      - 字符串格式: =type1= 表示只展示类型为type1的页面, =-type2= 表示排除类型为type1的页面, 多个类型使用英文逗号分隔
       - 字典格式:
         #+begin_src yaml
           page_meta:
@@ -143,8 +158,8 @@
                 author: "author1"
                 category: "category"
         #+end_src
-        其中任意字段都可以使用前缀=-=排除相应的页面
-    - *paginate*: 分页大小, 0代表不分页，默认的分页在*page_pagniate*
+        其中任意字段都可以使用前缀 =-= 排除相应的页面
+    - *paginate*: 分页大小, 0代表不分页，默认的分页在 *page_pagniate*
     - *模版变量*:
     |---------------------+----------------|
     | 变量                | 描述           |

@@ -1,19 +1,20 @@
-<ul>
-  <li>Title:      {{ page.Title }}</li>
-  <li>Type:       {{ page.Type }}</li>
-  <li>Date:       {{ page.Date }}</li>
-  <li>Modified:   {{ page.Modified }}</li>
-  <li>Categories: {{ page.Categories | join:"," }}</li>
-  <li>Authors:    {{ page.Authors | join:"," }}</li>
-  <li>Tags:       {{ page.Tags | join:"," }}</li>
-  <li>Slug:       {{ page.Slug }}</li>
-  <li>SaveAs:     {{ page.SaveAs }}</li>
-  <li>URL:        {{ page.URL }}</li>
-  <li>Content:    {{ page.Content | safe }}</li>
-  {% if page.Prev %}
-  <li>Prev:    {{ page.Prev.Title }}</li>
+{% extends "common/layout.html" %}
+{% block content %}
+  <h1>{{ page.Title }}</h1>
+  {% if page.Type != "pages" %}
+    {% include "post.info.html" %}
   {% endif %}
-  {% if page.Next %}
-  <li>Next:    {{ page.Next.Title }}</li>
-  {% endif %}
-</ul>
+  <hr/>
+  <div class="content">
+    {{ page.Content | safe }}
+  </div>
+  <hr/>
+  <ul class="pager">
+    {% if page.HasPrev() %}
+      <li>Prev:<a href="{{ page.Prev.URL|absURL }}">{{ page.Prev.Title }}</a></li>
+    {% endif %}
+    {% if page.HasNext() %}
+      <li>Next:<a href="{{ page.Next.URL|absURL }}">{{ page.Next.Title }}</a></li>
+    {% endif %}
+  </ul>
+{% endblock %}

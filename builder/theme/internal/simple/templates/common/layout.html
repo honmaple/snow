@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ site.title }}{% if site.subtitle %} · {{ site.subtitle }}{% endif %}{%endblock%}</title>
+    {% block css %}
+      <link rel="stylesheet" href="{{ site.url }}/static/css/main.css" type="text/css" media="screen" />
+    {% endblock %}
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="main">
+        <div class="header">
+          <h1>{{ site.title }}</h1>
+          {% if site.subtitle %}
+            <span style="margin-left: 2rem;">{{ site.subtitle }}</span>
+          {% endif %}
+        </div>
+        <div class="menu">
+          <div><a href="{{ site.url }}">Index</a></div>
+          <div><a href="{{ site.url }}/categories/index.html">Categories</a></div>
+          <div><a href="{{ site.url }}/authors/index.html">Authors</a></div>
+          <div><a href="{{ site.url }}/tags/index.html">Tags</a></div>
+          <div><a href="{{ site.url }}/archives/index.html">Archives</a></div>
+        </div>
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+    <div class="footer">
+      © {% now "2006" %} {% if site.author %}{{ site.author }}{% endif %}
+    </div>
+  </body>
+</html>

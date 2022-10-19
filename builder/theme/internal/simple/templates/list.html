@@ -1,9 +1,18 @@
-<ul>
-  {% for page in paginator.List %}
-    <li>
-      <h2><a href="{{ page.URL }}">{{ page.Title }}</a></h2>
-      <hr />
-      {% include "post.html" %}
-    </li>
-  {% endfor %}
-</ul>
+{% extends "common/layout.html" %}
+{% block content %}
+  <ul class="page-list">
+    {% for page in paginator.List %}
+      <li>
+        <h2><a href="{{ page.URL | absURL }}">{{ page.Title }}</a></h2>
+        {% include "post.info.html" %}
+        <hr />
+        <div>
+          {{ page.Content | safe }}
+        </div>
+      </li>
+    {% endfor %}
+    {% if paginator.List | length == 0 %}
+      <li>No Posts.</li>
+    {% endif %}
+  </ul>
+{% endblock %}

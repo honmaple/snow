@@ -3,6 +3,7 @@ package pongo2
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/flosch/pongo2/v6"
@@ -52,8 +53,11 @@ func (t *Template) absURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Va
 	if err != nil {
 		return
 	}
-	absURL := fmt.Sprintf("%s/%s", t.conf.GetString("site.url"), out.Interface().(string))
-	return pongo2.AsValue(absURL), nil
+	v := out.Interface().(string)
+	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
+		return pongo2.AsValue(v), nil
+	}
+	return pongo2.AsValue(utils.StringConcat(t.conf.GetString("site.url"), v)), nil
 }
 
 func (t *Template) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
@@ -64,19 +68,29 @@ func (t *Template) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Va
 			OrigError: errors.New("filter input argument must be of type 'string'"),
 		}
 	}
-	vars := map[string]string{
-		"{slug}":       v,
-		"{number}":     "",
-		"{number:one}": "1",
+	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
+		return pongo2.AsValue(v), nil
 	}
-
-	key, ok := param.Interface().(string)
-	if !ok {
-		return nil, &pongo2.Error{
-			Sender:    "filter:relURL",
-			OrigError: errors.New("filter input argument must be of type 'string'"),
+	key, ok := "", false
+	if param.Interface() != nil {
+		key, ok = param.Interface().(string)
+		if !ok {
+			return nil, &pongo2.Error{
+				Sender:    "filter:relURL",
+				OrigError: errors.New("filter input argument must be of type 'string'"),
+			}
 		}
 	}
-	output := t.conf.GetString(fmt.Sprintf("page_meta.%s.output", key))
-	return pongo2.AsValue(utils.StringReplace(output, vars)), nil
+	if key != "" {
+		vars := map[string]string{
+			"{slug}":       v,
+			"{number}":     "",
+			"{number:one}": "1",
+		}
+		v = utils.StringReplace(t.conf.GetString(utils.StringConcat("page_meta.", key, ".output")), vars)
+	}
+	if strings.HasPrefix(v, "/") {
+		return pongo2.AsValue(v), nil
+	}
+	return pongo2.AsValue(utils.StringConcat("/", v)), nil
 }

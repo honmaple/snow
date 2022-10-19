@@ -10,6 +10,7 @@ require (
 	github.com/gorilla/feeds v1.1.1
 	github.com/honmaple/org-golang v0.0.0-20221004095837-43f6104b2fa8
 	github.com/russross/blackfriday v1.6.0
+	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/viper v1.13.0
 	github.com/urfave/cli/v2 v2.3.0
 )

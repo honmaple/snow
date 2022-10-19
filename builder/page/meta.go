@@ -24,8 +24,10 @@ type (
 		Content string
 		Summary string
 
-		Prev *Page
-		Next *Page
+		Prev       *Page
+		Next       *Page
+		PrevInType *Page
+		NextInType *Page
 	}
 	Pages []*Page
 
@@ -34,7 +36,7 @@ type (
 		List     Pages
 		Children Labels
 	}
-	Labels  []*Label
+	Labels []*Label
 )
 
 func (ls Labels) Has(name string) bool {
@@ -46,34 +48,36 @@ func (ls Labels) Has(name string) bool {
 	return false
 }
 
-func (labels Labels) add(name string, page *Page, labelm map[string]*Label, tree bool) Labels {
-	if !tree {
-		label, ok := labelm[name]
-		if !ok {
-			label = &Label{Name: name}
-			labels = append(labels, label)
-		}
-		label.List = append(label.List, page)
-		labelm[name] = label
-		return labels
+func (ls Labels) Orderby(key string) Labels {
+	var (
+		reverse = false
+		sortf   func(int, int) bool
+	)
+	if strings.HasSuffix(strings.ToLower(key), " desc") {
+		key = key[:len(key)-5]
+		reverse = true
 	}
-	var parent *Label
-	for _, subname := range utils.SplitPrefix(name, "/") {
-		label, ok := labelm[subname]
-		if !ok {
-			label = &Label{Name: subname}
-			labels = append(labels, label)
+	switch key {
+	case "name":
+		sortf = func(i, j int) bool {
+			return ls[i].Name < ls[j].Name
 		}
-		label.List = append(label.List, page)
-		labelm[subname] = label
-		if parent != nil {
-			if !parent.Children.Has(subname) {
-				parent.Children = append(parent.Children, label)
-			}
+	case "count":
+		sortf = func(i, j int) bool {
+			return len(ls[i].List) < len(ls[j].List)
 		}
-		parent = label
 	}
-	return labels
+	if sortf == nil {
+		return ls
+	}
+	if reverse {
+		sort.SliceStable(ls, func(i, j int) bool {
+			return !sortf(i, j)
+		})
+	} else {
+		sort.SliceStable(ls, sortf)
+	}
+	return ls
 }
 
 func (page Page) HasPrev() bool {
@@ -84,105 +88,118 @@ func (page Page) HasNext() bool {
 	return page.Next != nil
 }
 
-func (pages Pages) Filter(filter interface{}) Pages {
-	matchList := func(value string) func(string) int {
-		include := make(map[string]bool)
-		exclude := make(map[string]bool)
-		for _, typ := range strings.Split(value, ",") {
-			if strings.HasPrefix(typ, "-") {
-				exclude[typ[1:]] = true
-			} else {
-				include[typ] = true
-			}
-		}
-		return func(typ string) int {
-			if include[typ] {
-				return 1
-			}
-			if exclude[typ] {
-				return -1
-			}
-			return 0
-		}
-	}
-	switch fs := filter.(type) {
-	case string:
-		matcher := matchList(fs)
-		newPages := make(Pages, 0)
-		for _, page := range pages {
-			if matcher(page.Type) >= 0 {
-				newPages = append(newPages, page)
-			}
-		}
-		return newPages
-	case map[string]interface{}:
-		matchers := make([]func(*Page) bool, 0)
-		for k, v := range fs {
-			switch k {
-			case "type":
-				matcher := matchList(v.(string))
-				matchers = append(matchers, func(page *Page) bool {
-					return matcher(page.Type) >= 0
-				})
-			case "tag":
-				matcher := matchList(v.(string))
-				matchers = append(matchers, func(page *Page) bool {
-					matched := false
-					for _, name := range page.Tags {
-						if m := matcher(name); m < 0 {
-							return false
-						} else if m > 0 {
-							matched = true
-						}
-					}
-					return matched
-				})
-			case "category":
-				matcher := matchList(v.(string))
-				matchers = append(matchers, func(page *Page) bool {
-					matched := false
-					for _, name := range page.Categories {
-						if m := matcher(name); m < 0 {
-							return false
-						} else if m > 0 {
-							matched = true
-						}
-					}
-					return matched
-				})
-			case "author":
-				matcher := matchList(v.(string))
-				matchers = append(matchers, func(page *Page) bool {
-					matched := false
-					for _, name := range page.Authors {
-						if m := matcher(name); m < 0 {
-							return false
-						} else if m > 0 {
-							matched = true
-						}
-					}
-					return matched
-				})
-			}
-		}
-		matchAll := func(page *Page) bool {
-			for _, m := range matchers {
-				if !m(page) {
-					return false
+func (page Page) HasPrevInType() bool {
+	return page.PrevInType != nil
+}
+
+func (page Page) HasNextInType() bool {
+	return page.NextInType != nil
+}
+
+func (pages Pages) filter(filter interface{}) chan *Page {
+	ch := make(chan *Page)
+	go func() {
+		defer close(ch)
+
+		matchList := func(value string) func(string) int {
+			include := make(map[string]bool)
+			exclude := make(map[string]bool)
+			for _, typ := range strings.Split(value, ",") {
+				if strings.HasPrefix(typ, "-") {
+					exclude[typ[1:]] = true
+				} else {
+					include[typ] = true
 				}
 			}
-			return true
-		}
-		newPages := make(Pages, 0)
-		for _, page := range pages {
-			if matchAll(page) {
-				newPages = append(newPages, page)
+			return func(typ string) int {
+				if exclude[typ] {
+					return -1
+				}
+				if include[typ] {
+					return 1
+				}
+				return 0
 			}
 		}
-		return newPages
-	default:
-		return pages
+
+		switch fs := filter.(type) {
+		case string:
+			matcher := matchList(fs)
+			for _, page := range pages {
+				if matcher(page.Type) < 0 {
+					continue
+				}
+				ch <- page
+			}
+		case map[string]interface{}:
+			matcherf := func(value string, names func(*Page) []string) func(*Page) bool {
+				m := matchList(value)
+				return func(page *Page) bool {
+					matched := false
+					for _, name := range names(page) {
+						if m := m(name); m < 0 {
+							return false
+						} else if m >= 0 {
+							matched = true
+						}
+					}
+					return matched
+				}
+			}
+			matchers := make([]func(*Page) bool, 0)
+			for k, v := range fs {
+				switch k {
+				case "type":
+					matcher := matcherf(v.(string), func(page *Page) []string {
+						return []string{page.Type}
+					})
+					matchers = append(matchers, matcher)
+				case "tag":
+					matcher := matcherf(v.(string), func(page *Page) []string {
+						return page.Tags
+					})
+					matchers = append(matchers, matcher)
+				case "category":
+					matcher := matcherf(v.(string), func(page *Page) []string {
+						return page.Categories
+					})
+					matchers = append(matchers, matcher)
+				case "author":
+					matcher := matcherf(v.(string), func(page *Page) []string {
+						return page.Authors
+					})
+					matchers = append(matchers, matcher)
+				}
+			}
+			matchAll := func(page *Page) bool {
+				for _, m := range matchers {
+					if !m(page) {
+						return false
+					}
+				}
+				return true
+			}
+			for _, page := range pages {
+				if !matchAll(page) {
+					continue
+				}
+				ch <- page
+			}
+		default:
+			for _, page := range pages {
+				ch <- page
+			}
+		}
+	}()
+	return ch
+}
+
+func (pages Pages) Filter(key interface{}) Pages {
+	ps := make(Pages, 0)
+	for page := range pages.filter(key) {
+		ps = append(ps, page)
 	}
+	return ps
 }
 
 func (pages Pages) OrderBy(key string) Pages {
@@ -195,7 +212,7 @@ func (pages Pages) OrderBy(key string) Pages {
 			sortf   func(int, int) int
 			reverse bool
 		)
-		if strings.HasSuffix(k, " desc") || strings.HasSuffix(k, " DESC") {
+		if strings.HasSuffix(strings.ToLower(k), " desc") {
 			k = k[:len(k)-5]
 			reverse = true
 		}
@@ -258,47 +275,62 @@ func (pages Pages) OrderBy(key string) Pages {
 	return pages
 }
 
-func (pages Pages) groupBy(key string) (map[string]*Label, Labels) {
+func (pages Pages) GroupBy(key string) Labels {
+	var groupf func(*Page) []string
+
 	labels := make(Labels, 0)
 	labelm := make(map[string]*Label)
 	switch key {
 	case "type":
-		for _, page := range pages {
-			labels.add(page.Type, page, labelm, false)
+		groupf = func(page *Page) []string {
+			return []string{page.Type}
 		}
 	case "category":
-		for _, page := range pages {
-			// 增加子分类功能 Linux/Python/Flask
-			for _, name := range page.Categories {
-				labels = labels.add(name, page, labelm, true)
-			}
+		groupf = func(page *Page) []string {
+			return page.Categories
 		}
 	case "tag":
-		for _, page := range pages {
-			for _, name := range page.Tags {
-				labels = labels.add(name, page, labelm, false)
-			}
+		groupf = func(page *Page) []string {
+			return page.Tags
 		}
 	case "author":
-		for _, page := range pages {
-			for _, name := range page.Authors {
-				labels = labels.add(name, page, labelm, false)
-			}
+		groupf = func(page *Page) []string {
+			return page.Authors
 		}
 	default:
 		if strings.HasPrefix(key, "date:") {
 			format := key[5:]
-			for _, page := range pages {
-				labels = labels.add(page.Date.Format(format), page, labelm, false)
+			groupf = func(page *Page) []string {
+				return []string{page.Date.Format(format)}
 			}
-		} else {
-			labels = append(labels, &Label{List: pages})
 		}
 	}
-	return labelm, labels
-}
+	if groupf == nil {
+		labels = append(labels, &Label{List: pages})
+		return labels
+	}
+	for _, page := range pages {
+		for _, name := range groupf(page) {
+			var parent *Label
 
-func (pages Pages) GroupBy(key string) Labels {
-	_, labels := pages.groupBy(key)
+			for _, subname := range utils.SplitPrefix(name, "/") {
+				label, ok := labelm[subname]
+				if !ok {
+					label = &Label{Name: subname}
+					if parent == nil {
+						labels = append(labels, label)
+					}
+				}
+				label.List = append(label.List, page)
+				labelm[subname] = label
+				if parent != nil {
+					if !parent.Children.Has(subname) {
+						parent.Children = append(parent.Children, label)
+					}
+				}
+				parent = label
+			}
+		}
+	}
 	return labels
 }

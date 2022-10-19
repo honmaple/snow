@@ -19,7 +19,7 @@ var (
 
 func orgmodeHTML(data []byte) string {
 	r := render.HTML{
-		Toc:       true,
+		Toc:       false,
 		Document:  org.New(bytes.NewReader(data)),
 		Highlight: highlightCodeBlock,
 	}
