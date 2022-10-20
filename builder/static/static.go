@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
 )
@@ -35,7 +34,7 @@ func (s *Static) src() string {
 	return s.File
 }
 
-func (b *Builder) GetDirs() []string {
+func (b *Builder) Dirs() []string {
 	return b.conf.GetStringSlice("static_dirs")
 }
 
@@ -97,7 +96,7 @@ func (b *Builder) parser() func(string, bool) *Static {
 
 }
 
-func (b *Builder) Read(watcher *fsnotify.Watcher) ([]*Static, error) {
+func (b *Builder) Read(dirs []string) ([]*Static, error) {
 	parse := b.parser()
 
 	files := make([]*Static, 0)
@@ -113,13 +112,7 @@ func (b *Builder) Read(watcher *fsnotify.Watcher) ([]*Static, error) {
 		return nil
 	})
 
-	dirs := b.conf.GetStringSlice("static_dirs")
 	for _, dir := range dirs {
-		if watcher != nil {
-			if err := watcher.Add(dir); err != nil {
-				return nil, err
-			}
-		}
 		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() {
 				return err
@@ -133,9 +126,14 @@ func (b *Builder) Read(watcher *fsnotify.Watcher) ([]*Static, error) {
 	return files, nil
 }
 
-func (b *Builder) Build(watcher *fsnotify.Watcher) error {
+func (b *Builder) Build() error {
+	dirs := b.Dirs()
+	if len(dirs) == 0 {
+		return nil
+	}
+
 	now := time.Now()
-	files, err := b.Read(watcher)
+	files, err := b.Read(dirs)
 	if err != nil {
 		return err
 	}

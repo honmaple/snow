@@ -25,7 +25,7 @@ func watchBuilder(conf config.Config, b Builder) (*fsnotify.Watcher, error) {
 				}
 				if event.Op == fsnotify.Write {
 					conf.Log.Infoln("The", event.Name, "has been modified. Rebuilding...")
-					if err := b.Build(nil); err != nil {
+					if err := b.Build(); err != nil {
 						conf.Log.Errorln("Build error", err.Error())
 					}
 				}
@@ -37,10 +37,16 @@ func watchBuilder(conf config.Config, b Builder) (*fsnotify.Watcher, error) {
 			}
 		}
 	}()
-	if err := b.Build(watcher); err != nil {
+	dirs := b.Dirs()
+	for _, dir := range dirs {
+		if err := watcher.Add(dir); err != nil {
+			return nil, err
+		}
+	}
+	if err := b.Build(); err != nil {
 		return nil, err
 	}
-	// fmt.Println("Watching", strings.Join(watcher.WatchList(), ", "))
+	conf.Log.Infoln("Watching", strings.Join(dirs, ", "))
 	return watcher, nil
 }
 
@@ -90,7 +96,7 @@ func Serve(conf config.Config, listen string, autoload bool) error {
 			return err
 		}
 		defer watcher.Close()
-	} else if err := b.Build(nil); err != nil {
+	} else if err := b.Build(); err != nil {
 		return err
 	}
 	mux := http.NewServeMux()

@@ -13,4 +13,5 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/viper v1.13.0
 	github.com/urfave/cli/v2 v2.3.0
+	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2
 )

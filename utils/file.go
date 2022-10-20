@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 func CopyFile(src, dst string) (written int64, err error) {
@@ -76,5 +75,6 @@ func ListFiles(path string) ([]string, error) {
 }
 
 func FileBaseName(file string) string {
-	return strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
+	file = filepath.Base(file)
+	return file[:len(file)-len(filepath.Ext(file))]
 }

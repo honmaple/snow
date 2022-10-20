@@ -1,7 +1,6 @@
 site:
   url: "http://127.0.0.1:8000"
-  # title: "honmaple's blog"
-  # subtitle: "花落"
+  title: "snow's blog"
   language: "zh"
 
 mode.publish:
@@ -40,8 +39,8 @@ static_meta:
   # "static/css/main.css": "static/css/"
   theme/static: "static/"
 
-# hooks:
-#   - "feed"
+hooks:
+  - "feed"
 
 theme:
   path: "simple"
@@ -51,11 +50,3 @@ theme:
 params:
   feed:
     limit: 10
-# minify:
-#   disableCSS: false
-#   disableHTML: false
-#   disableJS: false
-#   disableJSON: false
-#   disableSVG: false
-#   disableXML: false
-#   minifyOutput: false

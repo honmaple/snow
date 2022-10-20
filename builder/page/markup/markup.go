@@ -1,46 +1,53 @@
 package markup
 
 import (
-	"errors"
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"path/filepath"
-	"strings"
 
-	"github.com/alecthomas/chroma"
-	"github.com/alecthomas/chroma/formatters/html"
-	"github.com/alecthomas/chroma/lexers"
-	"github.com/alecthomas/chroma/styles"
+	"github.com/honmaple/snow/builder/page/markup/html"
+	"github.com/honmaple/snow/builder/page/markup/markdown"
+	"github.com/honmaple/snow/builder/page/markup/orgmode"
 	"github.com/honmaple/snow/config"
 )
 
-type Markup struct {
-	conf config.Config
-}
-
-func highlightCodeBlock(source, lang string) string {
-	var w strings.Builder
-	l := lexers.Get(lang)
-	if l == nil {
-		l = lexers.Fallback
+type (
+	MarkupReader interface {
+		Read(io.Reader) (map[string]string, error)
+		Exts() []string
 	}
-	l = chroma.Coalesce(l)
-	it, _ := l.Tokenise(nil, source)
-	_ = html.New().Format(&w, styles.Get("friendly"), it)
-	return `<div class="highlight">` + "\n" + w.String() + "\n" + `</div>`
-}
+	Markup struct {
+		conf config.Config
+		exts map[string]MarkupReader
+	}
+)
 
 func (m *Markup) Read(file string) (map[string]string, error) {
-	ext := filepath.Ext(file)
-	switch ext {
-	case ".org":
-		return m.orgmode(file)
-	case ".md":
-		return m.markdown(file)
-	default:
-		return nil, errors.New(fmt.Sprintf("no reader for %s: %s", ext, file))
+	buf, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, err
 	}
+	ext := filepath.Ext(file)
+	reader, ok := m.exts[ext]
+	if !ok {
+		return nil, fmt.Errorf("no reader for %s", file)
+	}
+	return reader.Read(bytes.NewBuffer(buf))
 }
 
 func New(conf config.Config) *Markup {
-	return &Markup{conf}
+	rs := []MarkupReader{
+		html.New(conf),
+		orgmode.New(conf),
+		markdown.New(conf),
+	}
+	exts := make(map[string]MarkupReader)
+	for _, r := range rs {
+		for _, ext := range r.Exts() {
+			exts[ext] = r
+		}
+	}
+	return &Markup{conf: conf, exts: exts}
 }

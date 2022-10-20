@@ -13,6 +13,10 @@
     {% endfor %}
     {% if paginator.List | length == 0 %}
       <li>No Posts.</li>
+    {% else %}
+      {% if paginator.Total > 1 %}
+        <li>{% include 'common/pagination.html' %}</li>
+      {% endif %}
     {% endif %}
   </ul>
 {% endblock %}

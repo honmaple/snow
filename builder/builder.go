@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/honmaple/snow/builder/hook"
 	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/builder/static"
@@ -14,20 +13,29 @@ import (
 
 type (
 	Builder interface {
-		Build(*fsnotify.Watcher) error
+		Dirs() []string
+		Build() error
 	}
 	Builders []Builder
 )
 
-func (bs Builders) Build(watcher *fsnotify.Watcher) error {
+func (bs Builders) Dirs() []string {
+	dirs := make([]string, 0)
+	for _, b := range bs {
+		dirs = append(dirs, b.Dirs()...)
+	}
+	return dirs
+}
+
+func (bs Builders) Build() error {
 	var wg sync.WaitGroup
 	for _, b := range bs {
 		wg.Add(1)
 		go func(builder Builder) {
-			if err := builder.Build(watcher); err != nil {
+			defer wg.Done()
+			if err := builder.Build(); err != nil {
 				fmt.Println(err.Error())
 			}
-			wg.Done()
 		}(b)
 	}
 	wg.Wait()
@@ -35,11 +43,11 @@ func (bs Builders) Build(watcher *fsnotify.Watcher) error {
 }
 
 func Build(conf config.Config) error {
-	b, err := newBuilder(conf)
+	bs, err := newBuilder(conf)
 	if err != nil {
 		return err
 	}
-	return b.Build(nil)
+	return bs.Build()
 }
 
 func newBuilder(conf config.Config) (Builder, error) {

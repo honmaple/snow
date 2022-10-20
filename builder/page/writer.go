@@ -17,10 +17,19 @@ const (
 )
 
 func (b *Builder) Write(pages Pages) error {
-	var prev *Page
-
-	labels := pages.GroupBy("type")
+	var (
+		prev   *Page
+		npages = make(Pages, 0)
+		types  = make(map[string]bool)
+		metas  = b.conf.GetStringMap("page_meta")
+		labels = pages.GroupBy("type")
+	)
 	for _, label := range labels {
+		types[label.Name] = true
+		if _, ok := metas[label.Name]; !ok {
+			continue
+		}
+
 		var prevInType *Page
 		for _, page := range label.List {
 			page.PrevInType = prevInType
@@ -35,19 +44,13 @@ func (b *Builder) Write(pages Pages) error {
 			}
 			prev = page
 		}
-	}
-	types := make(map[string]bool)
-	metas := b.conf.GetStringMap("page_meta")
 
-	// 如果是已知类型，只写入详情页, 列表页由其他模板提供
-	for _, label := range labels {
-		types[label.Name] = true
-		if _, ok := metas[label.Name]; !ok {
-			continue
-		}
+		// 如果是已知类型，只写入详情页, 列表页由其他模板提供
 		if err := b.write(label.Name, label.List); err != nil {
 			return err
 		}
+		// 如果未写入详情页, 列表页也默认排除
+		npages = append(npages, label.List...)
 	}
 
 	// 写入列表页或者归档页
@@ -55,10 +58,10 @@ func (b *Builder) Write(pages Pages) error {
 		if types[name] {
 			continue
 		}
-		if err := b.writeSingle(name, pages); err != nil {
+		if err := b.writeSingle(name, npages); err != nil {
 			return err
 		}
-		if err := b.writeList(name, pages); err != nil {
+		if err := b.writeList(name, npages); err != nil {
 			return err
 		}
 	}

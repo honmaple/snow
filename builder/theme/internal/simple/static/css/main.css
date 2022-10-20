@@ -61,6 +61,17 @@ html, body {
   align-items: center;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination li {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
 ul {
   list-style-type: none;
 }

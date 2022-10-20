@@ -24,7 +24,27 @@ const (
 )
 
 var (
-	conf = config.DefaultConfig()
+	conf  = config.DefaultConfig()
+	flags = []cli.Flag{
+		&cli.StringFlag{
+			Name:    "mode",
+			Aliases: []string{"m"},
+			Value:   "",
+			Usage:   "Build site with mode",
+		},
+		&cli.StringFlag{
+			Name:    "output",
+			Aliases: []string{"o"},
+			Value:   "output",
+			Usage:   "Build output content",
+		},
+		&cli.BoolFlag{
+			Name:    "debug",
+			Aliases: []string{"D"},
+			Value:   false,
+			Usage:   "debug mode",
+		},
+	}
 )
 
 func before(clx *cli.Context) error {
@@ -127,6 +147,9 @@ func buildAction(clx *cli.Context) error {
 }
 
 func serveAction(clx *cli.Context) error {
+	if clx.Bool("debug") {
+		conf.SetDebug()
+	}
 	if err := conf.SetMode(clx.String("mode")); err != nil {
 		return err
 	}
@@ -162,49 +185,19 @@ func Excute() {
 			{
 				Name:  "build",
 				Usage: "build and output",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:    "mode",
-						Aliases: []string{"m"},
-						Value:   "",
-						Usage:   "Build site with mode",
-					},
-					&cli.StringFlag{
-						Name:    "output",
-						Aliases: []string{"o"},
-						Value:   "output",
-						Usage:   "Build output content",
-					},
+				Flags: append([]cli.Flag{
 					&cli.BoolFlag{
 						Name:  "listhooks",
 						Value: false,
 						Usage: "List all hooks",
 					},
-					&cli.BoolFlag{
-						Name:    "debug",
-						Aliases: []string{"D"},
-						Value:   false,
-						Usage:   "debug mode",
-					},
-				},
+				}, flags...),
 				Action: buildAction,
 			},
 			{
 				Name:  "serve",
 				Usage: "serve host",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:    "mode",
-						Aliases: []string{"m"},
-						Value:   "",
-						Usage:   "Build site with mode",
-					},
-					&cli.StringFlag{
-						Name:    "output",
-						Aliases: []string{"o"},
-						Value:   "output",
-						Usage:   "Build output content",
-					},
+				Flags: append([]cli.Flag{
 					&cli.StringFlag{
 						Name:    "listen",
 						Aliases: []string{"l"},
@@ -216,7 +209,7 @@ func Excute() {
 						Aliases: []string{"r"},
 						Usage:   "Autoload when file change",
 					},
-				},
+				}, flags...),
 				Action: serveAction,
 			},
 		},

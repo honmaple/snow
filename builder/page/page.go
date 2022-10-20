@@ -3,13 +3,11 @@ package page
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"os"
-
-	"github.com/fsnotify/fsnotify"
 	"github.com/honmaple/snow/builder/page/markup"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
@@ -23,20 +21,26 @@ type Builder struct {
 	hooks  Hooks
 }
 
-func (b *Builder) getDirs(root string) ([]os.FileInfo, error) {
+func (b *Builder) Dirs() []string {
+	root := b.conf.GetString("content_dir")
+
 	pageDirs := b.conf.GetStringSlice("page_dirs")
 	if len(pageDirs) > 0 {
-		dirs := make([]os.FileInfo, 0)
-		for _, dir := range pageDirs {
-			info, err := os.Stat(filepath.Join(root, dir))
-			if err != nil {
-				return nil, err
-			}
-			dirs = append(dirs, info)
+		dirs := make([]string, len(pageDirs))
+		for i, dir := range pageDirs {
+			dirs[i] = filepath.Join(root, dir)
 		}
-		return dirs, nil
+		return dirs
 	}
-	return ioutil.ReadDir(root)
+	subDirs, err := ioutil.ReadDir(root)
+	if err != nil {
+		return nil
+	}
+	dirs := make([]string, len(subDirs))
+	for i, dir := range subDirs {
+		dirs[i] = filepath.Join(root, dir.Name())
+	}
+	return dirs
 }
 
 func (b *Builder) parse(file string, typ string, meta map[string]string) *Page {
@@ -87,7 +91,7 @@ func (b *Builder) parse(file string, typ string, meta map[string]string) *Page {
 			"{date:%m}":  page.Date.Format("01"),
 			"{date:%d}":  page.Date.Format("02"),
 			"{date:%H}":  page.Date.Format("15"),
-			"{filename}": filepath.Base(file),
+			"{filename}": utils.FileBaseName(file),
 			"{slug}":     page.Title,
 		}
 		if page.Slug != "" {
@@ -98,25 +102,14 @@ func (b *Builder) parse(file string, typ string, meta map[string]string) *Page {
 	return b.hooks.AfterPageParse(meta, page)
 }
 
-func (b *Builder) Read(watcher *fsnotify.Watcher) (Pages, error) {
-	root := b.conf.GetString("content_dir")
-	dirs, err := b.getDirs(root)
-	if err != nil {
-		return nil, err
-	}
-
+func (b *Builder) Read(dirs []string) (Pages, error) {
 	pages := make(Pages, 0)
 	for _, d := range dirs {
-		if !d.IsDir() {
-			continue
+		dinfo, err := os.Stat(d)
+		if err != nil {
+			return nil, err
 		}
-		abs := filepath.Join(root, d.Name())
-		if watcher != nil {
-			if err := watcher.Add(abs); err != nil {
-				return nil, err
-			}
-		}
-		filepath.Walk(abs, func(path string, info os.FileInfo, err error) error {
+		err = filepath.Walk(d, func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() {
 				return err
 			}
@@ -124,17 +117,24 @@ func (b *Builder) Read(watcher *fsnotify.Watcher) (Pages, error) {
 			if err != nil {
 				return err
 			}
-			page := b.parse(info.Name(), d.Name(), meta)
+			page := b.parse(info.Name(), dinfo.Name(), meta)
 			pages = append(pages, page)
 			return nil
 		})
+		if err != nil {
+			b.conf.Log.Errorln(err.Error())
+		}
 	}
 	return pages, nil
 }
 
-func (b *Builder) Build(watcher *fsnotify.Watcher) error {
+func (b *Builder) Build() error {
+	dirs := b.Dirs()
+	if len(dirs) == 0 {
+		return nil
+	}
 	now := time.Now()
-	pages, err := b.Read(watcher)
+	pages, err := b.Read(dirs)
 	if err != nil {
 		return err
 	}
