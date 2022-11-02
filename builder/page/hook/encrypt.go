@@ -17,8 +17,68 @@ type Encrypt struct {
 	conf config.Config
 }
 
-func (e *Encrypt) Name() string {
-	return "encrypt"
+var (
+	errInvalidBlockSize    = errors.New("invalid blocksize")
+	errInvalidPKCS7Data    = errors.New("invalid PKCS7 data (empty or not padded)")
+	errInvalidPKCS7Padding = errors.New("invalid padding on input")
+)
+
+func pkcs7Padding(plainText []byte, blockSize int) []byte {
+	padding := blockSize - len(plainText)%blockSize
+	padText := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(plainText, padText...)
+}
+
+func pkcs7Unpad(b []byte, blocksize int) ([]byte, error) {
+	if blocksize <= 0 {
+		return nil, errInvalidBlockSize
+	}
+	if b == nil || len(b) == 0 {
+		return nil, errInvalidPKCS7Data
+	}
+	if len(b)%blocksize != 0 {
+		return nil, errInvalidPKCS7Padding
+	}
+	c := b[len(b)-1]
+	n := int(c)
+	if n == 0 || n > len(b) {
+		return nil, errInvalidPKCS7Padding
+	}
+	for i := 0; i < n; i++ {
+		if b[len(b)-n+i] != c {
+			return nil, errInvalidPKCS7Padding
+		}
+	}
+	return b[:len(b)-n], nil
+}
+
+func (e *Encrypt) encrypt(plainText []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	blockSize := block.BlockSize()
+
+	plainText = pkcs7Padding(plainText, blockSize)
+
+	cipherText := make([]byte, len(plainText))
+	blockMode := cipher.NewCBCEncrypter(block, key[:blockSize])
+	blockMode.CryptBlocks(cipherText, plainText)
+	return cipherText, nil
+}
+
+func (e *Encrypt) decrypt(cipherText []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	blockSize := block.BlockSize()
+
+	plainText := make([]byte, len(cipherText))
+	blockMode := cipher.NewCBCDecrypter(block, key[:blockSize])
+	blockMode.CryptBlocks(plainText, cipherText)
+
+	return pkcs7Unpad(plainText, blockSize)
 }
 
 func (e *Encrypt) AfterPageParse(meta map[string]string, page *page.Page) *page.Page {
@@ -37,48 +97,8 @@ func (e *Encrypt) AfterPageParse(meta map[string]string, page *page.Page) *page.
 	return page
 }
 
-func (e *Encrypt) pkcs7Padding(data []byte, blockSize int) []byte {
-	padding := blockSize - len(data)%blockSize
-	padText := bytes.Repeat([]byte{byte(padding)}, padding)
-	return append(data, padText...)
-}
-
-func (e *Encrypt) pkcs7UnPadding(data []byte) ([]byte, error) {
-	length := len(data)
-	if length == 0 {
-		return nil, errors.New("err password")
-	}
-	unPadding := int(data[length-1])
-	return data[:(length - unPadding)], nil
-}
-
-func (e *Encrypt) encrypt(data []byte, key []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	blockSize := block.BlockSize()
-	encryptBytes := e.pkcs7Padding(data, blockSize)
-	crypted := make([]byte, len(encryptBytes))
-	blockMode := cipher.NewCBCEncrypter(block, key[:blockSize])
-	blockMode.CryptBlocks(crypted, encryptBytes)
-	return crypted, nil
-}
-
-func (e *Encrypt) decrypt(data []byte, key []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	blockSize := block.BlockSize()
-	blockMode := cipher.NewCBCDecrypter(block, key[:blockSize])
-	crypted := make([]byte, len(data))
-	blockMode.CryptBlocks(crypted, data)
-	crypted, err = e.pkcs7UnPadding(crypted)
-	if err != nil {
-		return nil, err
-	}
-	return crypted, nil
+func (e *Encrypt) Name() string {
+	return "encrypt"
 }
 
 func newEncrypy(conf config.Config, theme theme.Theme) hook.Hook {

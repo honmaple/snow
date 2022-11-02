@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -14,7 +15,7 @@ import (
 type (
 	Builder interface {
 		Dirs() []string
-		Build() error
+		Build(context.Context) error
 	}
 	Builders []Builder
 )
@@ -27,13 +28,13 @@ func (bs Builders) Dirs() []string {
 	return dirs
 }
 
-func (bs Builders) Build() error {
+func (bs Builders) Build(ctx context.Context) error {
 	var wg sync.WaitGroup
 	for _, b := range bs {
 		wg.Add(1)
 		go func(builder Builder) {
 			defer wg.Done()
-			if err := builder.Build(); err != nil {
+			if err := builder.Build(ctx); err != nil {
 				fmt.Println(err.Error())
 			}
 		}(b)
@@ -47,7 +48,8 @@ func Build(conf config.Config) error {
 	if err != nil {
 		return err
 	}
-	return bs.Build()
+	ctx := context.Background()
+	return bs.Build(ctx)
 }
 
 func newBuilder(conf config.Config) (Builder, error) {

@@ -14,6 +14,8 @@ import (
 type (
 	Theme interface {
 		Root() fs.FS
+		Open(string) (fs.File, error)
+		StaticFS() fs.FS
 		WriteTemplate([]string, string, map[string]interface{}) error
 	}
 	Template interface {
@@ -32,6 +34,15 @@ var (
 
 func (t *theme) Root() fs.FS {
 	return t.root
+}
+
+func (t *theme) Open(file string) (fs.File, error) {
+	return t.root.Open(file)
+}
+
+func (t *theme) StaticFS() fs.FS {
+	staticFS, _ := fs.Sub(t.root, "static")
+	return staticFS
 }
 
 func (t *theme) WriteTemplate(names []string, file string, context map[string]interface{}) error {

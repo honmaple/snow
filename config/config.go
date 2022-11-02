@@ -92,7 +92,7 @@ func (conf Config) SetMode(mode string) error {
 }
 
 var defaultConfig = map[string]interface{}{
-	"site.url":                                "http://127.0.0.1:8080",
+	"site.url":                                "http://127.0.0.1:8000",
 	"site.title":                              "snow",
 	"site.subtitle":                           "snow is a static site generator.",
 	"theme.path":                              "simple",

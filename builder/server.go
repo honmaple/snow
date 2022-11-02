@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,7 +11,7 @@ import (
 	"github.com/honmaple/snow/config"
 )
 
-func watchBuilder(conf config.Config, b Builder) (*fsnotify.Watcher, error) {
+func watchBuilder(conf config.Config, b Builder, ctx context.Context) (*fsnotify.Watcher, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
@@ -25,7 +26,7 @@ func watchBuilder(conf config.Config, b Builder) (*fsnotify.Watcher, error) {
 				}
 				if event.Op == fsnotify.Write {
 					conf.Log.Infoln("The", event.Name, "has been modified. Rebuilding...")
-					if err := b.Build(); err != nil {
+					if err := b.Build(ctx); err != nil {
 						conf.Log.Errorln("Build error", err.Error())
 					}
 				}
@@ -43,7 +44,7 @@ func watchBuilder(conf config.Config, b Builder) (*fsnotify.Watcher, error) {
 			return nil, err
 		}
 	}
-	if err := b.Build(); err != nil {
+	if err := b.Build(ctx); err != nil {
 		return nil, err
 	}
 	conf.Log.Infoln("Watching", strings.Join(dirs, ", "))
@@ -77,7 +78,7 @@ func (s *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.server.ServeHTTP(w, r)
 }
 
-func Serve(conf config.Config, listen string, autoload bool) error {
+func Server(conf config.Config, listen string, autoload bool) error {
 	if listen == "" {
 		listen = conf.GetString("site.url")
 	}
@@ -90,13 +91,14 @@ func Serve(conf config.Config, listen string, autoload bool) error {
 	if err != nil {
 		return err
 	}
+	ctx := context.Background()
 	if autoload {
-		watcher, err := watchBuilder(conf, b)
+		watcher, err := watchBuilder(conf, b, ctx)
 		if err != nil {
 			return err
 		}
 		defer watcher.Close()
-	} else if err := b.Build(); err != nil {
+	} else if err := b.Build(ctx); err != nil {
 		return err
 	}
 	mux := http.NewServeMux()

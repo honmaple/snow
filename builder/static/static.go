@@ -1,6 +1,7 @@
 package static
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -13,29 +14,27 @@ import (
 	"github.com/honmaple/snow/config"
 )
 
-type (
-	Static struct {
-		URL     string
-		File    string
-		IsTheme bool
-	}
-	Statics []*Static
-	Builder struct {
-		conf  config.Config
-		theme theme.Theme
-		hooks Hooks
-	}
-)
-
-func (s *Static) src() string {
-	if s.IsTheme {
-		return fmt.Sprintf("theme/%s", s.File)
-	}
-	return s.File
+type Builder struct {
+	conf  config.Config
+	theme theme.Theme
+	hooks Hooks
 }
 
 func (b *Builder) Dirs() []string {
 	return b.conf.GetStringSlice("static_dirs")
+}
+
+func (b *Builder) genFile(file string, output string, isTheme bool) *Static {
+	if output == "" {
+		return nil
+	}
+	if strings.HasSuffix(output, "/") {
+		output = filepath.Join(output, filepath.Base(file))
+	}
+	if isTheme {
+		return &Static{URL: output, File: &localFile{root: b.theme.Root(), file: file}}
+	}
+	return &Static{URL: output, File: &localFile{root: os.DirFS("."), file: file}}
 }
 
 func (b *Builder) parser() func(string, bool) *Static {
@@ -69,14 +68,7 @@ func (b *Builder) parser() func(string, bool) *Static {
 		}
 		// viper 无法处理带.的key, 无法直接使用meta[file]
 		if k := fmt.Sprintf("static_meta.%s", file); b.conf.IsSet(k) {
-			output := b.conf.GetString(k)
-			if output == "" {
-				return nil
-			}
-			if strings.HasSuffix(output, "/") {
-				output = filepath.Join(output, filepath.Base(file))
-			}
-			return &Static{URL: output, File: rawFile, IsTheme: isTheme}
+			return b.genFile(rawFile, b.conf.GetString(k), isTheme)
 		}
 		for _, m := range metaList {
 			if !strings.HasPrefix(file, m) {
@@ -89,11 +81,10 @@ func (b *Builder) parser() func(string, bool) *Static {
 			if strings.HasSuffix(output, "/") {
 				output = filepath.Join(output, strings.TrimPrefix(file, m))
 			}
-			return &Static{URL: output, File: rawFile, IsTheme: isTheme}
+			return b.genFile(rawFile, output, isTheme)
 		}
-		return &Static{URL: file, File: rawFile, IsTheme: isTheme}
+		return b.genFile(rawFile, file, isTheme)
 	}
-
 }
 
 func (b *Builder) Read(dirs []string) ([]*Static, error) {
@@ -101,8 +92,7 @@ func (b *Builder) Read(dirs []string) ([]*Static, error) {
 
 	files := make([]*Static, 0)
 	// 默认添加主题的静态文件
-	root := b.theme.Root()
-	fs.WalkDir(root, "static", func(path string, d fs.DirEntry, err error) error {
+	fs.WalkDir(b.theme.Root(), "static", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
@@ -126,7 +116,7 @@ func (b *Builder) Read(dirs []string) ([]*Static, error) {
 	return files, nil
 }
 
-func (b *Builder) Build() error {
+func (b *Builder) Build(ctx context.Context) error {
 	dirs := b.Dirs()
 	if len(dirs) == 0 {
 		return nil

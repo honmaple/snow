@@ -23,6 +23,7 @@ page_meta:
   pages:
     lookup:
       - "post.html"
+    output: "pages/{filename}.html"
 page_paginate: 3
 
 static_url: "{path}"
@@ -50,3 +51,13 @@ theme:
 params:
   feed:
     limit: 10
+  webassets:
+    css:
+      files:
+        - "theme/static/scss/main.scss"
+        - "theme/static/scss/entry.scss"
+      filters:
+        - libscss:
+            path: ["theme/static/scss/"]
+        - cssmin:
+      output: "static/lib.min.css"

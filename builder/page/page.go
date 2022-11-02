@@ -1,6 +1,7 @@
 package page
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -128,7 +129,7 @@ func (b *Builder) Read(dirs []string) (Pages, error) {
 	return pages, nil
 }
 
-func (b *Builder) Build() error {
+func (b *Builder) Build(ctx context.Context) error {
 	dirs := b.Dirs()
 	if len(dirs) == 0 {
 		return nil

@@ -1,17 +1,16 @@
 package builder
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/honmaple/snow/builder/hook"
 	"github.com/honmaple/snow/config"
 	"github.com/urfave/cli/v2"
-
-	"bufio"
-
-	"strings"
 
 	_ "github.com/honmaple/snow/builder/page/hook"
 	_ "github.com/honmaple/snow/builder/static/hook"
@@ -52,10 +51,6 @@ func before(clx *cli.Context) error {
 	return conf.Load(path)
 }
 
-func newAction(clx *cli.Context) error {
-	return nil
-}
-
 func initAction(clx *cli.Context) error {
 	name := clx.Args().First()
 	if name == "" {
@@ -66,18 +61,20 @@ func initAction(clx *cli.Context) error {
 		url    string
 		title  string
 		author string
-		err    error
 	)
 
 	r := bufio.NewReader(os.Stdin)
 	fmt.Printf("Welcome to snow %s.\n", VERSION)
 	for {
-		fmt.Printf("> Where do you want to create your new web site? [%s]", name)
-		name, err = r.ReadString('\n')
+		fmt.Printf("> Where do you want to create your new web site? [%s] ", name)
+		input, err := r.ReadString('\n')
 		if err != nil {
 			return err
 		}
-		name = strings.TrimSpace(name)
+		input = strings.TrimSpace(input)
+		if input != "" {
+			name = input
+		}
 		if name != "" {
 			if n := filepath.Clean(name); n != name {
 				return fmt.Errorf("site path is not right")
@@ -106,7 +103,7 @@ func initAction(clx *cli.Context) error {
 			goto AUTHOR
 		}
 	URL:
-		fmt.Printf("> What is your URL prefix? (see above example; no trailing slash) ")
+		fmt.Printf("> What is your URL prefix? (no trailing slash) ")
 		url, err = r.ReadString('\n')
 		if err != nil {
 			return err
@@ -124,10 +121,31 @@ func initAction(clx *cli.Context) error {
 		}
 	}
 	c := config.DefaultConfig()
+
+	if clx.Bool("first-page") || clx.Args().Get(1) == "--first-page" {
+		root := filepath.Join(name, c.GetString("content_dir"), "posts")
+		os.MkdirAll(root, 0755)
+		f, err := os.Create(filepath.Join(root, "first-page.md"))
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		content := fmt.Sprintf(`title: First Page
+author: snow
+date: %s
+category: Linux
+tags: linux,emacs
+
+# Hello World`, time.Now().Format("2006-01-02T15:04:05"))
+		f.WriteString(content)
+	}
 	c.SetConfigFile(filepath.Join(name, "config.yaml"))
-	c.Set("site.url", url)
 	c.Set("site.title", title)
 	c.Set("site.author", author)
+	c.Set("mode.publish", map[string]interface{}{
+		"site": map[string]interface{}{"url": url},
+	})
 	return c.WriteConfig()
 }
 
@@ -146,7 +164,7 @@ func buildAction(clx *cli.Context) error {
 	return Build(conf)
 }
 
-func serveAction(clx *cli.Context) error {
+func serverAction(clx *cli.Context) error {
 	if clx.Bool("debug") {
 		conf.SetDebug()
 	}
@@ -154,7 +172,7 @@ func serveAction(clx *cli.Context) error {
 		return err
 	}
 	conf.SetOutput(clx.String("output"))
-	return Serve(conf, clx.String("listen"), clx.Bool("autoload"))
+	return Server(conf, clx.String("listen"), clx.Bool("autoload"))
 }
 
 func Excute() {
@@ -167,19 +185,20 @@ func Excute() {
 				Name:    "conf",
 				Aliases: []string{"c"},
 				Value:   "config.yaml",
-				Usage:   "Load configuration from `FILE`",
+				Usage:   "load configuration from `FILE`",
 			},
 		},
 		Before: before,
 		Commands: []*cli.Command{
 			{
-				Name:   "new",
-				Usage:  "create new page",
-				Action: newAction,
-			},
-			{
-				Name:   "init",
-				Usage:  "first init",
+				Name:  "init",
+				Usage: "init a new site",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "first-page",
+						Usage: "create first example page",
+					},
+				},
 				Action: initAction,
 			},
 			{
@@ -188,15 +207,14 @@ func Excute() {
 				Flags: append([]cli.Flag{
 					&cli.BoolFlag{
 						Name:  "listhooks",
-						Value: false,
 						Usage: "List all hooks",
 					},
 				}, flags...),
 				Action: buildAction,
 			},
 			{
-				Name:  "serve",
-				Usage: "serve host",
+				Name:  "server",
+				Usage: "server local files",
 				Flags: append([]cli.Flag{
 					&cli.StringFlag{
 						Name:    "listen",
@@ -210,7 +228,7 @@ func Excute() {
 						Usage:   "Autoload when file change",
 					},
 				}, flags...),
-				Action: serveAction,
+				Action: serverAction,
 			},
 		},
 	}
