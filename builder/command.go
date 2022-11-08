@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/honmaple/snow/builder/hook"
@@ -61,85 +60,72 @@ func initAction(clx *cli.Context) error {
 		url    string
 		title  string
 		author string
+		first  bool
+		c      = config.DefaultConfig()
 	)
+	fmt.Printf("Welcome to snow %s.\n", VERSION)
+	prompts := Prompts{
+		&PromptString{
+			Usage:       "> Where do you want to create your new web site? ",
+			Value:       name,
+			FilePath:    true,
+			Destination: &name,
+		},
+		&PromptString{
+			Usage:       "> What will be the title of this web site? ",
+			Value:       c.GetString("site.title"),
+			Required:    true,
+			Destination: &title,
+		},
+		&PromptString{
+			Usage:       "> Who will be the author of this web site? ",
+			Value:       c.GetString("site.author"),
+			Required:    true,
+			Destination: &author,
+		},
+		&PromptString{
+			Usage:       "> What is your URL prefix? (no trailing slash) ",
+			Value:       c.GetString("site.url"),
+			Required:    true,
+			Destination: &url,
+		},
+		&PromptBool{
+			Usage:       "> Do you want to create first page? ",
+			Value:       true,
+			Destination: &first,
+		},
+	}
 
 	r := bufio.NewReader(os.Stdin)
-	fmt.Printf("Welcome to snow %s.\n", VERSION)
-	for {
-		fmt.Printf("> Where do you want to create your new web site? [%s] ", name)
-		input, err := r.ReadString('\n')
-		if err != nil {
-			return err
-		}
-		input = strings.TrimSpace(input)
-		if input != "" {
-			name = input
-		}
-		if name != "" {
-			if n := filepath.Clean(name); n != name {
-				return fmt.Errorf("site path is not right")
-			}
-		}
-	TITLE:
-		fmt.Printf("> What will be the title of this web site? ")
-		title, err = r.ReadString('\n')
-		if err != nil {
-			return err
-		}
-		title = strings.TrimSpace(title)
-		if title == "" {
-			fmt.Println("title is required")
-			goto TITLE
-		}
-	AUTHOR:
-		fmt.Printf("> Who will be the author of this web site? ")
-		author, err = r.ReadString('\n')
-		if err != nil {
-			return err
-		}
-		author = strings.TrimSpace(author)
-		if author == "" {
-			fmt.Println("author is required")
-			goto AUTHOR
-		}
-	URL:
-		fmt.Printf("> What is your URL prefix? (no trailing slash) ")
-		url, err = r.ReadString('\n')
-		if err != nil {
-			return err
-		}
-		url = strings.TrimSpace(url)
-		if url == "" {
-			fmt.Println("url is required")
-			goto URL
-		}
-		break
+	if err := prompts.Excute(r); err != nil {
+		return err
 	}
 	if name != "" && name != "." {
 		if err := os.Mkdir(name, 0755); err != nil {
 			return err
 		}
 	}
-	c := config.DefaultConfig()
 
-	if clx.Bool("first-page") || clx.Args().Get(1) == "--first-page" {
+	if first {
 		root := filepath.Join(name, c.GetString("content_dir"), "posts")
-		os.MkdirAll(root, 0755)
-		f, err := os.Create(filepath.Join(root, "first-page.md"))
+		if err := os.MkdirAll(root, 0755); err != nil {
+			return err
+		}
+		file, err := os.Create(filepath.Join(root, "first-page.md"))
 		if err != nil {
 			return err
 		}
-		defer f.Close()
+		defer file.Close()
 
-		content := fmt.Sprintf(`title: First Page
+		file.WriteString(fmt.Sprintf(`title: First Page
 author: snow
 date: %s
 category: Linux
 tags: linux,emacs
 
-# Hello World`, time.Now().Format("2006-01-02T15:04:05"))
-		f.WriteString(content)
+# Hello World`, time.Now().Format("2006-01-02 15:04:05")))
 	}
+
 	c.SetConfigFile(filepath.Join(name, "config.yaml"))
 	c.Set("site.title", title)
 	c.Set("site.author", author)
