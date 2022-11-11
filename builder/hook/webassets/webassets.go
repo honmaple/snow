@@ -131,3 +131,7 @@ func New(conf config.Config, theme theme.Theme) hook.Hook {
 	}
 	return &webassets{conf: conf, opts: opts}
 }
+
+func init() {
+	hook.Register("webassets", New)
+}

@@ -1,4 +1,4 @@
-package hook
+package pelican
 
 import (
 	"github.com/honmaple/snow/builder/hook"
@@ -23,6 +23,10 @@ func (e *pelican) AfterPageParse(meta map[string]string, page *page.Page) *page.
 	return page
 }
 
-func newPelican(conf config.Config, theme theme.Theme) hook.Hook {
+func New(conf config.Config, theme theme.Theme) hook.Hook {
 	return &pelican{conf: conf}
+}
+
+func init() {
+	hook.Register("pelican", New)
 }

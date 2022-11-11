@@ -61,5 +61,8 @@ func Print() {
 }
 
 func Register(name string, creator hookCreator) {
+	if _, ok := _hooks[name]; ok {
+		panic(fmt.Sprintf("The hook %s has been registered", name))
+	}
 	_hooks[name] = creator
 }

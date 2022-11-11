@@ -1,4 +1,4 @@
-package hook
+package encrypt
 
 import (
 	"bytes"
@@ -101,6 +101,10 @@ func (e *Encrypt) Name() string {
 	return "encrypt"
 }
 
-func newEncrypy(conf config.Config, theme theme.Theme) hook.Hook {
+func New(conf config.Config, theme theme.Theme) hook.Hook {
 	return &Encrypt{conf: conf}
+}
+
+func init() {
+	hook.Register("encrypt", New)
 }

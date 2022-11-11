@@ -11,8 +11,10 @@ import (
 	"github.com/honmaple/snow/config"
 	"github.com/urfave/cli/v2"
 
-	_ "github.com/honmaple/snow/builder/page/hook"
-	_ "github.com/honmaple/snow/builder/static/hook"
+	_ "github.com/honmaple/snow/builder/hook/encrypt"
+	_ "github.com/honmaple/snow/builder/hook/feed"
+	_ "github.com/honmaple/snow/builder/hook/pelican"
+	// _ "github.com/honmaple/snow/builder/hook/webassets"
 )
 
 const (
@@ -136,7 +138,7 @@ tags: linux,emacs
 }
 
 func buildAction(clx *cli.Context) error {
-	if clx.Bool("listhooks") {
+	if clx.Bool("hooks") {
 		hook.Print()
 		return nil
 	}
@@ -192,7 +194,7 @@ func Excute() {
 				Usage: "build and output",
 				Flags: append([]cli.Flag{
 					&cli.BoolFlag{
-						Name:  "listhooks",
+						Name:  "hooks",
 						Usage: "List all hooks",
 					},
 				}, flags...),

@@ -1,4 +1,4 @@
-package hook
+package feed
 
 import (
 	"path/filepath"
@@ -94,7 +94,7 @@ func (f *Feed) BeforePagesWrite(pages page.Pages) page.Pages {
 	return pages
 }
 
-func newFeed(conf config.Config, theme theme.Theme) hook.Hook {
+func New(conf config.Config, theme theme.Theme) hook.Hook {
 	defaultConfig := map[string]interface{}{
 		"params.feed.limit":  10,
 		"params.feed.format": "atom",
@@ -125,4 +125,8 @@ func newFeed(conf config.Config, theme theme.Theme) hook.Hook {
 			},
 		},
 	}
+}
+
+func init() {
+	hook.Register("feed", New)
 }
