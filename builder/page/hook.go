@@ -2,7 +2,7 @@ package page
 
 type (
 	Hook interface {
-		AfterPageParse(map[string]string, *Page) *Page
+		AfterPageParse(*Page) *Page
 		BeforePageWrite(*Page) *Page
 		BeforePagesWrite(Pages) Pages
 		BeforeLabelsWrite(Labels) Labels
@@ -10,9 +10,9 @@ type (
 	Hooks []Hook
 )
 
-func (hooks Hooks) AfterPageParse(meta map[string]string, page *Page) *Page {
+func (hooks Hooks) AfterPageParse(page *Page) *Page {
 	for _, hook := range hooks {
-		page = hook.AfterPageParse(meta, page)
+		page = hook.AfterPageParse(page)
 	}
 	return page
 }

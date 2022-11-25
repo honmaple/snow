@@ -8,7 +8,7 @@ import (
 type BaseHook struct {
 }
 
-func (BaseHook) AfterPageParse(meta map[string]string, page *page.Page) *page.Page {
+func (BaseHook) AfterPageParse(page *page.Page) *page.Page {
 	return page
 }
 

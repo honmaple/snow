@@ -20,10 +20,6 @@ type Builder struct {
 	hooks Hooks
 }
 
-func (b *Builder) Dirs() []string {
-	return b.conf.GetStringSlice("static_dirs")
-}
-
 func (b *Builder) genFile(file string, output string, isTheme bool) *Static {
 	if output == "" {
 		return nil
@@ -87,7 +83,7 @@ func (b *Builder) parser() func(string, bool) *Static {
 	}
 }
 
-func (b *Builder) Read(dirs []string) ([]*Static, error) {
+func (b *Builder) read(dirs []string) ([]*Static, error) {
 	parse := b.parser()
 
 	files := make([]*Static, 0)
@@ -116,14 +112,17 @@ func (b *Builder) Read(dirs []string) ([]*Static, error) {
 	return files, nil
 }
 
+func (b *Builder) Dirs() []string {
+	return b.conf.GetStringSlice("static_dirs")
+}
+
 func (b *Builder) Build(ctx context.Context) error {
 	dirs := b.Dirs()
 	if len(dirs) == 0 {
 		return nil
 	}
-
 	now := time.Now()
-	files, err := b.Read(dirs)
+	files, err := b.read(dirs)
 	if err != nil {
 		return err
 	}

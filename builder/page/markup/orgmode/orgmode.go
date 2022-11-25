@@ -13,6 +13,7 @@ import (
 	"github.com/alecthomas/chroma/styles"
 	"github.com/honmaple/org-golang"
 	"github.com/honmaple/org-golang/render"
+	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/config"
 )
 
@@ -37,17 +38,13 @@ type orgmode struct {
 	conf config.Config
 }
 
-func (m *orgmode) Exts() []string {
-	return []string{".org"}
-}
-
-func (m *orgmode) Read(r io.Reader) (map[string]string, error) {
+func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
 	var (
 		content    bytes.Buffer
 		summary    bytes.Buffer
 		summeryEnd = false
 		metaEnd    = false
-		meta       = make(map[string]string)
+		meta       = make(page.Meta)
 		scanner    = bufio.NewScanner(r)
 	)
 	for scanner.Scan() {
@@ -61,9 +58,9 @@ func (m *orgmode) Read(r io.Reader) (map[string]string, error) {
 					if len(m) > 1 {
 						v = strings.TrimSpace(m[1])
 					}
-					meta[k] = v
+					meta.Set(k, v)
 				} else {
-					meta[strings.ToLower(match[1])] = strings.TrimSpace(match[3])
+					meta.Set(strings.ToLower(match[1]), strings.TrimSpace(match[3]))
 				}
 				continue
 			}
@@ -93,6 +90,10 @@ func (m *orgmode) HTML(r io.Reader) string {
 	return rd.String()
 }
 
-func New(conf config.Config) *orgmode {
+func New(conf config.Config) page.Reader {
 	return &orgmode{conf}
+}
+
+func init() {
+	page.Register(".org", New)
 }

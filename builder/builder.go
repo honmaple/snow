@@ -48,8 +48,7 @@ func Build(conf config.Config) error {
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
-	return bs.Build(ctx)
+	return bs.Build(context.Background())
 }
 
 func newBuilder(conf config.Config) (Builder, error) {

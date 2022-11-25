@@ -11,6 +11,10 @@ import (
 	"github.com/honmaple/snow/config"
 	"github.com/urfave/cli/v2"
 
+	_ "github.com/honmaple/snow/builder/page/markup/html"
+	_ "github.com/honmaple/snow/builder/page/markup/markdown"
+	_ "github.com/honmaple/snow/builder/page/markup/orgmode"
+
 	_ "github.com/honmaple/snow/builder/hook/encrypt"
 	_ "github.com/honmaple/snow/builder/hook/feed"
 	_ "github.com/honmaple/snow/builder/hook/pelican"

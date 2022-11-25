@@ -94,7 +94,7 @@ func (conf Config) SetMode(mode string) error {
 
 var (
 	pageConfig = map[string]interface{}{
-		"page_order":                              "date desc",
+		"page_orderby":                            "date desc",
 		"page_paginate":                           10,
 		"page_meta.pages.lookup":                  []string{"page.html", "single.html"},
 		"page_meta.pages.output":                  "pages/{slug}.html",

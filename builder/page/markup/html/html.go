@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/config"
 	"golang.org/x/net/html"
 )
@@ -13,11 +14,7 @@ type htmlReader struct {
 	conf config.Config
 }
 
-func (s *htmlReader) Exts() []string {
-	return []string{".html"}
-}
-
-func (s *htmlReader) parse(meta map[string]string, n *html.Node) error {
+func (s *htmlReader) parse(meta page.Meta, n *html.Node) error {
 	if n.Type == html.ElementNode {
 		switch n.Data {
 		case "title":
@@ -34,7 +31,7 @@ func (s *htmlReader) parse(meta map[string]string, n *html.Node) error {
 				}
 			}
 			if key != "" {
-				meta[strings.ToLower(key)] = val
+				meta.Set(strings.ToLower(key), val)
 			}
 		case "body":
 			var buf bytes.Buffer
@@ -55,18 +52,22 @@ func (s *htmlReader) parse(meta map[string]string, n *html.Node) error {
 	return nil
 }
 
-func (s *htmlReader) Read(r io.Reader) (map[string]string, error) {
+func (s *htmlReader) Read(r io.Reader) (page.Meta, error) {
 	doc, err := html.Parse(r)
 	if err != nil {
 		return nil, err
 	}
-	meta := make(map[string]string)
+	meta := make(page.Meta)
 	if err := s.parse(meta, doc); err != nil {
 		return nil, err
 	}
 	return meta, nil
 }
 
-func New(conf config.Config) *htmlReader {
+func New(conf config.Config) page.Reader {
 	return &htmlReader{conf}
+}
+
+func init() {
+	page.Register(".html", New)
 }

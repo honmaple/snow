@@ -9,8 +9,10 @@ import (
 )
 
 type (
+	Meta map[string]interface{}
+
 	Page struct {
-		Meta       map[string]string
+		Meta       Meta
 		Type       string
 		Title      string
 		Date       time.Time
@@ -38,6 +40,73 @@ type (
 	}
 	Labels []*Label
 )
+
+func (m Meta) Set(k, v string) {
+	switch k {
+	case "date", "modified":
+		if t, err := utils.ParseTime(v); err == nil {
+			m[k] = t
+		}
+	case "tags", "authors", "categories":
+		m[k] = utils.SplitTrim(v, ",")
+	case "category":
+		m["categories"] = []string{v}
+	default:
+		if a, ok := m[k]; ok {
+			switch b := a.(type) {
+			case string:
+				m[k] = []string{b, strings.TrimSpace(v)}
+			case []string:
+				m[k] = append(b, strings.TrimSpace(v))
+			}
+		} else {
+			m[k] = strings.TrimSpace(v)
+		}
+	}
+}
+
+func (m Meta) Page(file, typ string) *Page {
+	if t, ok := m["type"]; !ok || t == "" {
+		m["type"] = typ
+	}
+
+	now := time.Now()
+	page := &Page{Type: typ, Meta: m, Date: now, Modified: now}
+	for k, v := range m {
+		if v == "" {
+			continue
+		}
+		switch strings.ToLower(k) {
+		case "type":
+			page.Type = v.(string)
+		case "title":
+			page.Title = v.(string)
+		case "date":
+			if v != nil {
+				page.Date = v.(time.Time)
+			}
+		case "modified":
+			if v != nil {
+				page.Date = v.(time.Time)
+			}
+		case "tags":
+			page.Tags = v.([]string)
+		case "authors":
+			page.Authors = v.([]string)
+		case "categories":
+			page.Categories = v.([]string)
+		case "url":
+			page.URL = v.(string)
+		case "slug":
+			page.Slug = v.(string)
+		case "summary":
+			page.Summary = v.(string)
+		case "content":
+			page.Content = v.(string)
+		}
+	}
+	return page
+}
 
 func (ls Labels) Has(name string) bool {
 	for _, l := range ls {
@@ -250,9 +319,11 @@ func (pages Pages) OrderBy(key string) Pages {
 				return strings.Compare(pages[i].Type, pages[j].Type)
 			}
 		default:
-			sortf = func(i, j int) int {
-				return strings.Compare(pages[i].Meta[k], pages[j].Meta[k])
-			}
+			// sortf = func(i, j int) int {
+			//	if pages[i].Meta[k] > pages[j].Meta[k] {
+			//		return 1
+			//	}
+			// }
 		}
 		if reverse {
 			sortfs = append(sortfs, func(i, j int) int {
@@ -280,28 +351,22 @@ func (pages Pages) GroupBy(key string) Labels {
 
 	labels := make(Labels, 0)
 	labelm := make(map[string]*Label)
-	switch key {
-	case "type":
+
+	if strings.HasPrefix(key, "date:") {
+		format := key[5:]
 		groupf = func(page *Page) []string {
-			return []string{page.Type}
+			return []string{page.Date.Format(format)}
 		}
-	case "category":
+	} else {
 		groupf = func(page *Page) []string {
-			return page.Categories
-		}
-	case "tag":
-		groupf = func(page *Page) []string {
-			return page.Tags
-		}
-	case "author":
-		groupf = func(page *Page) []string {
-			return page.Authors
-		}
-	default:
-		if strings.HasPrefix(key, "date:") {
-			format := key[5:]
-			groupf = func(page *Page) []string {
-				return []string{page.Date.Format(format)}
+			value := page.Meta[key]
+			switch v := value.(type) {
+			case string:
+				return []string{v}
+			case []string:
+				return v
+			default:
+				return nil
 			}
 		}
 	}

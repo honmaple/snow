@@ -6,8 +6,6 @@ import (
 )
 
 const (
-	prefixTemplate   = "page_meta.%s.prefix"
-	ignoreTemplate   = "page_meta.%s.ignore"
 	lookupTemplate   = "page_meta.%s.lookup"
 	outputTemplate   = "page_meta.%s.output"
 	filterTemplate   = "page_meta.%s.filter"
@@ -16,41 +14,17 @@ const (
 	paginateTemplate = "page_meta.%s.paginate"
 )
 
-func (b *Builder) Write(pages Pages) error {
+func (b *Builder) Write(pages Pages, labels Labels) error {
 	var (
-		prev   *Page
-		npages = make(Pages, 0)
-		types  = make(map[string]bool)
-		metas  = b.conf.GetStringMap("page_meta")
-		labels = pages.GroupBy("type")
+		types = make(map[string]bool)
+		metas = b.conf.GetStringMap("page_meta")
 	)
 	for _, label := range labels {
 		types[label.Name] = true
-		if _, ok := metas[label.Name]; !ok {
-			continue
-		}
-
-		var prevInType *Page
-		for _, page := range label.List {
-			page.PrevInType = prevInType
-			if prevInType != nil {
-				prevInType.NextInType = page
-			}
-			prevInType = page
-
-			page.Prev = prev
-			if prev != nil {
-				prev.Next = page
-			}
-			prev = page
-		}
-
 		// 如果是已知类型，只写入详情页, 列表页由其他模板提供
 		if err := b.write(label.Name, label.List); err != nil {
 			return err
 		}
-		// 如果未写入详情页, 列表页也默认排除
-		npages = append(npages, label.List...)
 	}
 
 	// 写入列表页或者归档页
@@ -58,24 +32,14 @@ func (b *Builder) Write(pages Pages) error {
 		if types[name] {
 			continue
 		}
-		if err := b.writeSingle(name, npages); err != nil {
+		if err := b.writeSingle(name, pages); err != nil {
 			return err
 		}
-		if err := b.writeList(name, npages); err != nil {
+		if err := b.writeList(name, pages); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func (b *Builder) lookup(key string) ([]string, string) {
-	output := b.conf.GetString(fmt.Sprintf(outputTemplate, key))
-	if output == "" {
-		return nil, ""
-	}
-
-	names := b.conf.GetStringSlice(fmt.Sprintf(lookupTemplate, key))
-	return names, output
 }
 
 func (b *Builder) list(key string, pages Pages) Pages {
@@ -87,6 +51,16 @@ func (b *Builder) list(key string, pages Pages) Pages {
 		pages = pages.OrderBy(b.conf.GetString(k))
 	}
 	return pages
+}
+
+func (b *Builder) lookup(key string) ([]string, string) {
+	output := b.conf.GetString(fmt.Sprintf(outputTemplate, key))
+	if output == "" {
+		return nil, ""
+	}
+
+	layouts := b.conf.GetStringSlice(fmt.Sprintf(lookupTemplate, key))
+	return layouts, output
 }
 
 func (b *Builder) write(key string, pages Pages) error {

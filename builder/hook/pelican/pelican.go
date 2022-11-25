@@ -16,9 +16,9 @@ func (s *pelican) Name() string {
 	return "pelican"
 }
 
-func (e *pelican) AfterPageParse(meta map[string]string, page *page.Page) *page.Page {
-	if v, ok := meta["save_as"]; ok {
-		page.URL = v
+func (e *pelican) AfterPageParse(page *page.Page) *page.Page {
+	if v, ok := page.Meta["save_as"]; ok {
+		page.URL = v.(string)
 	}
 	return page
 }

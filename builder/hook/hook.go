@@ -41,11 +41,17 @@ func (hooks Hooks) StaticHooks() (result []static.Hook) {
 
 func New(conf config.Config, theme theme.Theme) Hooks {
 	names := conf.GetStringSlice("hooks")
-
 	hooks := make([]Hook, 0)
+	// 设置默认的hook
+	if creator, ok := _hooks["internal"]; ok {
+		hooks = append(hooks, creator(conf, theme))
+	}
 	for _, name := range names {
-		if hook, ok := _hooks[name]; ok {
-			hooks = append(hooks, hook(conf, theme))
+		if name == "internal" {
+			continue
+		}
+		if creator, ok := _hooks[name]; ok {
+			hooks = append(hooks, creator(conf, theme))
 		}
 	}
 	return hooks

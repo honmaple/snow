@@ -81,16 +81,17 @@ func (e *Encrypt) decrypt(cipherText []byte, key []byte) ([]byte, error) {
 	return pkcs7Unpad(plainText, blockSize)
 }
 
-func (e *Encrypt) AfterPageParse(meta map[string]string, page *page.Page) *page.Page {
-	password := meta["password"]
-	if password == "" {
+func (e *Encrypt) AfterPageParse(page *page.Page) *page.Page {
+	password, ok := page.Meta["password"]
+	if !ok || password == "" {
 		return page
 	}
-	c, err := e.encrypt([]byte(page.Content), []byte(password))
+	passwd := password.(string)
+	c, err := e.encrypt([]byte(page.Content), []byte(passwd))
 	if err == nil {
 		page.Content = string(c)
 	}
-	c, err = e.encrypt([]byte(page.Summary), []byte(password))
+	c, err = e.encrypt([]byte(page.Summary), []byte(passwd))
 	if err == nil {
 		page.Summary = string(c)
 	}

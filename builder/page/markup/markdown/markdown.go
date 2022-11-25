@@ -7,8 +7,11 @@ import (
 	"regexp"
 	"strings"
 
+	// "github.com/honmaple/snow/builder/hook/markup"
+	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/config"
 	"github.com/russross/blackfriday"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -21,24 +24,37 @@ type markdown struct {
 	conf config.Config
 }
 
-func (s *markdown) Exts() []string {
-	return []string{".md"}
-}
-
-func (m *markdown) Read(r io.Reader) (map[string]string, error) {
+func (m *markdown) Read(r io.Reader) (page.Meta, error) {
 	var (
 		summary    bytes.Buffer
 		content    bytes.Buffer
 		summeryEnd = false
 		metaEnd    = false
-		meta       = make(map[string]string)
+		meta       = make(page.Meta)
 		scanner    = bufio.NewScanner(r)
 	)
+	isYAML := true
 	for scanner.Scan() {
 		line := scanner.Text()
+		if isYAML && line == MAKRDOWN_LINE {
+			var b bytes.Buffer
+			for scanner.Scan() {
+				l := scanner.Text()
+				if l == MAKRDOWN_LINE || l == "" {
+					break
+				}
+				b.WriteString(l)
+				b.WriteString("\n")
+			}
+			if err := yaml.Unmarshal(b.Bytes(), &meta); err != nil {
+				return nil, err
+			}
+			isYAML = false
+			continue
+		}
 		if !metaEnd {
 			if match := MAKRDOWN_META.FindStringSubmatch(line); match != nil {
-				meta[strings.ToLower(match[1])] = strings.TrimSpace(match[3])
+				meta.Set(strings.ToLower(match[1]), strings.TrimSpace(match[3]))
 				continue
 			}
 		}
@@ -63,7 +79,11 @@ func (s *markdown) HTML(data []byte) string {
 	return string(d)
 }
 
-func New(conf config.Config) *markdown {
+func New(conf config.Config) page.Reader {
 	return &markdown{conf}
 
+}
+
+func init() {
+	page.Register(".md", New)
 }
