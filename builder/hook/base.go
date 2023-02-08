@@ -20,9 +20,9 @@ func (BaseHook) BeforePagesWrite(pages page.Pages) page.Pages {
 	return pages
 }
 
-func (BaseHook) BeforeLabelsWrite(labels page.Labels) page.Labels {
-	return labels
-}
+// func (BaseHook) BeforeLabelsWrite(labels page.Labels) page.Labels {
+//	return labels
+// }
 
 func (BaseHook) BeforeStaticWrite(static *static.Static) *static.Static {
 	return static

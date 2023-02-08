@@ -5,25 +5,24 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 
-	"github.com/honmaple/snow/builder/theme/template/html"
-	"github.com/honmaple/snow/builder/theme/template/pongo2"
+	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
 )
 
 type (
 	Theme interface {
-		Root() fs.FS
+		Name() string
 		Open(string) (fs.File, error)
-		StaticFS() fs.FS
-		WriteTemplate([]string, string, map[string]interface{}) error
-	}
-	Template interface {
-		Write([]string, string, map[string]interface{}) error
+		LookupTemplate(...string) (template.Writer, bool)
 	}
 	theme struct {
+		name     string
 		root     fs.FS
-		template Template
+		cache    sync.Map
+		template template.Interface
 	}
 )
 
@@ -32,51 +31,53 @@ var (
 	themeFS embed.FS
 )
 
-func (t *theme) Root() fs.FS {
-	return t.root
+func (t *theme) Name() string {
+	return t.name
 }
 
 func (t *theme) Open(file string) (fs.File, error) {
+	if strings.HasPrefix(file, "_internal") {
+		return themeFS.Open(file[1:])
+	}
 	return t.root.Open(file)
 }
 
-func (t *theme) StaticFS() fs.FS {
-	staticFS, _ := fs.Sub(t.root, "static")
-	return staticFS
-}
-
-func (t *theme) WriteTemplate(names []string, file string, context map[string]interface{}) error {
-	return t.template.Write(names, file, context)
+func (t *theme) LookupTemplate(names ...string) (template.Writer, bool) {
+	for _, name := range names {
+		v, ok := t.cache.Load(name)
+		if ok {
+			return v.(template.Writer), true
+		}
+		// 模版未找到不输出日志, 编译模版有问题才输出
+		w, err := t.template.Lookup(name)
+		if err != nil {
+			continue
+		}
+		t.cache.Store(name, w)
+		return w, true
+	}
+	return nil, false
 }
 
 func New(conf config.Config) (Theme, error) {
 	var (
-		err  error
 		root fs.FS
-		tmpl Template
 	)
-
-	name := conf.GetString("theme.path")
-	switch name {
-	case "simple":
-		root, _ = fs.Sub(themeFS, filepath.Join("internal", name))
-	default:
-		root = os.DirFS(name)
+	name := conf.GetString("theme.name")
+	if name == "" {
+		root, _ = fs.Sub(themeFS, "internal")
+	} else {
+		path := filepath.Join("themes", name)
+		_, err := os.Stat(path)
+		if err != nil {
+			return nil, err
+		}
+		root = os.DirFS(path)
 	}
-	templateFS, err := fs.Sub(root, "templates")
-	if err != nil {
-		return nil, err
+	t := &theme{
+		name: name,
+		root: root,
 	}
-
-	engine := conf.GetString("theme.engine")
-	switch engine {
-	case "pongo2":
-		tmpl = pongo2.New(conf, templateFS)
-	default:
-		tmpl = html.New(conf)
-	}
-	return &theme{
-		root:     root,
-		template: tmpl,
-	}, nil
+	t.template = template.New(conf, t)
+	return t, nil
 }

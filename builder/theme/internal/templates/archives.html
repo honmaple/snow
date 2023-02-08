@@ -7,7 +7,7 @@
         {% for page in month.List %}
           <li>
             {{ page.Date | time:"2006-01-02" }}
-            <h2><a href="{{ page.URL | absURL }}">{{ page.Title }}</a></h2>
+            <h2><a href="{{ page.Path | absURL }}">{{ page.Title }}</a></h2>
           </li>
         {% endfor %}
       </ul>

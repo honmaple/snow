@@ -5,7 +5,7 @@ type (
 		AfterPageParse(*Page) *Page
 		BeforePageWrite(*Page) *Page
 		BeforePagesWrite(Pages) Pages
-		BeforeLabelsWrite(Labels) Labels
+		// BeforeLabelsWrite(Labels) Labels
 	}
 	Hooks []Hook
 )
@@ -31,9 +31,9 @@ func (hooks Hooks) BeforePagesWrite(pages Pages) Pages {
 	return pages
 }
 
-func (hooks Hooks) BeforeLabelsWrite(labels Labels) Labels {
-	for _, hook := range hooks {
-		labels = hook.BeforeLabelsWrite(labels)
-	}
-	return labels
-}
+// func (hooks Hooks) BeforeLabelsWrite(labels Labels) Labels {
+//	for _, hook := range hooks {
+//		labels = hook.BeforeLabelsWrite(labels)
+//	}
+//	return labels
+// }

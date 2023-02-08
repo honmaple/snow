@@ -6,49 +6,88 @@ site:
 mode.publish:
   site:
     url: ""
-  page_filter: "-drafts"
-  page_meta:
-    drafts:
-      output: ""
 
-content_dir: "content"
+sections:
+  _index:
+    paginate: 2
+    filter:
+      type: "posts"
+      # tags: "post3"
+  _default:
+    orderby: "date desc"
+    templates: "posts.html"
+    page_template: "page.html"
+  pages:
+    path: ""
+
+taxonomies:
+  categories:
+    lang: "zh"
+    path: "categories/index.html"
+    template: "categories/list.html"
+    term_path: "categories/{slug}/index.html"
+    term_template: "categories/single.html"
+  tags:
+    weight: -1
+  authors:
+  date:2006/01:
+    path: "archives/index.html"
+    template: "archives.html"
+    term_path: "archives/{slug}/index.html"
+    term_template: "archives.html"
+
 output_dir: "output"
+content_dir: "content"
 
 # page_dirs:
-#   - "content"
-page_meta:
-  drafts:
-    lookup:
-      - "post.html"
-  pages:
-    lookup:
-      - "post.html"
-    output: "pages/{filename}.html"
+#   - "markdown"
 page_paginate: 3
 
-static_url: "{path}"
-static_exts:
-  - ".js"
-  - ".css"
+# static_exts:
+#   - ".js"
+#   - ".css"
 # static_dirs:
 # - "static/robots.txt"
 # - "static/favicon.ico"
 # - "static/CNAME"
 # - "static/css/"
-static_meta:
+static_paths:
   # static: "/"
   # "static/css/main.css": "static/css/"
-  theme/static: "static/"
+  "@theme/static": "static/"
 
 hooks:
-  - "feed"
+  # - "feed"
+  - "encrypt"
+  - "shortcode"
 
 theme:
-  path: "simple"
-  engine: "pongo2"
-  override: "layouts"
+  name: "archie-snow"
+  # override: "layouts"
 
 params:
+  extra:
+    social:
+      - name: "Github"
+        icon: "github"
+        url: "https://github.com/honmaple/archie-snow"
+      - name: "Twitter"
+        icon: "twitter"
+        url: "https://github.com/honmaple/archie-snow"
+      - name: "Gitlab"
+        icon: "gitlab"
+        url: "https://github.com/honmaple/archie-snow"
+    menus:
+      - name: "Home"
+        url: "/"
+      - name: "All post"
+        url: "/posts/index.html"
+      - name: "About"
+        url: "/about"
+      - name: "Tags"
+        url: "/tags/index.html"
+    mode: "toggle"
+    copyright: "honmaple"
   feed:
     limit: 10
   webassets:

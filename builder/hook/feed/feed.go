@@ -49,10 +49,10 @@ func (f *Feed) write(pages page.Pages, output string) {
 			Title:       page.Title,
 			Description: page.Summary,
 			Link: &feeds.Link{
-				Href: page.URL,
+				Href: page.Permalink,
 			},
 			Author: &feeds.Author{
-				Name:  strings.Join(page.Authors, ","),
+				Name:  strings.Join(page.Meta["authors"].([]string), ","),
 				Email: "",
 			},
 			Created: page.Date,

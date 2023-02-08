@@ -3,7 +3,7 @@
   <ul class="page-list">
     {% for page in paginator.List %}
       <li>
-        <h2><a href="{{ page.URL | absURL }}">{{ page.Title }}</a></h2>
+        <h2><a href="{{ page.Path | absURL }}">{{ page.Title }}</a></h2>
         {% include "post.info.html" %}
         <hr />
         <div>

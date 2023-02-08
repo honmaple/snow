@@ -17,7 +17,7 @@ import (
 
 	_ "github.com/honmaple/snow/builder/hook/encrypt"
 	_ "github.com/honmaple/snow/builder/hook/feed"
-	_ "github.com/honmaple/snow/builder/hook/pelican"
+	_ "github.com/honmaple/snow/builder/hook/shortcode"
 	// _ "github.com/honmaple/snow/builder/hook/webassets"
 )
 
@@ -34,7 +34,7 @@ var (
 			Name:    "mode",
 			Aliases: []string{"m"},
 			Value:   "",
-			Usage:   "Build site with mode",
+			Usage:   "Build site with special mode",
 		},
 		&cli.StringFlag{
 			Name:    "output",
@@ -43,10 +43,16 @@ var (
 			Usage:   "Build output content",
 		},
 		&cli.BoolFlag{
+			Name:    "clean",
+			Aliases: []string{"C"},
+			Value:   false,
+			Usage:   "Clean output content",
+		},
+		&cli.BoolFlag{
 			Name:    "debug",
 			Aliases: []string{"D"},
 			Value:   false,
-			Usage:   "debug mode",
+			Usage:   "Enable debug mode",
 		},
 	}
 )
@@ -123,13 +129,17 @@ func initAction(clx *cli.Context) error {
 		}
 		defer file.Close()
 
-		file.WriteString(fmt.Sprintf(`title: First Page
-author: snow
+		file.WriteString(fmt.Sprintf(`---
+title: First Page
 date: %s
-category: Linux
-tags: linux,emacs
+categories:
+ - Linux/Emacs
+authors:
+ - snow
+tags: [linux,emacs,snow]
+---
 
-# Hello World`, time.Now().Format("2006-01-02 15:04:05")))
+# Hello Snow`, time.Now().Format("2006-01-02 15:04:05")))
 	}
 
 	c.SetConfigFile(filepath.Join(name, "config.yaml"))

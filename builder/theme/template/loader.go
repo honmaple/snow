@@ -1,4 +1,4 @@
-package pongo2
+package template
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 )
 
 type loader struct {
@@ -17,7 +18,8 @@ func (l *loader) Abs(base, name string) string {
 	if filepath.IsAbs(name) {
 		return name
 	}
-	return filepath.Join(filepath.Dir(base), name)
+	return name
+	// return filepath.Join(filepath.Dir(base), name)
 }
 
 func (l *loader) Get(path string) (io.Reader, error) {
@@ -34,6 +36,12 @@ func (l *loader) GetBytes(path string) ([]byte, error) {
 		if err == nil {
 			return buf, nil
 		}
+	}
+
+	if strings.HasPrefix(path, "_internal") {
+		path = filepath.Join("_internal/templates", path[9:])
+	} else {
+		path = filepath.Join("templates", path)
 	}
 
 	f, err := l.theme.Open(path)

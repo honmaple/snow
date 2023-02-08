@@ -4,7 +4,6 @@
   <li><b>Modified:</b>   {{ page.Modified | time:"2006-01-02" }}</li>
 </ul>
 <ul class="info">
-  <li><b>Categories:</b> {{ page.Categories | join:"," }}</li>
-  <li><b>Tags:</b>       {{ page.Tags | join:"," }}</li>
-  {% if page.Authors %}<li><b>Authors:</b>    {{ page.Authors | join:"," }}</li>{% endif %}
+  <li><b>Categories:</b> {{ page.Meta.categories | join:"," }}</li>
+  <li><b>Tags:</b>       {{ page.Meta["tags"] | join:"," }}</li>
 </ul>

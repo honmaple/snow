@@ -52,15 +52,15 @@ func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
 		if !metaEnd {
 			if match := ORGMODE_META.FindStringSubmatch(line); match != nil {
 				if match[1] == "PROPERTY" {
-					m := strings.SplitN(match[3], " ", 2)
-					k := strings.ToLower(m[0])
+					s := strings.SplitN(match[3], " ", 2)
+					k := strings.ToLower(s[0])
 					v := ""
-					if len(m) > 1 {
-						v = strings.TrimSpace(m[1])
+					if len(s) > 1 {
+						v = strings.TrimSpace(s[1])
 					}
-					meta.Set(k, v)
+					meta.Set(m.conf, k, v)
 				} else {
-					meta.Set(strings.ToLower(match[1]), strings.TrimSpace(match[3]))
+					meta.Set(m.conf, strings.ToLower(match[1]), strings.TrimSpace(match[3]))
 				}
 				continue
 			}

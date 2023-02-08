@@ -1,11 +1,13 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 func CopyFile(src, dst string) (written int64, err error) {
@@ -53,25 +55,26 @@ func FileExists(path string) bool {
 	return false
 }
 
-func ListFiles(path string) ([]string, error) {
-	files := make([]string, 0)
-	rd, err := ioutil.ReadDir(path)
+func FileList(path string) ([]string, error) {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	for _, f := range rd {
-		filename := filepath.Join(path, f.Name())
-		if !f.IsDir() {
-			files = append(files, filename)
-			continue
-		}
-		fs, err := ListFiles(filename)
-		if err != nil {
-			return nil, err
-		}
-		files = append(files, fs...)
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		return nil, err
 	}
-	return files, nil
+	if !stat.IsDir() {
+		return nil, errors.New("is not dir")
+	}
+	names, err := f.Readdirnames(-1)
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(names)
+	return names, nil
 }
 
 func FileBaseName(file string) string {

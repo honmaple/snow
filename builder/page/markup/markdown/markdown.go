@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	// "github.com/honmaple/snow/builder/hook/markup"
 	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/config"
 	"github.com/russross/blackfriday"
@@ -49,12 +48,13 @@ func (m *markdown) Read(r io.Reader) (page.Meta, error) {
 			if err := yaml.Unmarshal(b.Bytes(), &meta); err != nil {
 				return nil, err
 			}
+			meta.Fix()
 			isYAML = false
 			continue
 		}
 		if !metaEnd {
 			if match := MAKRDOWN_META.FindStringSubmatch(line); match != nil {
-				meta.Set(strings.ToLower(match[1]), strings.TrimSpace(match[3]))
+				meta.Set(m.conf, strings.ToLower(match[1]), strings.TrimSpace(match[3]))
 				continue
 			}
 		}

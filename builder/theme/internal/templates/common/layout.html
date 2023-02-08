@@ -20,10 +20,9 @@
         </div>
         <div class="menu">
           <div><a href="{{ site.url }}">Index</a></div>
-          <div><a href="{{ site.url }}/categories/index.html">Categories</a></div>
-          <div><a href="{{ site.url }}/authors/index.html">Authors</a></div>
-          <div><a href="{{ site.url }}/tags/index.html">Tags</a></div>
-          <div><a href="{{ site.url }}/archives/index.html">Archives</a></div>
+          {% for taxonomy in taxonomies %}
+            <div><a href="{{ site.url }}/{{ taxonomy.Name }}/index.html">{{ taxonomy.Name }}</a></div>
+          {% endfor %}
         </div>
         {% block content %}{% endblock %}
       </div>

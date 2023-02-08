@@ -1,139 +1,135 @@
 package page
 
 import (
-	"fmt"
 	"strings"
+
+	"fmt"
+
+	"github.com/honmaple/snow/builder/theme/template"
+	"github.com/honmaple/snow/utils"
 )
 
-const (
-	lookupTemplate   = "page_meta.%s.lookup"
-	outputTemplate   = "page_meta.%s.output"
-	filterTemplate   = "page_meta.%s.filter"
-	orderbyTemplate  = "page_meta.%s.orderby"
-	groupbyTemplate  = "page_meta.%s.groupby"
-	paginateTemplate = "page_meta.%s.paginate"
-)
-
-func (b *Builder) Write(pages Pages, labels Labels) error {
-	var (
-		types = make(map[string]bool)
-		metas = b.conf.GetStringMap("page_meta")
-	)
-	for _, label := range labels {
-		types[label.Name] = true
-		// 如果是已知类型，只写入详情页, 列表页由其他模板提供
-		if err := b.write(label.Name, label.List); err != nil {
-			return err
-		}
-	}
-
-	// 写入列表页或者归档页
-	for name := range metas {
-		if types[name] {
-			continue
-		}
-		if err := b.writeSingle(name, pages); err != nil {
-			return err
-		}
-		if err := b.writeList(name, pages); err != nil {
-			return err
-		}
-	}
-	return nil
+func (b *Builder) getTaxonomyURL(kind string, name string) string {
+	conf := b.newTaxonomyConfig(kind)
+	return b.conf.GetRelURL(utils.StringReplace(conf.TermPath, map[string]string{"{taxonomy}": kind, "{slug}": name}))
 }
 
-func (b *Builder) list(key string, pages Pages) Pages {
-	if k := fmt.Sprintf(filterTemplate, key); b.conf.IsSet(k) {
-		pages = pages.Filter(b.conf.Get(k))
-	}
-
-	if k := fmt.Sprintf(orderbyTemplate, key); b.conf.IsSet(k) {
-		pages = pages.OrderBy(b.conf.GetString(k))
-	}
-	return pages
+func (b *Builder) getSectionURL(name string) string {
+	conf := b.newSectionConfig(name, false)
+	return b.conf.GetRelURL(utils.StringReplace(conf.Path, map[string]string{"{section}": name}))
 }
 
-func (b *Builder) lookup(key string) ([]string, string) {
-	output := b.conf.GetString(fmt.Sprintf(outputTemplate, key))
-	if output == "" {
-		return nil, ""
+func (b *Builder) write(tpl template.Writer, path string, vars map[string]interface{}) {
+	vars["sections"] = b.sections
+	vars["taxonomies"] = b.taxonomies
+	vars["get_section_url"] = b.getSectionURL
+	vars["get_taxonomy_url"] = b.getTaxonomyURL
+	vars["current_url"] = b.conf.GetURL(path)
+	if err := tpl.Write(path, vars); err != nil {
+		b.conf.Log.Error(err.Error())
 	}
-
-	layouts := b.conf.GetStringSlice(fmt.Sprintf(lookupTemplate, key))
-	return layouts, output
 }
 
-func (b *Builder) write(key string, pages Pages) error {
-	if layouts, output := b.lookup(key); len(layouts) > 0 && output != "" {
-		for _, page := range b.list(key, pages) {
-			if err := b.theme.WriteTemplate(layouts, page.URL, map[string]interface{}{
-				"page": b.hooks.BeforePageWrite(page),
-			}); err != nil {
-				return err
+func (b *Builder) writeSections(sections Sections) {
+	for _, section := range sections {
+		name := section.Name()
+		conf := section.Config
+		if conf.Path != "" {
+			tpl, ok := b.theme.LookupTemplate(conf.Template)
+			if ok {
+				pors := section.Pages.Paginator(conf.Paginate, conf.Path, map[string]string{"{slug}": strings.ToLower(name)})
+				for _, por := range pors {
+					b.write(tpl, por.URL, map[string]interface{}{
+						"section":   section,
+						"paginator": por,
+					})
+				}
 			}
 		}
+		if conf.PagePath == "" {
+			continue
+		}
+		tpl, ok := b.theme.LookupTemplate(conf.PageTemplate)
+		if !ok {
+			continue
+		}
+		for _, page := range section.Pages {
+			// posts/first-page.html
+			aliases := append(page.Aliases, page.Path)
+			for _, aliase := range aliases {
+				b.write(tpl, aliase, map[string]interface{}{
+					"page": page,
+				})
+			}
+		}
+
+		b.writeSections(section.Children)
 	}
-	return nil
 }
 
-func (b *Builder) writeSingle(key string, pages Pages) error {
-	if layouts, output := b.lookup(key); len(layouts) > 0 && output != "" {
-		pages = b.list(key, pages)
-
-		vars := map[string]interface{}{
-			"pages": pages,
+// 写入分类系统, @templates/{name}/list.html, single.html
+func (b *Builder) writeTaxonomies(taxonomies Taxonomies) {
+	for _, taxonomy := range taxonomies {
+		conf := taxonomy.Config
+		if tpl, ok := b.theme.LookupTemplate(conf.Template, "taxonomy.html", "_default/list.html"); ok {
+			// example.com/tags/index.html
+			b.write(tpl, conf.Path, map[string]interface{}{
+				"taxonomy": taxonomy,
+				"terms":    taxonomy.Terms,
+			})
 		}
-		if by := b.conf.GetString(fmt.Sprintf(groupbyTemplate, key)); by != "" {
-			vars["labels"] = pages.GroupBy(by)
-		}
-		return b.theme.WriteTemplate(layouts, output, vars)
+		b.writeTaxonomyTerms(taxonomy.Terms, conf)
 	}
-	return nil
 }
 
-func (b *Builder) writeList(key string, pages Pages) error {
-	key = fmt.Sprintf("%s.list", key)
-	if layouts, output := b.lookup(key); len(layouts) > 0 && output != "" {
-		paginate := b.conf.GetInt("page_paginate")
-		if k := fmt.Sprintf(paginateTemplate, key); b.conf.IsSet(k) {
-			paginate = b.conf.GetInt(k)
-		}
-
-		pages = b.list(key, pages)
-
-		var labels Labels
-		if by := b.conf.GetString(fmt.Sprintf(groupbyTemplate, key)); by != "" {
-			labels = pages.GroupBy(by)
-		} else {
-			labels = Labels{&Label{List: pages}}
-		}
-
-		labels = b.hooks.BeforeLabelsWrite(labels)
-		if err := b.writeLabels(labels, paginate, layouts, output); err != nil {
-			return err
-		}
+func (b *Builder) writeTaxonomyTerms(terms TaxonomyTerms, conf TaxonomyConfig) {
+	tpl, ok := b.theme.LookupTemplate(conf.TermTemplate, "taxonomy.terms.html", "_default/single.html")
+	if !ok {
+		return
 	}
-	return nil
-}
-
-func (b *Builder) writeLabels(labels Labels, paginate int, layouts []string, output string) error {
-	for _, label := range labels {
-		pors := label.List.Paginator(paginate, strings.ToLower(label.Name), output)
+	for _, term := range terms {
+		pors := term.List.
+			Filter(conf.TermFilter).
+			OrderBy(conf.TermOrderby).
+			Paginator(conf.TermPaginate, conf.TermPath, map[string]string{"{slug}": strings.ToLower(term.Name)})
 		for _, por := range pors {
-			if err := b.theme.WriteTemplate(layouts, por.URL, map[string]interface{}{
-				"slug":      label.Name,
-				"pages":     por.List,
+			b.write(tpl, por.URL, map[string]interface{}{
+				"term":      term,
+				"slug":      term.Name,
 				"paginator": por,
-			}); err != nil {
-				return err
-			}
+			})
 		}
-		if len(label.Children) == 0 {
+		b.writeTaxonomyTerms(term.Children, conf)
+	}
+}
+
+func (b *Builder) writeCustoms() {
+	meta := b.conf.GetStringMap("sections")
+	for name := range meta {
+		if !b.conf.GetBool(fmt.Sprintf("sections.%s.custom", name)) {
 			continue
 		}
-		if err := b.writeLabels(label.Children, paginate, layouts, output); err != nil {
-			return err
+		conf := b.newSectionConfig(name, true)
+		if conf.Path == "" {
+			continue
+		}
+		tpl, ok := b.theme.LookupTemplate(conf.Template)
+		if !ok {
+			return
+		}
+		pages := b.pages.Filter(conf.Filter).OrderBy(conf.Orderby)
+		for _, por := range pages.Paginator(conf.Paginate, conf.Path, nil) {
+			b.write(tpl, por.URL, map[string]interface{}{
+				"pages":     pages,
+				"paginator": por,
+			})
 		}
 	}
+}
+
+func (b *Builder) Write() error {
+	b.writeSections(b.sections)
+	b.writeTaxonomies(b.taxonomies)
+	b.writeCustoms()
 	return nil
 }

@@ -1,0 +1,18 @@
+{% extends "common/layout.html" %}
+{% block content %}
+  <ul class="page-list">
+    {% for page in section.Pages %}
+      <li>
+        <h2><a href="{{ page.Path | absURL }}">{{ page.Title }}</a></h2>
+        {% include "post.info.html" %}
+        <hr />
+        <div>
+          {{ page.Content | safe }}
+        </div>
+      </li>
+    {% endfor %}
+    {% if section.Pages | length == 0 %}
+      <li>No Posts.</li>
+    {% endif %}
+  </ul>
+{% endblock %}

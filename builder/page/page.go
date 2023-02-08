@@ -2,152 +2,384 @@ package page
 
 import (
 	"bytes"
-	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
-	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
 	"github.com/honmaple/snow/utils"
 )
 
+type Meta map[string]interface{}
+
+func (m Meta) Fix() {
+	for k, v := range m {
+		switch value := v.(type) {
+		case []interface{}:
+			newvalue := make([]string, len(value))
+			for i, v := range value {
+				newvalue[i] = v.(string)
+			}
+			m[k] = newvalue
+		}
+	}
+}
+
+func (m Meta) Get(k string) interface{} {
+	return m[k]
+}
+
+func (m Meta) Set(conf config.Config, k, v string) {
+	switch k {
+	case "date", "modified":
+		if t, err := utils.ParseTime(v); err == nil {
+			m[k] = t
+		}
+	default:
+		if a, ok := m[k]; ok {
+			switch b := a.(type) {
+			case string:
+				m[k] = []string{b, strings.TrimSpace(v)}
+			case []string:
+				m[k] = append(b, strings.TrimSpace(v))
+			}
+		} else if conf.IsSet(fmt.Sprintf("taxonomies.%s", k)) {
+			m[k] = utils.SplitTrim(v, ",")
+		} else {
+			m[k] = strings.TrimSpace(v)
+		}
+	}
+}
+
 type (
-	Builder struct {
-		conf    config.Config
-		theme   theme.Theme
-		hooks   Hooks
-		readers map[string]Reader
+	Page struct {
+		File     string
+		Meta     Meta
+		Type     string
+		Date     time.Time
+		Modified time.Time
+
+		Path      string
+		Permalink string
+		Aliases   []string
+
+		Title   string
+		Summary string
+		Content string
+
+		Prev       *Page
+		Next       *Page
+		PrevInType *Page
+		NextInType *Page
 	}
-	Reader interface {
-		Read(io.Reader) (Meta, error)
-	}
+	Pages []*Page
 )
 
-func (b *Builder) parse(file string, typ string, meta Meta) *Page {
-	page := meta.Page(file, typ)
-	if page.URL == "" {
-		output := b.conf.GetString(fmt.Sprintf(outputTemplate, page.Type))
-		if output == "" {
-			output = fmt.Sprintf("%s/{slug}.html", page.Type)
+func (page Page) Copy() Page {
+	return Page{}
+}
+
+func (page Page) Get(key string) string {
+	if v, ok := page.Meta[key]; ok {
+		return v.(string)
+	}
+	return ""
+}
+
+func (page Page) GetSlice(key string) []string {
+	if v, ok := page.Meta[key]; ok {
+		return v.([]string)
+	}
+	return nil
+}
+
+func (page Page) HasPrev() bool {
+	return page.Prev != nil
+}
+
+func (page Page) HasNext() bool {
+	return page.Next != nil
+}
+
+func (page Page) HasPrevInType() bool {
+	return page.PrevInType != nil
+}
+
+func (page Page) HasNextInType() bool {
+	return page.NextInType != nil
+}
+
+func (pages Pages) Filter(filter interface{}) Pages {
+	if filter == nil || filter == "" {
+		return pages
+	}
+	matchList := func(value string) func(...string) bool {
+		include := make(map[string]bool)
+		exclude := make(map[string]bool)
+		for _, val := range strings.Split(value, ",") {
+			if strings.HasPrefix(val, "-") {
+				exclude[val[1:]] = true
+			} else {
+				include[val] = true
+			}
 		}
+		return func(values ...string) bool {
+			for _, val := range values {
+				if include[val] {
+					return true
+				}
+				if exclude[val] {
+					return false
+				}
+			}
+			if len(include) > 0 {
+				return false
+			}
+			return true
+		}
+	}
+
+	npages := make(Pages, 0)
+	switch fs := filter.(type) {
+	case string:
+		matcher := matchList(fs)
+		for _, page := range pages {
+			if !matcher(page.Type) {
+				continue
+			}
+			npages = append(npages, page)
+		}
+	case map[string]interface{}:
+		matchers := make([]func(*Page) bool, 0)
+		for k, v := range fs {
+			newk := k
+			newv := v
+			switch k {
+			case "type":
+				m := matchList(newv.(string))
+				matcher := func(page *Page) bool {
+					return m(page.Type)
+				}
+				matchers = append(matchers, matcher)
+			default:
+				matcher := func(page *Page) bool {
+					mv, ok := page.Meta[newk]
+					if !ok {
+						return true
+					}
+					switch value := mv.(type) {
+					case []string:
+						m := matchList(newv.(string))
+						return m(value...)
+					// case []interface{}:
+					//	m := matchList(newv.(string))
+					//	newvalue := make([]string, len(value))
+					//	for i, v := range value {
+					//		newvalue[i] = v.(string)
+					//	}
+					//	return m(newvalue...)
+					default:
+						return utils.Compare(value, newv) >= 0
+					}
+				}
+				matchers = append(matchers, matcher)
+			}
+		}
+		for _, page := range pages {
+			matched := true
+			for _, m := range matchers {
+				if !m(page) {
+					matched = false
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+			npages = append(npages, page)
+		}
+	default:
+		npages = pages
+	}
+	return npages
+}
+
+func (pages Pages) OrderBy(key string) Pages {
+	if key == "" {
+		return pages
+	}
+	sortfs := make([]func(int, int) int, 0)
+	for _, k := range strings.Split(key, ",") {
+		var (
+			sortf   func(int, int) int
+			reverse bool
+		)
+		if strings.HasSuffix(strings.ToUpper(k), " DESC") {
+			k = k[:len(k)-5]
+			reverse = true
+		}
+		switch k {
+		case "title":
+			sortf = func(i, j int) int {
+				return strings.Compare(pages[i].Title, pages[j].Title)
+			}
+		case "date":
+			sortf = func(i, j int) int {
+				return utils.Compare(pages[i].Date, pages[j].Date)
+			}
+		case "modified":
+			sortf = func(i, j int) int {
+				return utils.Compare(pages[i].Modified, pages[j].Modified)
+			}
+		case "type":
+			sortf = func(i, j int) int {
+				return strings.Compare(pages[i].Type, pages[j].Type)
+			}
+		default:
+			sortf = func(i, j int) int {
+				return utils.Compare(pages[i].Meta[k], pages[j].Meta[k])
+			}
+		}
+		if reverse {
+			sortfs = append(sortfs, func(i, j int) int {
+				return 0 - sortf(i, j)
+			})
+		} else {
+			sortfs = append(sortfs, sortf)
+		}
+	}
+	sort.SliceStable(pages, func(i, j int) bool {
+		var result int
+		for _, f := range sortfs {
+			result = f(i, j)
+			if result != 0 {
+				return result > 0
+			}
+		}
+		return result >= 0
+	})
+	return pages
+}
+
+func (pages Pages) GroupBy(key string) TaxonomyTerms {
+	var groupf func(*Page) []string
+
+	terms := make(TaxonomyTerms, 0)
+	termm := make(map[string]*TaxonomyTerm)
+
+	if strings.HasPrefix(key, "date:") {
+		format := key[5:]
+		groupf = func(page *Page) []string {
+			return []string{page.Date.Format(format)}
+		}
+	} else {
+		groupf = func(page *Page) []string {
+			value := page.Meta[key]
+			switch v := value.(type) {
+			case string:
+				return []string{v}
+			case []string:
+				return v
+			default:
+				return nil
+			}
+		}
+	}
+	for _, page := range pages {
+		for _, name := range groupf(page) {
+			var parent *TaxonomyTerm
+
+			for _, subname := range utils.SplitPrefix(name, "/") {
+				term, ok := termm[subname]
+				if !ok {
+					term = &TaxonomyTerm{Name: subname}
+					if parent == nil {
+						terms = append(terms, term)
+					}
+				}
+				term.List = append(term.List, page)
+				termm[subname] = term
+				if parent != nil {
+					if !parent.Children.Has(subname) {
+						parent.Children = append(parent.Children, term)
+					}
+				}
+				parent = term
+			}
+		}
+	}
+	return terms
+}
+
+func (b *Builder) readFile(file string) (Meta, error) {
+	reader, ok := b.readers[filepath.Ext(file)]
+	if !ok {
+		return nil, fmt.Errorf("no reader for %s", file)
+	}
+	buf, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+	return reader.Read(bytes.NewBuffer(buf))
+}
+
+func (b *Builder) loadPage(section *Section, file string) (*Page, error) {
+	meta, err := b.readFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	page := &Page{File: file, Type: section.Name(), Meta: meta, Date: now, Modified: now}
+	for k, v := range meta {
+		if v == "" {
+			continue
+		}
+		if vs, ok := v.([]interface{}); ok {
+			res := make([]string, len(vs))
+			for i, vv := range vs {
+				res[i] = vv.(string)
+			}
+			v = res
+		}
+		switch strings.ToLower(k) {
+		case "type":
+			page.Type = v.(string)
+		case "title":
+			page.Title = v.(string)
+		case "date":
+			page.Date = v.(time.Time)
+		case "modified":
+			page.Modified = v.(time.Time)
+		case "path", "save_as":
+			page.Path = v.(string)
+		case "aliases":
+			page.Aliases = v.([]string)
+		case "summary":
+			page.Summary = v.(string)
+		case "content":
+			page.Content = v.(string)
+		}
+	}
+	if page.Path == "" {
 		vars := map[string]string{
 			"{date:%Y}":  page.Date.Format("2006"),
 			"{date:%m}":  page.Date.Format("01"),
 			"{date:%d}":  page.Date.Format("02"),
 			"{date:%H}":  page.Date.Format("15"),
 			"{filename}": utils.FileBaseName(file),
+			"{section}":  page.Type,
 			"{slug}":     page.Title,
 		}
-		if page.Slug != "" {
-			vars["{slug}"] = page.Slug
+		if slug, ok := meta["slug"]; ok && slug != "" {
+			vars["{slug}"] = slug.(string)
 		}
-		page.URL = utils.StringReplace(output, vars)
+		page.Path = utils.StringReplace(section.Config.PagePath, vars)
 	}
-	return b.hooks.AfterPageParse(page)
-}
-
-func (b *Builder) read(dirs []string) (Pages, error) {
-	pages := make(Pages, 0)
-	for _, d := range dirs {
-		dinfo, err := os.Stat(d)
-		if err != nil {
-			return nil, err
-		}
-		err = filepath.Walk(d, func(path string, info os.FileInfo, err error) error {
-			if err != nil || info.IsDir() {
-				return err
-			}
-			reader, ok := b.readers[filepath.Ext(path)]
-			if !ok {
-				return fmt.Errorf("no reader for %s", path)
-			}
-			buf, err := ioutil.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			meta, err := reader.Read(bytes.NewBuffer(buf))
-			if err != nil {
-				return err
-			}
-			if meta != nil {
-				pages = append(pages, b.parse(info.Name(), dinfo.Name(), meta))
-			}
-			return nil
-		})
-		if err != nil {
-			b.conf.Log.Errorln(err.Error())
-		}
-	}
-	return pages, nil
-}
-
-func (b *Builder) Dirs() []string {
-	root := b.conf.GetString("content_dir")
-
-	pageDirs := b.conf.GetStringSlice("page_dirs")
-	if len(pageDirs) > 0 {
-		dirs := make([]string, len(pageDirs))
-		for i, dir := range pageDirs {
-			dirs[i] = filepath.Join(root, dir)
-		}
-		return dirs
-	}
-	subDirs, err := ioutil.ReadDir(root)
-	if err != nil {
-		return nil
-	}
-	dirs := make([]string, len(subDirs))
-	for i, dir := range subDirs {
-		dirs[i] = filepath.Join(root, dir.Name())
-	}
-	return dirs
-}
-
-func (b *Builder) Build(ctx context.Context) error {
-	dirs := b.Dirs()
-	if len(dirs) == 0 {
-		return nil
-	}
-	now := time.Now()
-	pages, err := b.read(dirs)
-	if err != nil {
-		return err
-	}
-	pages = b.hooks.BeforePagesWrite(pages)
-
-	labels := pages.GroupBy("type")
-	defer func() {
-		ls := make([]string, len(labels))
-		for i, label := range labels {
-			ls[i] = fmt.Sprintf("%d %s", len(label.List), label.Name)
-		}
-		b.conf.Log.Infoln("Done: Processed", strings.Join(ls, ", "), "in", time.Now().Sub(now))
-	}()
-	return b.Write(pages, labels)
-}
-
-func NewBuilder(conf config.Config, theme theme.Theme, hooks Hooks) *Builder {
-	readers := make(map[string]Reader)
-	for ext, c := range _readers {
-		readers[ext] = c(conf)
-	}
-	return &Builder{
-		conf:    conf,
-		theme:   theme,
-		hooks:   hooks,
-		readers: readers,
-	}
-}
-
-type creator func(config.Config) Reader
-
-var _readers = make(map[string]creator)
-
-func Register(ext string, c creator) {
-	_readers[ext] = c
+	page.Path = b.conf.GetRelURL(page.Path)
+	page.Permalink = b.conf.GetURL(page.Path)
+	return b.hooks.AfterPageParse(page), nil
 }

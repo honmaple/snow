@@ -41,233 +41,194 @@
     #+begin_example
       └──╼ cd example.com
       └──╼ ../snow server -D
-      DEBU Copying static/css/main.css to output/static/css/main.css
-      INFO Done: Processed 1 static files in 246.352µs
-      DEBU Writing output/posts/2022/11/First Page.html
+      DEBU Copying @theme/static/css/main.css to output/static/css/main.css
+      INFO Done: Static Processed 1 static files in 331.023µs
+      DEBU Writing output/authors/index.html
+      DEBU Writing output/authors/snow/index.html
       DEBU Writing output/tags/index.html
       DEBU Writing output/tags/linux/index.html
       DEBU Writing output/tags/emacs/index.html
-      DEBU Writing output/index.html
-      DEBU Writing output/archives/index.html
+      DEBU Writing output/tags/snow/index.html
       DEBU Writing output/categories/index.html
       DEBU Writing output/categories/linux/index.html
-      DEBU Writing output/authors/index.html
-      INFO Done: Processed 1 pages in 11.742609ms
+      DEBU Writing output/categories/linux/emacs/index.html
+      DEBU Writing output/index.html
+      INFO Done: Section Processed 1 posts in 4.381323ms
+      INFO Done: Taxonomy Processed 1 authors, 3 tags, 1 categories in 4.391732ms
       INFO Listen 127.0.0.1:8000 ...
     #+end_example
 
-** 配置说明
-*** 文章列表
-   文章列表配置:
-   #+begin_src yaml
-     content_dir: "content"
-     page_dirs:
-       - "drafts"
-       - "posts"
-     page_meta:
-       index:
-         list.lookup:
-           - "index.html"
-         list.output: "index{number}.html"
-     page_filter: "-drafts"
-     page_orderby: "date desc,title"
-   #+end_src
-   - *content_dir*: 文章目录所在, 其中该目录下应该包括一系列子目录，这些子目录的名称对应为 *文章的类型*, 比如 *content/drafts/* 目录下的文章类型为 *drafts*, 当然也可以直接在文章文件头添加 =type: drafts=
-   - *page_dirs*: 所有类型的文章列表，当 *page_dirs* 为空时，snow将会搜索 *content* 目录下的所有子目录
-   - *page_meta*: 文章页面元数据，所有页面的生成都和该配置有关，具体见下文
-   - *page_filter*: 全局的文章列表筛选，格式见下文
-   - *page_orderby*: 全局的文章列表排序
-   - *page_paginate*: 全局的文章列表分页大小
-*** 静态文件
-   静态文件配置:
-   #+begin_src yaml
-     static_exts:
-       - ".js"
-       - ".css"
-     static_dirs:
-       - "static/"
-       - "static/css/"
-     static_meta:
-       static/CNAME: "/"
-       static/css/main.css: "static/css/"
-       theme/static: "static/"
-     output_dir: "output"
-   #+end_src
-   - *static_dirs*: 静态文件目录, 该目录区分主题的静态文件static
-   - *static_exts*: 静态文件扩展，不配置将会使用静态文件目录下的所有文件
-   - *static_meta*: 静态文件元数据，用于指定静态文件或静态目录的保存目录, 当有多条路径时，长度优先
-     - */*: 保存到 *output*
-     - *theme/static*: 指定主题的静态文件保存目录
+** 内容
+*** Section
+    #+begin_example
+      content/
+      ├── drafts            // <- http://127.0.0.1:8000/drafts/index.html
+      │   └── draft1.org    // <- http://127.0.0.1:8000/drafts/index.html
+      ├── pages             // no url, because sections.pages.path is ""
+      │   └── 404.org       // <- http://127.0.0.1:8000/404.html
+      └── posts             // <- http://127.0.0.1:8000/posts/index.html
+          ├── post1.org     // <- http://127.0.0.1:8000/posts/2022/02/post1.html
+          └── subposts      // <- http://127.0.0.1:8000/posts/subposts/index.html
+              └── post2.org // <- http://127.0.0.1:8000/posts/2023/02/post2.html
+    #+end_example
+**** 配置
+     #+begin_src yaml
+       sections:
+         _default:
+           # 页面中文章的默认排序, 多字段使用逗号分隔
+           orderby: "date desc"
+           # 文章筛选，主要用于分页前
+           filter: ""
+           # 页面中文章默认分页, path必须使用{number}变量, 0表示不分页
+           paginate: 10
+           # 生成路径, 为空表示禁止生成相关页面
+           path: "{section}/index{number}.html"
+           # 使用的模版
+           template: "section.html"
+           # 当前section下所有文章生成路径
+           page_path: "{section}/{slug}/index.html"
+           # 文章使用的模版
+           page_template: "post.html"
+         _index:
+           # 自定义页面必须指定为true
+           custom: true
+           path: "index{number}.html"
+           paginate: 20
+           page_path: "posts/{date:%Y}/{date:%m}/{slug}.html"
+         pages:
+           path: ""
+         pages/about:
+           # 自定义pages/about下的文章生成路径，同时继承pages.path不会生成所有页面
+           page_path: "{slug}/index.html"
+     #+end_src
+*** Page
+**** 配置
+     #+begin_src yaml
+       # 文章目录所在, 其中该目录下应该包括一系列子目录，这些子目录的名称对应为 *文章的类型*, 比如 *content/drafts/* 目录下的文章类型为 *drafts*, 当然也可以直接在文章文件头添加 =type: drafts=
+       content_dir: "content"
+       # 所有类型的文章列表，当 *page_dirs* 为空时，snow将会搜索 *content* 目录下的所有子目录
+       page_dirs:
+         - "drafts"
+         - "posts"
+     #+end_src
+**** 路径变量
+     |------------+----------------------|
+     | 变量       | 描述                 |
+     |------------+----------------------|
+     | {date:%Y}  | 创建文章的年份       |
+     | {date:%m}  | 创建文章的月份       |
+     | {date:%d}  | 创建文章的日期       |
+     | {date:%H}  | 创建文章的小时       |
+     | {slug}     | 文章标题或自定义slug |
+     | {filename} | 文件名称(不带后缀名) |
+
+**** 模版变量
+     |----------------------+----------------------|
+     | 变量                 | 描述                 |
+     |----------------------+----------------------|
+     | page                 |                      |
+     | page.Title           | 页面标题             |
+     | page.URL             | 页面链接             |
+     | page.Categories      | 页面分类             |
+     | page.Tags            | 页面标签             |
+     | page.Authors         | 页面作者             |
+     | page.Summary         | 页面简介             |
+     | page.Content         | 页面内容             |
+     | page.Meta.xxx        | 自定义的元数据       |
+     | page.Prev            | 上一篇               |
+     | page.Next            | 下一篇               |
+     | page.HasPrev()       | 是否有上一篇         |
+     | page.HasNext()       | 是否有下一篇         |
+     | page.PrevInType      | 同一类型上一篇       |
+     | page.NextInType      | 同一类型下一篇       |
+     | page.HasPrevInType() | 是否有同一类型上一篇 |
+     | page.HasNextInType() | 是否有同一类型下一篇 |
+
+*** Taxonomy
+**** 配置
+     #+begin_src yaml
+       taxonomies:
+         _default:
+           path: "{taxonomy}/index.html"
+           template: "{taxonomy}/list.html"
+           term_path: "{taxonomy}/{slug}/index.html"
+           term_template: "{taxonomy}/single.html"
+         categories:
+         authors:
+         tags:
+     #+end_src
+*** Archive
+*** Pagination
+**** 变量
+     |---------------------+----------------|
+     | 变量                | 描述           |
+     |---------------------+----------------|
+     | paginator           |                |
+     | paginator.URL       | 分页链接       |
+     | paginator.PageNum   | 当前页         |
+     | paginator.Total     | 总页数         |
+     | paginator.HasPrev() | 是否有上一页   |
+     | paginator.Prev      | 上一页         |
+     | paginator.Prev.URL  | 上一页链接     |
+     | paginator.HasNext() | 是否有下一页   |
+     | paginator.Next      | 下一页         |
+     | paginator.Next.URL  | 下一页链接     |
+     | paginator.All       | 所有页         |
+     | paginator.List      | 当前页文章列表 |
+     | slug                | 分组key        |
+
+*** Static
+    静态文件配置:
+    #+begin_src yaml
+      # 静态文件目录, 该目录区分主题的静态文件static
+      static_dirs:
+        - "static/"
+        # 静态文件扩展，不配置将会使用静态文件目录下的所有文件
+        static_exts:
+          - ".js"
+          - ".css"
+          # 静态文件路径，用于指定静态文件或静态目录的保存目录, 当有多条路径时，长度优先.
+          static_paths:
+            static/CNAME: "/"
+            static/css/main.css: "static/css/"
+            # 以@theme开头代表主题中的静态文件，即{theme.name}/static
+            "@theme/static": "static/"
+    #+end_src
+
 *** 主题
-   主题配置:
-   #+begin_src yaml
-     theme:
-       path: "themes/test-theme"
-       engine: "pongo2"
-       override: "layouts"
-   #+end_src
-   - *path*: 主题目录, 内置主题: *simple*
-   - *engine*: 主题模版引擎, 当前只支持 *pongo2*
-   - *override*: 主题模版覆盖目录, 比如一个存在的主题可以增加同名的文件到 *override* 配置的目录, snow将会优先使用该文件
-   - *主题目录结构*:
-     其中 *templates* 和 *static* 名称不可修改
-     #+begin_example
-       simple/
-       ├── templates
-       │   ├── post.html
-       │   ├── index.html
-       │   ├── archives.html
-       ├── static
-       │   ├── main.css
-     #+end_example
-
-*** 动态页
-   在snow中所有的页面都是根据配置和主题模板进行生成, 其中动态页面分为三类:
-**** 详情页
-    详情页的配置为 =page_meta.xxx=, 其中 *xxx* 必须是所有页面类型中的一种, 比如 =page_meta.posts=, =page_meta.pages= 等, 示例:
-    #+begin_src yaml
-      page_meta:
-        posts:
-          lookup:
-            - "post.html"
-          output: "posts/{date:%Y}/{date:%m}/{slug}.html"
-        pages:
-          lookup:
-            - "page.html"
-            - "post.html"
-          output: "pages/{slug}.html"
-        drafts:
-          lookup:
-            - "post.html"
-          output: "drafts/{date:%Y}/{date:%m}/{slug}.html"
-    #+end_src
-    - *lookup*: 主题中查找的模版文件
-    - *output*: 写入的文件路径, *slug* 为页面标题
-    - *output变量*:
-      |------------+----------------------|
-      | 变量       | 描述                 |
-      |------------+----------------------|
-      | {date:%Y}  | 创建文章的年份       |
-      | {date:%m}  | 创建文章的月份       |
-      | {date:%d}  | 创建文章的日期       |
-      | {date:%H}  | 创建文章的小时       |
-      | {slug}     | 文章标题或自定义slug |
-      | {filename} | 文件名称(不带后缀名) |
-
-    - *模版变量*:
-      |----------------------+----------------------|
-      | 变量                 | 描述                 |
-      |----------------------+----------------------|
-      | page                 |                      |
-      | page.Title           | 页面标题             |
-      | page.URL             | 页面链接             |
-      | page.Categories      | 页面分类             |
-      | page.Tags            | 页面标签             |
-      | page.Authors         | 页面作者             |
-      | page.Summary         | 页面简介             |
-      | page.Content         | 页面内容             |
-      | page.Meta.xxx        | 自定义的元数据       |
-      | page.Prev            | 上一篇               |
-      | page.Next            | 下一篇               |
-      | page.HasPrev()       | 是否有上一篇         |
-      | page.HasNext()       | 是否有下一篇         |
-      | page.PrevInType      | 同一类型上一篇       |
-      | page.NextInType      | 同一类型下一篇       |
-      | page.HasPrevInType() | 是否有同一类型上一篇 |
-      | page.HasNextInType() | 是否有同一类型下一篇 |
-
-**** 列表页
-    列表页的配置为 =page_meta.xxx.list=, 其中 *xxx* 可以是除页面类型以外的任意名称, 比如 =page_meta.tags.list=, =page_meta.mycustom.list= 等, 示例:
-    #+begin_src yaml
-      page_meta:
-        index:
-          list.lookup:
-            - "index.html"
-          list.output: "index{number}.html"
-          list.filter: "-pages"
-          list.paginate: 5
-        tags:
-          list.lookup:
-            - "tag.html"
-          list.output: "tags/{slug}/index{number}.html"
-          list.filter: "-pages"
-          list.groupby: "tag"
-          list.paginate: 10
-    #+end_src
-    - *output*: 列表页和详情页不同，列表页可能会根据不同的分页大小写入多个文件, 其中分页由 *output* 中的 ={number}= 决定, 比如上述的 =tags.list.output=, 假如有36篇 *tag* 为 *linux* 的页面, 写入的文件为:
-        #+begin_example
-        [output_dir]/tags/linux/index.html
-        [output_dir]/tags/linux/index1.html
-        [output_dir]/tags/linux/index2.html
-        [output_dir]/tags/linux/index3.html
-        #+end_example
-        ={number}= 在第一页时会自动配置成空字符串，如果需要禁止该动作，可以使用 ={number:one}= 代替
-    - *groupby*: 如果想要配置按标签或者分类进行分组, 并写入不同的分组文件，可以配置 *groupby* 字段，目前可选: type、tag、category、author 和 date:xxx, 其中 *date:xxx* 中的xxx为Go格式化时间格式, 比如 *date:2006* 表示按年分组
-    - *filter*: 列表显示需要提前筛选不想展示的页面，可以配置 *filter* 字段, 格式:
-      - 字符串格式: =type1= 表示只展示类型为type1的页面, =-type2= 表示排除类型为type1的页面, 多个类型使用英文逗号分隔
-      - 字典格式:
-        #+begin_src yaml
-          page_meta:
-            tags:
-              list.filter:
-                type: "type1,-type2"
-                tag: "tag1,tag2,-tag3"
-                author: "author1"
-                category: "category"
-        #+end_src
-        其中任意字段都可以使用前缀 =-= 排除相应的页面
-    - *paginate*: 分页大小, 0代表不分页，默认的分页在 *page_pagniate*
-    - *模版变量*:
-      |---------------------+----------------|
-      | 变量                | 描述           |
-      |---------------------+----------------|
-      | paginator           |                |
-      | paginator.URL       | 分页链接       |
-      | paginator.PageNum   | 当前页         |
-      | paginator.Total     | 总页数         |
-      | paginator.HasPrev() | 是否有上一页   |
-      | paginator.Prev      | 上一页         |
-      | paginator.Prev.URL  | 上一页链接     |
-      | paginator.HasNext() | 是否有下一页   |
-      | paginator.Next      | 下一页         |
-      | paginator.Next.URL  | 下一页链接     |
-      | paginator.All       | 所有页         |
-      | paginator.List      | 当前页文章列表 |
-      | slug                | 分组key        |
-
-**** 归档页
-    归档页表示所有分组页面的集合, 比如所有的标签，所有的作者或类型
-    #+begin_src yaml
-      page_meta:
-        tags:
-          lookup:
-            - "tags.html"
-          output: "tags/index.html"
-        archives:
-          lookup:
-            - "archives.html"
-          output: "archives/index.html"
-    #+end_src
-    - *模版变量*:
-      |--------+----------|
-      | 变量   | 描述     |
-      |--------+----------|
-      | labels | 分组列表 |
-      | pages  | 文章列表 |
+**** 配置
+     #+begin_src yaml
+         theme:
+           name: "test-theme"
+           override: "layouts"
+     #+end_src
+     - *name*: 主题名称, 未设置将使用默认主题
+     - *override*: 主题模版覆盖目录, 比如一个存在的主题可以增加同名的文件到 *override* 配置的目录, snow将会优先使用该文件
+     - *主题目录结构*:
+       其中 *templates* 和 *static* 名称不可修改
+       #+begin_example
+         simple/
+         ├── templates
+         │   ├── post.html
+         │   ├── index.html
+         │   ├── archives.html
+         ├── static
+         │   ├── main.css
+       #+end_example
 
 *** 本地测试和正式发布
-   snow 提供了 *mode* 配置用于区分本地测试和正式发布
-   #+begin_src yaml
-     site:
-       url: "http://127.0.0.1:8000"
-     output_dir: "output"
+    snow 提供了 *mode* 配置用于区分本地测试和正式发布
+    #+begin_src yaml :noindent
+      site:
+        url: "http://127.0.0.1:8000"
+        output_dir: "output"
 
-     mode.publish:
-       site:
-         url: "https://example.com"
-       output_dir: "xxx"
+      mode.publish:
+        site:
+          url: "https://example.com"
+          output_dir: "xxx"
 
-     mode.develop:
-       include: "develop.yaml"
-   #+end_src
-   只要在构建时使用 =snow build --mode publish= 即可覆盖本地默认配置
+      mode.develop:
+        include: "develop.yaml"
+    #+end_src
+    只要在构建时使用 =snow build --mode publish= 即可覆盖本地默认配置

@@ -14,7 +14,7 @@ type htmlReader struct {
 	conf config.Config
 }
 
-func (s *htmlReader) parse(meta page.Meta, n *html.Node) error {
+func (m *htmlReader) parse(meta page.Meta, n *html.Node) error {
 	if n.Type == html.ElementNode {
 		switch n.Data {
 		case "title":
@@ -31,7 +31,7 @@ func (s *htmlReader) parse(meta page.Meta, n *html.Node) error {
 				}
 			}
 			if key != "" {
-				meta.Set(strings.ToLower(key), val)
+				meta.Set(m.conf, strings.ToLower(key), val)
 			}
 		case "body":
 			var buf bytes.Buffer
@@ -45,7 +45,7 @@ func (s *htmlReader) parse(meta page.Meta, n *html.Node) error {
 		}
 	}
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
-		if err := s.parse(meta, child); err != nil {
+		if err := m.parse(meta, child); err != nil {
 			return err
 		}
 	}

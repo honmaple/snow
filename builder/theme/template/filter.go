@@ -1,4 +1,4 @@
-package pongo2
+package template
 
 import (
 	"errors"
@@ -17,11 +17,11 @@ const (
 	DAY   = 24 * time.Hour
 )
 
-func (t *Template) timeSince(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+func (t *template) timeSince(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
 	v, ok := in.Interface().(time.Time)
 	if !ok {
 		return nil, &pongo2.Error{
-			Sender:    "filter:date",
+			Sender:    "filter:timesince",
 			OrigError: errors.New("filter input argument must be of type 'time.Time'"),
 		}
 	}
@@ -48,19 +48,16 @@ func (t *Template) timeSince(in *pongo2.Value, param *pongo2.Value) (out *pongo2
 	return value, nil
 }
 
-func (t *Template) absURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+func (t *template) absURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
 	out, err = t.relURL(in, param)
 	if err != nil {
 		return
 	}
 	v := out.Interface().(string)
-	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
-		return pongo2.AsValue(v), nil
-	}
-	return pongo2.AsValue(utils.StringConcat(t.conf.GetString("site.url"), v)), nil
+	return pongo2.AsValue(t.conf.GetURL(v)), nil
 }
 
-func (t *Template) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+func (t *template) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
 	v, ok := in.Interface().(string)
 	if !ok {
 		return nil, &pongo2.Error{
@@ -87,10 +84,22 @@ func (t *Template) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Va
 			"{number}":     "",
 			"{number:one}": "1",
 		}
-		v = utils.StringReplace(t.conf.GetString(utils.StringConcat("page_meta.", key, ".output")), vars)
+		v = utils.StringReplace(t.conf.GetString(key), vars)
 	}
 	if strings.HasPrefix(v, "/") {
 		return pongo2.AsValue(v), nil
 	}
 	return pongo2.AsValue(utils.StringConcat("/", v)), nil
+}
+
+func (t *template) getSection(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+	out, err = t.relURL(in, param)
+	if err != nil {
+		return
+	}
+	v := out.Interface().(string)
+	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
+		return pongo2.AsValue(v), nil
+	}
+	return pongo2.AsValue(utils.StringConcat(t.conf.GetString("site.url"), v)), nil
 }
