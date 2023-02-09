@@ -73,45 +73,77 @@
     #+end_example
 **** 配置
      #+begin_src yaml
-       sections:
-         _default:
-           # 页面中文章的默认排序, 多字段使用逗号分隔
-           orderby: "date desc"
-           # 文章筛选，主要用于分页前
-           filter: ""
-           # 页面中文章默认分页, path必须使用{number}变量, 0表示不分页
-           paginate: 10
-           # 生成路径, 为空表示禁止生成相关页面
-           path: "{section}/index{number}.html"
-           # 使用的模版
-           template: "section.html"
-           # 当前section下所有文章生成路径
-           page_path: "{section}/{slug}/index.html"
-           # 文章使用的模版
-           page_template: "post.html"
-         _index:
-           # 自定义页面必须指定为true
-           custom: true
-           path: "index{number}.html"
-           paginate: 20
-           page_path: "posts/{date:%Y}/{date:%m}/{slug}.html"
-         pages:
-           path: ""
-         pages/about:
-           # 自定义pages/about下的文章生成路径，同时继承pages.path不会生成所有页面
-           page_path: "{slug}/index.html"
+     sections:
+       _default:
+         # 页面中文章的默认排序, 多字段使用逗号分隔
+         orderby: "date desc"
+         # 文章筛选，主要用于分页前
+         filter: ""
+         # 页面中文章默认分页, path必须使用{number}变量, 0表示不分页
+         paginate: 10
+         # 生成路径, 为空表示禁止生成相关页面
+         path: "{section}/index{number}.html"
+         # 使用的模版
+         template: "section.html"
+         # 当前section下所有文章生成路径
+         page_path: "{section}/{slug}/index.html"
+         # 文章使用的模版
+         page_template: "post.html"
+       _index:
+         # 自定义页面必须指定为true
+         custom: true
+         path: "index{number}.html"
+         paginate: 20
+       posts:
+         page_path: "posts/{date:%Y}/{date:%m}/{slug}.html"
+       pages:
+         path: ""
+       pages/about:
+         # 自定义pages/about下的文章生成路径，同时继承pages.path不会生成所有页面
+         page_path: "{slug}/index.html"
      #+end_src
+     *filter* 格式(下同):
+     - 字符串格式: =type1= 表示只展示类型为type1的页面, =-type2= 表示排除类型为type1的页面, 多个类型使用英文逗号分隔
+     - 字典格式:
+       #+begin_src yaml
+       filter:
+         is_top: true
+         tags: "linux,-emacs"
+       #+end_src
+
+**** 路径变量(*sections.xxx.path*)
+     |-----------+------------------|
+     | 变量      | 描述             |
+     |-----------+------------------|
+     | {section} | section名称      |
+     | {number}  | 使用分页时的页码 |
+
+     ={number}= 在第一页时会自动配置成空字符串，如果需要禁止该动作，可以使用 ={number:one}= 代替
+
+**** 模版变量(*sections.xxx.template*)
+     |-------------------+-------------------------|
+     | 变量              | 描述                    |
+     |-------------------+-------------------------|
+     | section           |                         |
+     | section.Title     | section标题             |
+     | section.Path      | section相对链接         |
+     | section.Permalink | section绝对链接         |
+     | section.Content   | section内容             |
+     | section.Pages     | 当前section下的文章列表 |
+     | section.Children  | 子section               |
+     | section.Parent    | 父section               |
+
 *** Page
 **** 配置
      #+begin_src yaml
-       # 文章目录所在, 其中该目录下应该包括一系列子目录，这些子目录的名称对应为 *文章的类型*, 比如 *content/drafts/* 目录下的文章类型为 *drafts*, 当然也可以直接在文章文件头添加 =type: drafts=
-       content_dir: "content"
-       # 所有类型的文章列表，当 *page_dirs* 为空时，snow将会搜索 *content* 目录下的所有子目录
-       page_dirs:
-         - "drafts"
-         - "posts"
+     # 文章目录所在, 其中该目录下应该包括一系列子目录，这些子目录的名称对应为 *文章的类型*, 比如 *content/drafts/* 目录下的文章类型为 *drafts*, 当然也可以直接在文章文件头添加 =type: drafts=
+     content_dir: "content"
+     # 所有类型的文章列表，当 *page_dirs* 为空时，snow将会搜索 *content* 目录下的所有子目录
+     page_dirs:
+       - "drafts"
+       - "posts"
      #+end_src
-**** 路径变量
+**** 路径变量(*sections.xxx.page_path*)
      |------------+----------------------|
      | 变量       | 描述                 |
      |------------+----------------------|
@@ -122,16 +154,17 @@
      | {slug}     | 文章标题或自定义slug |
      | {filename} | 文件名称(不带后缀名) |
 
-**** 模版变量
+**** 模版变量(*sections.xxx.page_template*)
      |----------------------+----------------------|
      | 变量                 | 描述                 |
      |----------------------+----------------------|
      | page                 |                      |
      | page.Title           | 页面标题             |
-     | page.URL             | 页面链接             |
-     | page.Categories      | 页面分类             |
-     | page.Tags            | 页面标签             |
-     | page.Authors         | 页面作者             |
+     | page.Date            | 页面创建时间         |
+     | page.Modified        | 页面修改时间         |
+     | page.Aliases         | 页面其它链接         |
+     | page.Path            | 页面相对链接         |
+     | page.Permalink       | 页面绝对链接         |
      | page.Summary         | 页面简介             |
      | page.Content         | 页面内容             |
      | page.Meta.xxx        | 自定义的元数据       |
@@ -147,19 +180,71 @@
 *** Taxonomy
 **** 配置
      #+begin_src yaml
-       taxonomies:
-         _default:
-           path: "{taxonomy}/index.html"
-           template: "{taxonomy}/list.html"
-           term_path: "{taxonomy}/{slug}/index.html"
-           term_template: "{taxonomy}/single.html"
-         categories:
-         authors:
-         tags:
+     taxonomies:
+       _default:
+         path: "{taxonomy}/index.html"
+         # terms排序, 可选name,count
+         orderby: ""
+         template: "{taxonomy}/list.html"
+         term_path: "{taxonomy}/{slug}/index.html"
+         term_template: "{taxonomy}/single.html"
+         # 文章列表筛选
+         term_filter: ""
+         # 文章列表排序
+         term_orderby: "date desc"
+         # 文章列表分页
+         term_paginate: 0
+       categories:
+       authors:
+       tags:
      #+end_src
+
+**** 路径变量
+     - *taxonomies.xxx.path*
+       |------------+--------------|
+       | 变量       | 描述         |
+       |------------+--------------|
+       | {taxonomy} | 分类系统名称 |
+     - *taxonomies.xxx.term_path*
+       |------------+------------------|
+       | 变量       | 描述             |
+       |------------+------------------|
+       | {taxonomy} | 分类系统名称     |
+       | {number}   | 使用分页时的页码 |
+       | {slug}     | 分类具体名称     |
+
+**** 模版变量
+     - *taxonomies.xxx.template*
+       |----------------+------------------------------------------|
+       | 变量           | 描述                                     |
+       |----------------+------------------------------------------|
+       | taxonomy       |                                          |
+       | taxonomy.Name  | 分类系统名称, 如:categories,tags,authors |
+       | taxonomy.Terms |                                          |
+     - *taxonomies.xxx.term_template*
+       |----------------+----------|
+       | 变量           | 描述     |
+       |----------------+----------|
+       | term           |          |
+       | term.Name      | 分类名称 |
+       | term.Path      | 相对链接 |
+       | term.Permalink | 绝对链接 |
+       | term.List      | 文章列表 |
+       | term.Children  | 子分类   |
+
 *** Archive
+    #+begin_src yaml
+    taxonomies:
+      date:2006/01:
+        path: "archives/index.html"
+        template: "archives.html"
+        term_path: "archives/{slug}/index.html"
+        term_template: "period_archives.html"
+    #+end_src
+    归档页面类似分类系统，其它 *date:2006/01* 表示按年月归档, 并生成链接 */archives/2022/10/index.html*
+
 *** Pagination
-**** 变量
+**** 模版变量
      |---------------------+----------------|
      | 变量                | 描述           |
      |---------------------+----------------|
@@ -180,55 +265,55 @@
 *** Static
     静态文件配置:
     #+begin_src yaml
-      # 静态文件目录, 该目录区分主题的静态文件static
-      static_dirs:
-        - "static/"
-        # 静态文件扩展，不配置将会使用静态文件目录下的所有文件
-        static_exts:
-          - ".js"
-          - ".css"
-          # 静态文件路径，用于指定静态文件或静态目录的保存目录, 当有多条路径时，长度优先.
-          static_paths:
-            static/CNAME: "/"
-            static/css/main.css: "static/css/"
-            # 以@theme开头代表主题中的静态文件，即{theme.name}/static
-            "@theme/static": "static/"
+    # 静态文件目录, 该目录区分主题的静态文件static
+    static_dirs:
+      - "static/"
+    # 静态文件扩展，不配置将会使用静态文件目录下的所有文件
+    static_exts:
+      - ".js"
+      - ".css"
+    # 静态文件路径，用于指定静态文件或静态目录的保存目录, 当有多条路径时，长度优先.
+    static_paths:
+      static/CNAME: "/"
+      static/css/main.css: "static/css/"
+      # 以@theme开头代表主题中的静态文件，即{theme.name}/static
+      "@theme/static": "static/"
     #+end_src
 
 *** 主题
+**** 主题目录结构
+     其中 *templates* 和 *static* 名称不可修改
+     #+begin_example
+       simple/
+       ├── templates
+       │   ├── post.html
+       │   ├── index.html
+       │   ├── archives.html
+       ├── static
+       │   ├── main.css
+     #+end_example
 **** 配置
      #+begin_src yaml
-         theme:
-           name: "test-theme"
-           override: "layouts"
+     theme:
+       # 主题名称, 未设置将使用默认主题
+       name: "test-theme"
+       # 主题模版覆盖, 增加同名的文件到 *override* 配置的目录, snow将会优先使用该文件
+       override: "layouts"
      #+end_src
-     - *name*: 主题名称, 未设置将使用默认主题
-     - *override*: 主题模版覆盖目录, 比如一个存在的主题可以增加同名的文件到 *override* 配置的目录, snow将会优先使用该文件
-     - *主题目录结构*:
-       其中 *templates* 和 *static* 名称不可修改
-       #+begin_example
-         simple/
-         ├── templates
-         │   ├── post.html
-         │   ├── index.html
-         │   ├── archives.html
-         ├── static
-         │   ├── main.css
-       #+end_example
 
 *** 本地测试和正式发布
     snow 提供了 *mode* 配置用于区分本地测试和正式发布
     #+begin_src yaml :noindent
+    site:
+      url: "http://127.0.0.1:8000"
+      output_dir: "output"
+
+    mode.publish:
       site:
-        url: "http://127.0.0.1:8000"
-        output_dir: "output"
+        url: "https://example.com"
+        output_dir: "xxx"
 
-      mode.publish:
-        site:
-          url: "https://example.com"
-          output_dir: "xxx"
-
-      mode.develop:
-        include: "develop.yaml"
+    mode.develop:
+      include: "develop.yaml"
     #+end_src
     只要在构建时使用 =snow build --mode publish= 即可覆盖本地默认配置
