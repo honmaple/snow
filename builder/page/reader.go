@@ -69,7 +69,7 @@ func (b *Builder) Build(ctx context.Context) error {
 
 	b.loadSections()
 	b.loadTaxonomies()
-	return b.Write()
+	return b.Write(b.hooks.BeforePagesWrite(b.pages))
 }
 
 func NewBuilder(conf config.Config, theme theme.Theme, hooks Hooks) *Builder {

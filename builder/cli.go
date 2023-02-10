@@ -16,9 +16,8 @@ import (
 	_ "github.com/honmaple/snow/builder/page/markup/orgmode"
 
 	_ "github.com/honmaple/snow/builder/hook/encrypt"
-	_ "github.com/honmaple/snow/builder/hook/feed"
 	_ "github.com/honmaple/snow/builder/hook/shortcode"
-	// _ "github.com/honmaple/snow/builder/hook/webassets"
+	// _ "github.com/honmaple/snow/builder/hook/assets"
 )
 
 const (

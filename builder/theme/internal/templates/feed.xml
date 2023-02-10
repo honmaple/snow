@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+  <channel>
+    <title>{{ config.site.title }}
+      {%- if term %} - {{ term.Name }}
+      {%- elif section.Title %} - {{ section.Title }}
+      {%- endif -%}
+    </title>
+    <link>{%- if section -%}
+      {{ section.Permalink | safe }}
+    {%- else -%}
+      {{ config.site.url | safe }}
+    {%- endif -%}
+        </link>
+        <description>{{ config.site.subtitle }}</description>
+        <generator>Snow</generator>
+        {%- for page in pages %}
+          <item>
+            <title>{{ page.Title }}</title>
+            <pubDate>{{ page.Date | date:"Mon, 02 Jan 2006 15:04:05 -0700" }}</pubDate>
+            <link>{{ page.Permalink | safe }}</link>
+            <guid>{{ page.Permalink | safe }}</guid>
+            <description>{% if page.Summary %}{{ page.Summary }}{% else %}{{ page.Content }}{% endif %}</description>
+          </item>
+        {%- endfor %}
+  </channel>
+</rss>

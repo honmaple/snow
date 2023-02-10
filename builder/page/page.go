@@ -372,7 +372,7 @@ func (b *Builder) loadPage(section *Section, file string) (*Page, error) {
 			"{date:%H}":  page.Date.Format("15"),
 			"{filename}": utils.FileBaseName(file),
 			"{section}":  page.Type,
-			"{slug}":     page.Title,
+			"{slug}":     b.conf.GetSlug(page.Title),
 		}
 		if slug, ok := meta["slug"]; ok && slug != "" {
 			vars["{slug}"] = slug.(string)

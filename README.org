@@ -280,7 +280,32 @@
       "@theme/static": "static/"
     #+end_src
 
-*** 主题
+*** Feed
+**** 配置
+     #+begin_src yaml
+     sections:
+       _default:
+         # feed生成路径
+         feed_path: "{section}/index.xml"
+         # feed查找模版，为空时默认使用_internal/feed.xml
+         feed_template: "rss.xml"
+
+     taxonomies:
+       _default:
+         feed_path: "{taxonomy}/{slug}/index.xml"
+       tags:
+         # 为空时禁止生成feed
+         feed_path: ""
+     #+end_src
+**** 模版变量
+     |---------+------------------------------|
+     | 变量    | 描述                         |
+     |---------+------------------------------|
+     | section | 仅生成section feed有效       |
+     | term    | 仅生成taxonomy term feed有效 |
+     | pages   | 文章列表                     |
+
+*** theme
 **** 主题目录结构
      其中 *templates* 和 *static* 名称不可修改
      #+begin_example
@@ -300,6 +325,40 @@
        # 主题模版覆盖, 增加同名的文件到 *override* 配置的目录, snow将会优先使用该文件
        override: "layouts"
      #+end_src
+
+*** shortcode
+    用于快速插入已有模版, 示例:
+    #+begin_example
+    <shortcode _name="encrypt" password="1234567">
+    hello *markdown*
+    </shortcode>
+
+    <shortcode _name="gist" author="spf13" id="7896402" />
+    #+end_example
+
+    可以自定义 *shortcode* 到主题的 =templates/shortcodes= 目录下, 目前内置 *gist*, *encrypt*
+
+*** hook
+    插件接口
+    #+begin_src yaml
+    hooks:
+      - "assets"
+      - "encrypt"
+      - "shortcode"
+
+    params:
+      assets:
+        css:
+          files:
+            - "@theme/static/scss/main.scss"
+            - "@theme/static/scss/entry.scss"
+          filters:
+            - libscss:
+                path: ["@theme/static/scss/"]
+            - cssmin:
+          output: "static/lib.min.css"
+          retain: true
+    #+end_src
 
 *** 本地测试和正式发布
     snow 提供了 *mode* 配置用于区分本地测试和正式发布

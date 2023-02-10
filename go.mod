@@ -8,6 +8,7 @@ require (
 	github.com/flosch/pongo2/v6 v6.0.0
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/gorilla/feeds v1.1.1
+	github.com/gosimple/slug v1.13.1
 	github.com/honmaple/org-golang v0.0.0-20221004095837-43f6104b2fa8
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/russross/blackfriday v1.6.0
@@ -17,7 +18,6 @@ require (
 	github.com/tdewolff/minify/v2 v2.12.4
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/wellington/go-libsass v0.9.2
-	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2
 	gopkg.in/yaml.v3 v3.0.1
 )

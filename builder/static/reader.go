@@ -20,17 +20,21 @@ type Builder struct {
 	hooks Hooks
 }
 
-func (b *Builder) genFile(file string, output string, isTheme bool) *Static {
-	if output == "" {
+func (b *Builder) genFile(file string, path string, isTheme bool) *Static {
+	if path == "" {
 		return nil
 	}
-	if strings.HasSuffix(output, "/") {
-		output = filepath.Join(output, filepath.Base(file))
+	if strings.HasSuffix(path, "/") {
+		path = filepath.Join(path, filepath.Base(file))
 	}
+	var root fs.FS
+
 	if isTheme {
-		return &Static{URL: output, File: file, Root: b.theme, IsTheme: isTheme}
+		root = b.theme
+	} else {
+		root = os.DirFS(".")
 	}
-	return &Static{URL: output, File: file, Root: os.DirFS("."), IsTheme: isTheme}
+	return &Static{URL: path, File: &localFile{file: file, root: root, isTheme: isTheme}}
 }
 
 func (b *Builder) loader() func(string, bool) *Static {

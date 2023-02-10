@@ -4,50 +4,62 @@ import (
 	"bytes"
 	"io"
 	"io/fs"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 )
 
 type (
 	Static struct {
-		URL     string
-		File    string
-		Root    fs.FS
-		IsTheme bool
+		URL  string
+		File interface {
+			io.Reader
+			Name() string
+		}
 	}
 	Statics []*Static
 )
 
-func (s *Static) Name() string {
-	if s.IsTheme {
-		return filepath.Join("@theme", s.File)
-	}
-	return s.File
+type localFile struct {
+	root    fs.FS
+	file    string
+	buff    io.Reader
+	isTheme bool
 }
 
-func (s *Static) Bytes() ([]byte, error) {
-	f, err := s.Root.Open(s.File)
-	if err != nil {
-		return nil, err
+func (l *localFile) Name() string {
+	if l.isTheme {
+		return filepath.Join("@theme", l.file)
 	}
-	defer f.Close()
-	return ioutil.ReadAll(f)
+	return l.file
 }
 
-func (s *Static) CopyTo(dst string) error {
-	buf, err := s.Bytes()
-	if err != nil {
-		return err
-	}
-	src := bytes.NewBuffer(buf)
+func (l *localFile) Read(p []byte) (int, error) {
+	if l.buff == nil {
+		f, err := l.root.Open(l.file)
+		if err != nil {
+			return 0, err
+		}
+		defer f.Close()
 
-	dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return err
+		var b bytes.Buffer
+		if _, err := io.Copy(&b, f); err != nil {
+			return 0, err
+		}
+		l.buff = &b
 	}
-	defer dstFile.Close()
+	return l.buff.Read(p)
+}
 
-	_, err = io.Copy(dstFile, src)
-	return err
+func (statics Statics) Lookup(files []string) Statics {
+	m := make(map[string]bool)
+	for _, file := range files {
+		m[file] = true
+	}
+
+	newstatics := make(Statics, 0)
+	for _, static := range statics {
+		if m[static.File.Name()] {
+			newstatics = append(newstatics, static)
+		}
+	}
+	return newstatics
 }

@@ -1,4 +1,4 @@
-package webassets
+package assets
 
 import (
 	"io"
@@ -10,7 +10,7 @@ import (
 	"github.com/tdewolff/minify/v2/js"
 )
 
-func (ws *webassets) filter(name string, w io.Writer, r io.Reader, opt filterOption) (err error) {
+func (ws *assets) filter(name string, w io.Writer, r io.Reader, opt filterOption) (err error) {
 	switch name {
 	case "libscss":
 		err = ws.libscss(w, r, opt)
@@ -22,7 +22,7 @@ func (ws *webassets) filter(name string, w io.Writer, r io.Reader, opt filterOpt
 	return err
 }
 
-func (ws *webassets) libscss(w io.Writer, r io.Reader, opt filterOption) error {
+func (ws *assets) libscss(w io.Writer, r io.Reader, opt filterOption) error {
 	paths := make([]string, 0)
 	if opt != nil {
 		paths = opt.GetStringSlice("path")
@@ -35,14 +35,14 @@ func (ws *webassets) libscss(w io.Writer, r io.Reader, opt filterOption) error {
 	return comp.Run()
 }
 
-func (ws *webassets) cssmin(w io.Writer, r io.Reader, opt filterOption) error {
+func (ws *assets) cssmin(w io.Writer, r io.Reader, opt filterOption) error {
 	m := minify.New()
 	m.AddFunc("css", css.Minify)
 
 	return m.Minify("css", w, r)
 }
 
-func (ws *webassets) jsmin(w io.Writer, r io.Reader, opt filterOption) error {
+func (ws *assets) jsmin(w io.Writer, r io.Reader, opt filterOption) error {
 	m := minify.New()
 	m.AddFunc("js", js.Minify)
 

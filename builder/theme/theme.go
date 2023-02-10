@@ -44,6 +44,9 @@ func (t *theme) Open(file string) (fs.File, error) {
 
 func (t *theme) LookupTemplate(names ...string) (template.Writer, bool) {
 	for _, name := range names {
+		if name == "" {
+			continue
+		}
 		v, ok := t.cache.Load(name)
 		if ok {
 			return v.(template.Writer), true

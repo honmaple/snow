@@ -2,14 +2,17 @@ package config
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strings"
 
+	"github.com/gosimple/slug"
 	"github.com/honmaple/snow/utils"
 	"github.com/mitchellh/mapstructure"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"path/filepath"
 )
 
 type Config struct {
@@ -58,6 +61,29 @@ func (conf Config) Load(path string) error {
 	conf.Reset(sectionConfig)
 	conf.Reset(taxonomyConfig)
 	return nil
+}
+
+func (conf Config) WriteOutput(file string, r io.Reader) error {
+	output := filepath.Join(conf.GetOutput(), file)
+
+	if dir := filepath.Dir(output); !utils.FileExists(output) {
+		os.MkdirAll(dir, 0755)
+	}
+	dstFile, err := os.OpenFile(output, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, r)
+	return err
+}
+
+func (conf Config) GetSlug(name string) string {
+	if conf.GetBool("slugify") {
+		return slug.Make(name)
+	}
+	return name
 }
 
 func (conf Config) GetRelURL(path string) string {

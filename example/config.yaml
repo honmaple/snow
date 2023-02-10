@@ -5,7 +5,7 @@ site:
 
 mode.publish:
   site:
-    url: ""
+    url: "https://example.com"
 
 sections:
   _index:
@@ -21,6 +21,9 @@ sections:
     path: ""
 
 taxonomies:
+  _default:
+    feed_path: "{taxonomy}/{slug}/index.xml"
+    feed_template: ""
   categories:
     lang: "zh"
     path: "categories/index.html"
@@ -57,7 +60,6 @@ static_paths:
   "@theme/static": "static/"
 
 hooks:
-  # - "feed"
   - "encrypt"
   - "shortcode"
 
@@ -88,15 +90,14 @@ params:
         url: "/tags/index.html"
     mode: "toggle"
     copyright: "honmaple"
-  feed:
-    limit: 10
-  webassets:
+  assets:
     css:
       files:
-        - "theme/static/scss/main.scss"
-        - "theme/static/scss/entry.scss"
+        - "@theme/static/scss/main.scss"
+        - "@theme/static/scss/entry.scss"
       filters:
         - libscss:
-            path: ["theme/static/scss/"]
+            path: ["@theme/static/scss/"]
         - cssmin:
       output: "static/lib.min.css"
+      retain: true

@@ -2,7 +2,6 @@ package page
 
 import (
 	"fmt"
-	"github.com/honmaple/snow/config"
 	"github.com/honmaple/snow/utils"
 	"sort"
 	"strings"
@@ -10,39 +9,38 @@ import (
 
 type (
 	TaxonomyConfig struct {
-		Path         string      `json:"path"`
-		Weight       int         `json:"weight"`
-		Orderby      string      `json:"orderby"`
-		Template     string      `json:"template"`
-		TermPath     string      `json:"term_path"`
-		TermTemplate string      `json:"term_template"`
-		TermFilter   interface{} `json:"term_filter"`
-		TermOrderby  string      `json:"term_orderby"`
-		TermPaginate int         `json:"term_paginate"`
+		Path     string `json:"path"`
+		Weight   int    `json:"weight"`
+		Orderby  string `json:"orderby"`
+		Template string `json:"template"`
 	}
 	Taxonomy struct {
-		Name   string
-		Terms  TaxonomyTerms
-		Config TaxonomyConfig
+		Path      string
+		Permalink string
+		Name      string
+		Terms     TaxonomyTerms
+		Config    TaxonomyConfig
 	}
-	Taxonomies   []*Taxonomy
+	Taxonomies         []*Taxonomy
+	TaxonomyTermConfig struct {
+		Path         string      `json:"path"`
+		Template     string      `json:"template"`
+		Filter       interface{} `json:"filter"`
+		Orderby      string      `json:"orderby"`
+		Paginate     int         `json:"paginate"`
+		FeedPath     string      `json:"feed_path"`
+		FeedTemplate string      `json:"feed_template"`
+	}
 	TaxonomyTerm struct {
 		Path      string
 		Permalink string
 		Name      string
 		List      Pages
 		Children  TaxonomyTerms
+		Config    TaxonomyTermConfig
 	}
 	TaxonomyTerms []*TaxonomyTerm
 )
-
-func (terms TaxonomyTerms) setURL(conf config.Config, path string) {
-	for _, term := range terms {
-		term.Path = conf.GetRelURL(utils.StringReplace(path, map[string]string{"{slug}": term.Name}))
-		term.Permalink = conf.GetURL(term.Path)
-		term.Children.setURL(conf, path)
-	}
-}
 
 func (terms TaxonomyTerms) Has(name string) bool {
 	for _, term := range terms {
@@ -54,6 +52,9 @@ func (terms TaxonomyTerms) Has(name string) bool {
 }
 
 func (terms TaxonomyTerms) Orderby(key string) TaxonomyTerms {
+	if key == "" {
+		return terms
+	}
 	var (
 		reverse = false
 		sortf   func(int, int) bool
@@ -85,18 +86,32 @@ func (terms TaxonomyTerms) Orderby(key string) TaxonomyTerms {
 	return terms
 }
 
+func (b *Builder) loadTaxonomyTerms(taxonomy string, terms TaxonomyTerms) {
+	for _, term := range terms {
+		conf := b.newTaxonomyTermConfig(taxonomy, term.Name)
+		term.List = term.List.Filter(conf.Filter).OrderBy(conf.Orderby)
+		term.Path = b.conf.GetRelURL(utils.StringReplace(conf.Path, map[string]string{"{number}": "", "{number:one}": "1"}))
+		term.Permalink = b.conf.GetURL(term.Path)
+		term.Config = conf
+		b.loadTaxonomyTerms(taxonomy, term.Children)
+	}
+}
+
 func (b *Builder) loadTaxonomies() error {
 	for name := range b.conf.GetStringMap("taxonomies") {
 		if name == "_default" {
 			continue
 		}
+		conf := b.newTaxonomyConfig(name)
 		taxonomy := &Taxonomy{
 			Name:   name,
-			Terms:  b.pages.GroupBy(name),
-			Config: b.newTaxonomyConfig(name),
+			Config: conf,
 		}
-		taxonomy.Terms.setURL(b.conf, taxonomy.Config.TermPath)
-		// fmt.Println(name, len(taxonomy.Terms))
+		taxonomy.Path = b.conf.GetRelURL(utils.StringReplace(conf.Path, map[string]string{"{slug}": b.conf.GetSlug(name)}))
+		taxonomy.Permalink = b.conf.GetURL(taxonomy.Path)
+		taxonomy.Terms = b.pages.GroupBy(name).Orderby(conf.Orderby)
+
+		b.loadTaxonomyTerms(name, taxonomy.Terms)
 		b.taxonomies = append(b.taxonomies, taxonomy)
 	}
 	sort.SliceStable(b.taxonomies, func(i, j int) bool {
@@ -112,10 +127,8 @@ func (b *Builder) loadTaxonomies() error {
 
 func (b *Builder) newTaxonomyConfig(name string) TaxonomyConfig {
 	c := TaxonomyConfig{
-		Path:         b.conf.GetString("taxonomies._default.path"),
-		Template:     b.conf.GetString("taxonomies._default.template"),
-		TermPath:     b.conf.GetString("taxonomies._default.term_path"),
-		TermTemplate: b.conf.GetString("taxonomies._default.term_template"),
+		Path:     b.conf.GetString("taxonomies._default.path"),
+		Template: b.conf.GetString("taxonomies._default.template"),
 	}
 	if k := fmt.Sprintf("taxonomies.%s.weight", name); b.conf.IsSet(k) {
 		c.Weight = b.conf.GetInt(k)
@@ -129,24 +142,44 @@ func (b *Builder) newTaxonomyConfig(name string) TaxonomyConfig {
 	if k := fmt.Sprintf("taxonomies.%s.template", name); b.conf.IsSet(k) {
 		c.Template = b.conf.GetString(k)
 	}
+	vars := map[string]string{"{taxonomy}": name}
+	c.Path = utils.StringReplace(c.Path, vars)
+	c.Template = utils.StringReplace(c.Template, vars)
+	return c
+}
+
+func (b *Builder) newTaxonomyTermConfig(taxonomy, name string) TaxonomyTermConfig {
+	c := TaxonomyTermConfig{
+		Path:         b.conf.GetString("taxonomies._default.term_path"),
+		Template:     b.conf.GetString("taxonomies._default.term_template"),
+		FeedPath:     b.conf.GetString("taxonomies._default.feed_path"),
+		FeedTemplate: b.conf.GetString("taxonomies._default.feed_template"),
+	}
 	if k := fmt.Sprintf("taxonomies.%s.term_path", name); b.conf.IsSet(k) {
-		c.TermPath = b.conf.GetString(k)
+		c.Path = b.conf.GetString(k)
 	}
 	if k := fmt.Sprintf("taxonomies.%s.term_template", name); b.conf.IsSet(k) {
-		c.TermTemplate = b.conf.GetString(k)
+		c.Template = b.conf.GetString(k)
 	}
 	if k := fmt.Sprintf("taxonomies.%s.term_filter", name); b.conf.IsSet(k) {
-		c.TermFilter = b.conf.Get(k)
+		c.Filter = b.conf.Get(k)
 	}
 	if k := fmt.Sprintf("taxonomies.%s.term_orderby", name); b.conf.IsSet(k) {
-		c.TermOrderby = b.conf.GetString(k)
+		c.Orderby = b.conf.GetString(k)
 	}
 	if k := fmt.Sprintf("taxonomies.%s.term_paginate", name); b.conf.IsSet(k) {
-		c.TermPaginate = b.conf.GetInt(k)
+		c.Paginate = b.conf.GetInt(k)
 	}
-	c.Path = utils.StringReplace(c.Path, map[string]string{"{taxonomy}": name})
-	c.Template = utils.StringReplace(c.Template, map[string]string{"{taxonomy}": name})
-	c.TermPath = utils.StringReplace(c.TermPath, map[string]string{"{taxonomy}": name})
-	c.TermTemplate = utils.StringReplace(c.TermTemplate, map[string]string{"{taxonomy}": name})
+	if k := fmt.Sprintf("taxonomies.%s.feed_path", name); b.conf.IsSet(k) {
+		c.FeedPath = b.conf.GetString(k)
+	}
+	if k := fmt.Sprintf("taxonomies.%s.feed_template", name); b.conf.IsSet(k) {
+		c.FeedTemplate = b.conf.GetString(k)
+	}
+	vars := map[string]string{"{taxonomy}": taxonomy, "{slug}": name}
+	c.Path = utils.StringReplace(c.Path, vars)
+	c.Template = utils.StringReplace(c.Template, vars)
+	c.FeedPath = utils.StringReplace(c.FeedPath, vars)
+	c.FeedTemplate = utils.StringReplace(c.FeedTemplate, vars)
 	return c
 }

@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/honmaple/snow/utils"
-	"strings"
 )
 
 type (
@@ -21,6 +21,8 @@ type (
 		Paginate     int         `json:"paginate"`
 		PagePath     string      `json:"page_path"`
 		PageTemplate string      `json:"page_template"`
+		FeedPath     string      `json:"feed_path"`
+		FeedTemplate string      `json:"feed_template"`
 	}
 	Section struct {
 		Path      string
@@ -97,6 +99,8 @@ func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
 		}
 	}
 	conf := section.Config
+	section.Path = b.conf.GetRelURL(utils.StringReplace(conf.Path, map[string]string{"{number}": "", "{number:one}": "1"}))
+	section.Permalink = b.conf.GetURL(section.Path)
 	section.Pages = section.Pages.Filter(conf.Filter).OrderBy(conf.Orderby)
 	return section, nil
 }
@@ -132,6 +136,8 @@ func (b *Builder) newSectionConfig(name string, custom bool) SectionConfig {
 		Template:     b.conf.GetString("sections._default.template"),
 		PagePath:     b.conf.GetString("sections._default.page_path"),
 		PageTemplate: b.conf.GetString("sections._default.page_template"),
+		FeedPath:     b.conf.GetString("sections._default.feed_path"),
+		FeedTemplate: b.conf.GetString("sections._default.feed_template"),
 	}
 
 	for _, m := range metaList {
@@ -165,6 +171,12 @@ func (b *Builder) newSectionConfig(name string, custom bool) SectionConfig {
 		if k := fmt.Sprintf("sections.%s.paginate", m); b.conf.IsSet(k) {
 			c.Paginate = b.conf.GetInt(k)
 		}
+		if k := fmt.Sprintf("sections.%s.feed_path", m); b.conf.IsSet(k) {
+			c.FeedPath = b.conf.GetString(k)
+		}
+		if k := fmt.Sprintf("sections.%s.feed_template", m); b.conf.IsSet(k) {
+			c.FeedTemplate = b.conf.GetString(k)
+		}
 		if m == name {
 			break
 		}
@@ -173,9 +185,12 @@ func (b *Builder) newSectionConfig(name string, custom bool) SectionConfig {
 	if c.Slug != "" {
 		name = c.Slug
 	}
-	c.Path = utils.StringReplace(c.Path, map[string]string{"{section}": name})
-	c.Template = utils.StringReplace(c.Template, map[string]string{"{section}": name})
-	c.PagePath = utils.StringReplace(c.PagePath, map[string]string{"{section}": name})
-	c.PageTemplate = utils.StringReplace(c.PageTemplate, map[string]string{"{section}": name})
+	vars := map[string]string{"{section}": name}
+	c.Path = utils.StringReplace(c.Path, vars)
+	c.Template = utils.StringReplace(c.Template, vars)
+	c.PagePath = utils.StringReplace(c.PagePath, vars)
+	c.PageTemplate = utils.StringReplace(c.PageTemplate, vars)
+	c.FeedPath = utils.StringReplace(c.FeedPath, vars)
+	c.FeedTemplate = utils.StringReplace(c.FeedTemplate, vars)
 	return c
 }

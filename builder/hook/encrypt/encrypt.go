@@ -23,7 +23,6 @@ type Encrypt struct {
 	hook.BaseHook
 	conf config.Config
 	iv   []byte
-	salt []byte
 }
 
 func (e *Encrypt) deriveKey(key string) []byte {
@@ -136,7 +135,6 @@ func (e *Encrypt) filter(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Val
 func New(conf config.Config, theme theme.Theme) hook.Hook {
 	e := &Encrypt{
 		conf: conf,
-		salt: []byte("aaaa"),
 	}
 
 	pongo2.RegisterFilter("encrypt", e.filter)

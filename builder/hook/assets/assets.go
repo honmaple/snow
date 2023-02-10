@@ -1,11 +1,9 @@
-package webassets
+package assets
 
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
+	"io/ioutil"
 	"reflect"
 
 	"github.com/honmaple/snow/builder/hook"
@@ -17,12 +15,13 @@ import (
 )
 
 type (
-	webassets struct {
+	assets struct {
 		hook.BaseHook
 		conf config.Config
 		opts map[string]option
 	}
 	option struct {
+		retain     bool
 		files      []string
 		output     string
 		filters    []string
@@ -53,75 +52,77 @@ func filterOptions(conf config.Config, key string) ([]string, []filterOption) {
 	return nil, nil
 }
 
-func (ws *webassets) Name() string {
-	return "webassets"
+func (ws *assets) Name() string {
+	return "assets"
 }
 
-func (ws *webassets) run(opt option, statics static.Statics) error {
-	var b bytes.Buffer
+func (ws *assets) execute(opt option, statics static.Statics, exclude map[string]bool) error {
+	files := make(map[string]bool)
+	for _, file := range opt.files {
+		files[file] = true
+	}
 
-	for _, s := range statics {
-		buf, err := s.File.Bytes()
+	var b bytes.Buffer
+	for _, static := range statics {
+		if !files[static.File.Name()] {
+			continue
+		}
+		// 原始文件不继续写入到output目录
+		if !opt.retain {
+			exclude[static.File.Name()] = true
+		}
+		buf, err := ioutil.ReadAll(static.File)
 		if err != nil {
 			return err
 		}
 		var (
-			w bytes.Buffer
+			w = bytes.NewBuffer(nil)
 			r = bytes.NewBuffer(buf)
 		)
 		for i, filter := range opt.filters {
 			w.Reset()
-			if err := ws.filter(filter, &w, r, opt.filterOpts[i]); err != nil {
+			if err := ws.filter(filter, w, r, opt.filterOpts[i]); err != nil {
 				return err
 			}
-			r = &w
+			r = w
 		}
 		b.Write(w.Bytes())
 	}
-
-	output := filepath.Join(ws.conf.GetOutput(), opt.output)
-
-	dstFile, err := os.OpenFile(output, os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer dstFile.Close()
-
-	_, err = io.Copy(dstFile, &b)
-	return err
+	return ws.conf.WriteOutput(opt.output, &b)
 }
 
-func (ws *webassets) BeforeStaticsWrite(statics static.Statics) static.Statics {
+func (ws *assets) BeforeStaticsWrite(statics static.Statics) static.Statics {
+	excludeFiles := make(map[string]bool)
 	for _, opt := range ws.opts {
-		// 根据files找出静态文件
-		files := make(static.Statics, 0)
-		for _, s := range statics {
-			for _, f := range opt.files {
-				if s.File.Name() == f {
-					files = append(files, s)
-				}
-			}
-		}
-		if err := ws.run(opt, files); err != nil {
-			ws.conf.Log.Errorln("webassets err", err.Error())
+		if err := ws.execute(opt, statics, excludeFiles); err != nil {
+			ws.conf.Log.Errorln("assets err", err.Error())
 		}
 	}
-	return statics
+	newstatics := make(static.Statics, 0)
+	for _, static := range statics {
+		if excludeFiles[static.File.Name()] {
+			continue
+		}
+		newstatics = append(newstatics, static)
+	}
+	return newstatics
 }
 
 func New(conf config.Config, theme theme.Theme) hook.Hook {
 	const (
-		filesTemplate   = "params.webassets.%s.files"
-		outputTemplate  = "params.webassets.%s.output"
-		filtersTemplate = "params.webassets.%s.filters"
+		filesTemplate   = "params.assets.%s.files"
+		outputTemplate  = "params.assets.%s.output"
+		retainTemplate  = "params.assets.%s.retain"
+		filtersTemplate = "params.assets.%s.filters"
 	)
 
 	opts := make(map[string]option)
-	meta := conf.GetStringMap("params.webassets")
+	meta := conf.GetStringMap("params.assets")
 	for name := range meta {
 		opt := option{
 			files:  conf.GetStringSlice(fmt.Sprintf(filesTemplate, name)),
 			output: conf.GetString(fmt.Sprintf(outputTemplate, name)),
+			retain: conf.GetBool(fmt.Sprintf(retainTemplate, name)),
 		}
 		if len(opt.files) == 0 || opt.output == "" {
 			continue
@@ -129,9 +130,9 @@ func New(conf config.Config, theme theme.Theme) hook.Hook {
 		opt.filters, opt.filterOpts = filterOptions(conf, fmt.Sprintf(filtersTemplate, name))
 		opts[name] = opt
 	}
-	return &webassets{conf: conf, opts: opts}
+	return &assets{conf: conf, opts: opts}
 }
 
 func init() {
-	hook.Register("webassets", New)
+	hook.Register("assets", New)
 }

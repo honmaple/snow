@@ -17,18 +17,12 @@ func (b *internal) Name() string {
 
 func (b *internal) BeforePagesWrite(pages page.Pages) page.Pages {
 	var (
-		prev   *page.Page
-		metas  = b.conf.GetStringMap("page_meta")
-		labels = pages.GroupBy("type")
-		npages = make(page.Pages, 0)
+		prev  *page.Page
+		terms = pages.GroupBy("type")
 	)
-	for _, label := range labels {
-		if _, ok := metas[label.Name]; !ok {
-			continue
-		}
-
+	for _, term := range terms {
 		var prevInType *page.Page
-		for _, page := range label.List {
+		for _, page := range term.List {
 			page.PrevInType = prevInType
 			if prevInType != nil {
 				prevInType.NextInType = page
@@ -41,10 +35,8 @@ func (b *internal) BeforePagesWrite(pages page.Pages) page.Pages {
 			}
 			prev = page
 		}
-		// 如果未写入详情页, 列表页也默认排除
-		npages = append(npages, label.List...)
 	}
-	return npages
+	return pages
 }
 
 func init() {
