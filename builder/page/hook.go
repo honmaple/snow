@@ -5,7 +5,9 @@ type (
 		AfterPageParse(*Page) *Page
 		BeforePageWrite(*Page) *Page
 		BeforePagesWrite(Pages) Pages
-		// BeforeLabelsWrite(Labels) Labels
+		BeforeSectionsWrite(Sections) Sections
+		BeforeTaxonomiesWrite(Taxonomies) Taxonomies
+		BeforeWrite(map[string]interface{})
 	}
 	Hooks []Hook
 )
@@ -31,9 +33,22 @@ func (hooks Hooks) BeforePagesWrite(pages Pages) Pages {
 	return pages
 }
 
-// func (hooks Hooks) BeforeLabelsWrite(labels Labels) Labels {
-//	for _, hook := range hooks {
-//		labels = hook.BeforeLabelsWrite(labels)
-//	}
-//	return labels
-// }
+func (hooks Hooks) BeforeSectionsWrite(sections Sections) Sections {
+	for _, hook := range hooks {
+		sections = hook.BeforeSectionsWrite(sections)
+	}
+	return sections
+}
+
+func (hooks Hooks) BeforeTaxonomiesWrite(taxonomies Taxonomies) Taxonomies {
+	for _, hook := range hooks {
+		taxonomies = hook.BeforeTaxonomiesWrite(taxonomies)
+	}
+	return taxonomies
+}
+
+func (hooks Hooks) BeforeWrite(vars map[string]interface{}) {
+	for _, hook := range hooks {
+		hook.BeforeWrite(vars)
+	}
+}

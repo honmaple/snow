@@ -2,21 +2,33 @@ site:
   url: "http://127.0.0.1:8000"
   title: "snow's blog"
   language: "zh"
+  logo: "https://s.libforest.com/images/header/header-logo.png"
+  logo_name: "楓"
 
 mode.publish:
   site:
     url: "https://example.com"
 
+languages.en:
+  sections:
+    _index:
+      paginate: 2
+      filter:
+        type: "posts,markdown"
+  translations: ""
+
 sections:
   _index:
     paginate: 2
     filter:
-      type: "posts"
+      type: "posts,markdown"
       # tags: "post3"
   _default:
     orderby: "date desc"
     templates: "posts.html"
     page_template: "page.html"
+  posts:
+    page_template: "post.html"
   pages:
     path: ""
 
@@ -37,7 +49,8 @@ taxonomies:
     path: "archives/index.html"
     template: "archives.html"
     term_path: "archives/{slug}/index.html"
-    term_template: "archives.html"
+    term_template: "period_archives.html"
+    feed_path: ""
 
 output_dir: "output"
 content_dir: "content"
@@ -64,11 +77,21 @@ hooks:
   - "shortcode"
 
 theme:
-  name: "archie-snow"
+  # name: "archie-snow"
+  name: "snow"
   # override: "layouts"
 
 params:
   extra:
+    links:
+      - name: "友链"
+        url: "/pages/friends.html"
+      - name: "联系"
+        url: "/pages/contact.html"
+      - name: "项目"
+        url: "/pages/project.html"
+      - name: "时间轴"
+        url: "/pages/timeline.html"
     social:
       - name: "Github"
         icon: "github"
@@ -80,14 +103,17 @@ params:
         icon: "gitlab"
         url: "https://github.com/honmaple/archie-snow"
     menus:
-      - name: "Home"
-        url: "/"
-      - name: "All post"
-        url: "/posts/index.html"
-      - name: "About"
+      - name: "文章归档"
+        url: "/archives/index.html"
+        submenu:
+          - name: "标签"
+            url: "/tags/index.html"
+          - name: "分类"
+            url: "/categories/index.html"
+          - name: "作者"
+            url: "/authors/index.html"
+      - name: "关于"
         url: "/about"
-      - name: "Tags"
-        url: "/tags/index.html"
     mode: "toggle"
     copyright: "honmaple"
   assets:

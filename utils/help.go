@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+func Bool(value interface{}) bool {
+	return value != nil && (value == true || value == "true")
+
+}
+
 func Compare(value interface{}, other interface{}) int {
 	if value == other {
 		return 0

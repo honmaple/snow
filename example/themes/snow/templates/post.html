@@ -3,27 +3,27 @@
 {% block content %}
   <article>
     <div class="entry-header">
-      <h1 class="entry-title"><a href="{{ site.url }}/{{ page.URL }}">{{ page.Title }}</a></h1>
+      <h1 class="entry-title"><a href="{{ page.Permalink }}">{{ page.Title }}</a></h1>
       {% include 'post.info.html' %}
     </div>
     <hr class="entry-hr" />
     <div class="entry-content">
-      {{ page.Content }}
+      {{ page.Content | safe }}
     </div>
     {% include "post.honor.html" %}
     <hr class="entry-hr" />
     <ul class="entry-pager">
       {% if page.HasPrev() %}
         <li class="previous">
-          <a href="{{ site.url }}/{{ page.Prev.URL }}" title="Previous article: {{ page.Prev.Title }}">
+          <a href="{{ page.Prev.URL | absURL }}" title="Previous article: {{ page.Prev.Title }}">
             <i class="fa fa-chevron-left"></i>
             {{ page.Prev.Title }}
           </a>
         </li>
       {% endif %}
-      {% if page.HasNext %}
+      {% if page.HasNext() %}
         <li class="next">
-          <a href="{{ site.url }}/{{ page.Next.URL }}" title="Next article: {{ page.Next.Title }}">
+          <a href="{{ page.Next.URL | absURL }}" title="Next article: {{ page.Next.Title }}">
             {{ page.Next.Title }}
             <i class="fa fa-chevron-right"></i>
           </a>

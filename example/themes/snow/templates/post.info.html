@@ -1,0 +1,34 @@
+<header class="entry-info">
+  <span title="{% if page.Modified %}Updated at {{ page.Modified | date:"2006-01-02" }}{% else %}{{ page.Date | date:"2006" }}{% endif %}">
+    <i class="fa fa-calendar-o"></i>
+    {{ page.Date | date:"2006-01-02" }}
+  </span>
+  {% if page.Get("authors") %}
+    <span class="entry-info-sep hidden-xs">|</span>
+    <span class="hidden-xs">
+      <i class="fa fa-user-o"></i>
+      By
+      {% for name in page.Get("authors") %}
+        <a href="{{ get_taxonomy_url("authors", name) }}">{{ name }}</a>
+      {% endfor %}
+    </span>
+  {% endif %}
+  <span class="entry-info-sep">|</span>
+  <span>
+    <i class="fa fa-folder-o"></i>
+    In
+    {% for name in page.Get("categories") %}
+      <a href="{{ get_taxonomy_url("categories", name) }}">{{ name }}</a>
+    {% endfor %}
+  </span>
+  {% if page.tags %}
+    <span class="entry-info-sep">|</span>
+    <span>
+      <i class="fa fa-bookmark-o"></i>
+      0f
+      {% for name in page.Get("tags") %}
+        <a href="{{ get_taxonomy_url("tags", name) }}">{{ name }}</a>
+      {% endfor %}
+    </span>
+  {% endif %}
+</header>

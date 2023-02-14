@@ -94,7 +94,7 @@ func (e *Encrypt) decrypt(ciphertext, key string) (string, error) {
 
 func (e *Encrypt) AfterPageParse(page *page.Page) *page.Page {
 	password := page.Get("password")
-	if password == "" {
+	if password == nil || password == "" {
 		return page
 	}
 	page.Summary = fmt.Sprintf(`<shortcode _name="encrypt" password="%s">%s</shortcode>`, password, page.Summary)

@@ -79,6 +79,10 @@ func (conf Config) WriteOutput(file string, r io.Reader) error {
 	return err
 }
 
+func (conf Config) HasTaxonomy(name string) bool {
+	return conf.IsSet(fmt.Sprintf("taxonomies.%s", name))
+}
+
 func (conf Config) GetSlug(name string) string {
 	if conf.GetBool("slugify") {
 		return slug.Make(name)
@@ -174,6 +178,7 @@ var (
 		"theme.override": "layouts",
 		"output_dir":     "output",
 		"content_dir":    "content",
+		"slugify":        true,
 	}
 )
 

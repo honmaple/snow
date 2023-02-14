@@ -12,6 +12,13 @@ import (
 )
 
 type (
+	pageHooks   = page.Hooks
+	staticHooks = static.Hooks
+	BaseHook    struct {
+		pageHooks
+		staticHooks
+	}
+
 	Hook interface {
 		Name() string
 		page.Hook

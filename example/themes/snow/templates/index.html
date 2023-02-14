@@ -1,26 +1,27 @@
 {% extends "common/base.html" %}
 {% block content %}
   <ul class="entry-list">
-    {%- for article in paginator.List %}
+    {%- for page in paginator.List %}
       <li>
         <article>
           <div class="entry-header">
             <h1 class="entry-title">
-              {% if article.Meta.top == 'true' %}<i class="fa fa-thumb-tack text-danger"></i>{% endif %}
-              <a href="{{ site.url }}/{{ article.URL }}" rel="bookmark" title="Permalink to {{ article.Title }}">{{ article.Title }}</a>
+              {% if page.Get("top") %}<i class="fa fa-thumb-tack text-danger"></i>{% endif %}
+              <a href="{{ page.Permalink }}" rel="bookmark" title="Permalink to {{ page.Title }}">{{ page.Title }}</a>
             </h1>
+            {% include 'post.info.html' %}
           </div>
           <hr class="entry-hr" />
           {%- if loop.First and paginator.PageNum == 1 %}
             <div class="entry-content entry-summary">
-              {{ article.Content }}
+              {{ page.Content | safe }}
             </div>
           {% else %}
             <div class="entry-content entry-summary">
-              {{ article.Summary }}
+              {{ page.Summary | safe }}
             </div>
             <div class="text-center">
-              <a class="btn entry-read-more" href="{{ site.url }}/{{ article.URL }}">{{ "阅读全文 »" }}</a>
+              <a class="btn entry-read-more" href="{{ page.Permalink }}">{{ "阅读全文 »" }}</a>
             </div>
           {%- endif %}
         </article>

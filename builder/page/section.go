@@ -17,7 +17,7 @@ type (
 		Weight       int         `json:"weight"`
 		Template     string      `json:"template"`
 		Filter       interface{} `json:"filter"`
-		Orderby      string      `json:"orderby"`
+		OrderBy      string      `json:"orderby"`
 		Paginate     int         `json:"paginate"`
 		PagePath     string      `json:"page_path"`
 		PageTemplate string      `json:"page_template"`
@@ -63,6 +63,17 @@ func (sec Section) Name() string {
 	return fmt.Sprintf("%s/%s", sec.Parent.Name(), sec.Title)
 }
 
+func (sec Section) AllPages() Pages {
+	pages := make(Pages, 0)
+	for _, page := range sec.Pages {
+		pages = append(pages, page)
+	}
+	for _, child := range sec.Children {
+		pages = append(pages, child.AllPages()...)
+	}
+	return pages
+}
+
 func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
 	names, err := utils.FileList(path)
 	if err != nil {
@@ -95,13 +106,15 @@ func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
 		}
 		if page, err := b.loadPage(section, file); err == nil {
 			section.Pages = append(section.Pages, page)
-			b.pages = append(b.pages, page)
+			if hidden := page.Get("hidden"); !utils.Bool(hidden) {
+				b.pages = append(b.pages, page)
+			}
 		}
 	}
 	conf := section.Config
 	section.Path = b.conf.GetRelURL(utils.StringReplace(conf.Path, map[string]string{"{number}": "", "{number:one}": "1"}))
 	section.Permalink = b.conf.GetURL(section.Path)
-	section.Pages = section.Pages.Filter(conf.Filter).OrderBy(conf.Orderby)
+	section.Pages = section.Pages.Filter(conf.Filter).OrderBy(conf.OrderBy)
 	return section, nil
 }
 
@@ -113,6 +126,14 @@ func (b *Builder) loadSections() error {
 		}
 		b.sections = append(b.sections, sec)
 	}
+	sort.SliceStable(b.sections, func(i, j int) bool {
+		ti := b.sections[i]
+		tj := b.sections[j]
+		if ti.Config.Weight == tj.Config.Weight {
+			return ti.Title > tj.Title
+		}
+		return ti.Config.Weight > tj.Config.Weight
+	})
 	return nil
 }
 
@@ -131,7 +152,7 @@ func (b *Builder) newSectionConfig(name string, custom bool) SectionConfig {
 
 	c := SectionConfig{
 		Path:         b.conf.GetString("sections._default.path"),
-		Orderby:      b.conf.GetString("sections._default.orderby"),
+		OrderBy:      b.conf.GetString("sections._default.orderby"),
 		Paginate:     b.conf.GetInt("sections._default.paginate"),
 		Template:     b.conf.GetString("sections._default.template"),
 		PagePath:     b.conf.GetString("sections._default.page_path"),
@@ -144,11 +165,11 @@ func (b *Builder) newSectionConfig(name string, custom bool) SectionConfig {
 		if m != name && !strings.HasPrefix(name, m+"/") {
 			continue
 		}
-		if k := fmt.Sprintf("sections.%s.slug", m); b.conf.IsSet(k) {
-			c.Slug = b.conf.GetString(k)
-		}
 		if k := fmt.Sprintf("sections.%s.weight", m); b.conf.IsSet(k) {
 			c.Weight = b.conf.GetInt(k)
+		}
+		if k := fmt.Sprintf("sections.%s.slug", m); b.conf.IsSet(k) {
+			c.Slug = b.conf.GetString(k)
 		}
 		if k := fmt.Sprintf("sections.%s.path", m); b.conf.IsSet(k) {
 			c.Path = b.conf.GetString(k)
@@ -157,7 +178,7 @@ func (b *Builder) newSectionConfig(name string, custom bool) SectionConfig {
 			c.Filter = b.conf.Get(k)
 		}
 		if k := fmt.Sprintf("sections.%s.orderby", m); b.conf.IsSet(k) {
-			c.Orderby = b.conf.GetString(k)
+			c.OrderBy = b.conf.GetString(k)
 		}
 		if k := fmt.Sprintf("sections.%s.template", m); b.conf.IsSet(k) {
 			c.Template = b.conf.GetString(k)
@@ -182,15 +203,24 @@ func (b *Builder) newSectionConfig(name string, custom bool) SectionConfig {
 		}
 	}
 
-	if c.Slug != "" {
-		name = c.Slug
+	slug := name
+	if c.Slug == "" {
+		names := strings.Split(name, "/")
+		slugs := make([]string, len(names))
+		for i, name := range names {
+			slugs[i] = b.conf.GetSlug(name)
+		}
+		slug = strings.Join(slugs, "/")
 	}
-	vars := map[string]string{"{section}": name}
+
+	vars := map[string]string{"{section}": slug}
 	c.Path = utils.StringReplace(c.Path, vars)
-	c.Template = utils.StringReplace(c.Template, vars)
 	c.PagePath = utils.StringReplace(c.PagePath, vars)
-	c.PageTemplate = utils.StringReplace(c.PageTemplate, vars)
 	c.FeedPath = utils.StringReplace(c.FeedPath, vars)
+
+	vars["{section}"] = name
+	c.Template = utils.StringReplace(c.Template, vars)
+	c.PageTemplate = utils.StringReplace(c.PageTemplate, vars)
 	c.FeedTemplate = utils.StringReplace(c.FeedTemplate, vars)
 	return c
 }

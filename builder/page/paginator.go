@@ -40,7 +40,7 @@ func (p *paginator) HasNext() bool {
 	return p.Next != nil
 }
 
-func (pages Pages) Paginator(number int, output string, vars map[string]string) []*paginator {
+func (pages Pages) Paginator(number int, output string) []*paginator {
 	var maxpage int
 
 	length := len(pages)
@@ -64,17 +64,14 @@ func (pages Pages) Paginator(number int, output string, vars map[string]string) 
 			All:     pors,
 		}
 		numstr := strconv.Itoa(num + 1)
-		pvars := map[string]string{
+		vars := map[string]string{
 			"{number}":     numstr,
 			"{number:one}": numstr,
 		}
-		for k, v := range vars {
-			pvars[k] = v
-		}
 		if num == 0 {
-			pvars["{number}"] = ""
+			vars["{number}"] = ""
 		}
-		por.URL = utils.StringReplace(output, pvars)
+		por.URL = utils.StringReplace(output, vars)
 
 		end := (num + 1) * number
 		if end > length {

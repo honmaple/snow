@@ -82,7 +82,11 @@ func (page Page) Copy() Page {
 	return Page{}
 }
 
-func (page Page) Get(key string) string {
+func (page Page) Get(key string) interface{} {
+	return page.Meta[key]
+}
+
+func (page Page) GetString(key string) string {
 	if v, ok := page.Meta[key]; ok {
 		return v.(string)
 	}
@@ -292,7 +296,8 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 		for _, name := range groupf(page) {
 			var parent *TaxonomyTerm
 
-			for _, subname := range utils.SplitPrefix(name, "/") {
+			// for _, subname := range utils.SplitPrefix(name, "/") {
+			for _, subname := range strings.Split(name, "/") {
 				term, ok := termm[subname]
 				if !ok {
 					term = &TaxonomyTerm{Name: subname}
@@ -354,7 +359,7 @@ func (b *Builder) loadPage(section *Section, file string) (*Page, error) {
 			page.Date = v.(time.Time)
 		case "modified":
 			page.Modified = v.(time.Time)
-		case "path", "save_as":
+		case "url", "save_as":
 			page.Path = v.(string)
 		case "aliases":
 			page.Aliases = v.([]string)

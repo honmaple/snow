@@ -1,6 +1,6 @@
 {% extends "common/layout.html" %}
 {% block content %}
-  {% for year in pages.GroupBy("date:2006").Orderby("name desc") %}
+  {% for year in pages.GroupBy("date:2006").OrderBy("name desc") %}
     {% for month in year.List.GroupBy("date:01") %}
       <h1>{{ year.Name }}/{{ month.Name }}({{ month.List | length }})</h1>
       <ul>

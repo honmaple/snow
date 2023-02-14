@@ -3,11 +3,11 @@
 {% block content %}
   <article>
     <div class="entry-header">
-      <h1 class="entry-title"><a href="{{ site.URL }}/{{ page.URL }}">{{ page.Title }}</a></h1>
+      <h1 class="entry-title"><a href="{{ page.Permalink }}">{{ page.Title }}</a></h1>
     </div>
     <hr class="entry-hr" />
     <div class="entry-content">
-      {{ page.Content }}
+      {{ page.Content | safe }}
     </div>
     {% include "post.comment.html" %}
   </article>

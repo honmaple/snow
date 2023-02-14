@@ -1,0 +1,20 @@
+<div class="entry-footer">
+  <ul class="entry-footer-left">
+    <li class="hidden-xs">© 2015-{% now "2006" %} {{ config.site.author }}</li>
+    <li class="hidden-xs">·</li>
+    <li>
+      {% for link in config.params.extra.links %}
+        <a href="{{ link.url | absURL }}">{{ link.name }}</a>
+        {% if not loop.Last %}
+          <span> | </span>
+        {% endif %}
+      {% endfor %}
+    </li>
+  </ul>
+  <ul class="entry-footer-right">
+    <li><a class="entry-switch-theme" title="Moon"><i class="fa fa-moon-o"></i></a></li>
+    {% for link in config.params.extra.social %}
+      <li {% if link.hidden %}class="hidden-xs"{% endif %}><a href="{{ link.url | absURL }}" title="{{ link.name }}"><i class="fa fa-{{ link.name | lower }}"></i></a></li>
+    {% endfor %}
+  </ul>
+</div>

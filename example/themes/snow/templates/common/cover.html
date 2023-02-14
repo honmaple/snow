@@ -1,0 +1,28 @@
+{% if output_file == "index.html" and articles_page.number == 1 %}
+  <div class="entry-cover">
+    <div class="entry-cover-left">
+      <img src="https://s.libforest.com/images/header/header.png">
+      <h3>{{ config.site.title }}</h3>
+      {% if config.site.subtitle %}<cite>{{ config.site.subtitle }}</cite>{% endif %}
+      <ul class="entry-cover-menu">
+        <li><a id="entry-cover"><i class="fa fa-home" title="BLOG"></i></a></li>
+        {% for link in config.params.extra.index %}
+          <li><a href="{{ link.url | absURL }}" title="{{ link.name }}"><i class="fa fa-{{ link.name | lower }}"></i></a></li>
+        {% endfor %}
+        {% if DEFAULT_LANG == "en" %}
+          <li><a href="{{ config.site.url }}"><i class="fa fa-language" title="Chinese"></i></a></li>
+        {% else %}
+          <li><a href="{{ config.site.url }}/en/index.html"><i class="fa fa-language" title="English"></i></a></li>
+        {% endif %}
+      </ul>
+    </div>
+    <div class="entry-cover-right">
+      <h3>夜雨行</h3>
+      <p>佚名</p>
+      <div>
+        <p>雨中漫步行 夜深無人听</p>
+        <p>悄然歸故裡 卧龍不知情</p>
+      </div>
+    </div>
+  </div>
+{% endif %}
