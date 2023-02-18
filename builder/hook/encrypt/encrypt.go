@@ -93,7 +93,7 @@ func (e *Encrypt) decrypt(ciphertext, key string) (string, error) {
 }
 
 func (e *Encrypt) AfterPageParse(page *page.Page) *page.Page {
-	password := page.Get("password")
+	password := page.Meta.Get("password")
 	if password == nil || password == "" {
 		return page
 	}

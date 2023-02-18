@@ -81,19 +81,16 @@
          filter: ""
          # 页面中文章默认分页, path必须使用{number}变量, 0表示不分页
          paginate: 10
+         # 分页路径
+         paginate_path: "{name}{number}{extension}"
          # 生成路径, 为空表示禁止生成相关页面
-         path: "{section}/index{number}.html"
+         path: "{section}/index.html"
          # 使用的模版
          template: "section.html"
          # 当前section下所有文章生成路径
          page_path: "{section}/{slug}/index.html"
          # 文章使用的模版
          page_template: "post.html"
-       _index:
-         # 自定义页面必须指定为true
-         custom: true
-         path: "index{number}.html"
-         paginate: 20
        posts:
          page_path: "posts/{date:%Y}/{date:%m}/{slug}.html"
        pages:
@@ -194,6 +191,7 @@
          term_orderby: "date desc"
          # 文章列表分页
          term_paginate: 0
+         term_paginate_path: ""
        categories:
        authors:
        tags:
@@ -260,7 +258,6 @@
      | paginator.Next.URL  | 下一页链接     |
      | paginator.All       | 所有页         |
      | paginator.List      | 当前页文章列表 |
-     | slug                | 分组key        |
 
 *** Static
     静态文件配置:

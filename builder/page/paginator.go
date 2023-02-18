@@ -1,6 +1,7 @@
 package page
 
 import (
+	"path/filepath"
 	"strconv"
 
 	"github.com/honmaple/snow/utils"
@@ -40,7 +41,17 @@ func (p *paginator) HasNext() bool {
 	return p.Next != nil
 }
 
-func (pages Pages) Paginator(number int, output string) []*paginator {
+func (pages Pages) Paginator(number int, path string, paginatePath string) []*paginator {
+	if paginatePath == "" {
+		paginatePath = "{name}{number}{extension}"
+	}
+	file := filepath.Base(path)
+	exts := filepath.Ext(file)
+	output := filepath.Join(filepath.Dir(path), utils.StringReplace(paginatePath, map[string]string{
+		"{name}":      file[:len(file)-len(exts)],
+		"{extension}": exts,
+	}))
+
 	var maxpage int
 
 	length := len(pages)

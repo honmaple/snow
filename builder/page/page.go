@@ -11,9 +11,18 @@ import (
 
 	"github.com/honmaple/snow/config"
 	"github.com/honmaple/snow/utils"
+	"github.com/spf13/cast"
 )
 
 type Meta map[string]interface{}
+
+func (m Meta) Copy() Meta {
+	nm := make(Meta)
+	for k, v := range m {
+		nm[k] = v
+	}
+	return nm
+}
 
 func (m Meta) Fix() {
 	for k, v := range m {
@@ -30,6 +39,22 @@ func (m Meta) Fix() {
 
 func (m Meta) Get(k string) interface{} {
 	return m[k]
+}
+
+func (m Meta) GetInt(k string) int {
+	return cast.ToInt(m[k])
+}
+
+func (m Meta) GetBool(k string) bool {
+	return cast.ToBool(m[k])
+}
+
+func (m Meta) GetString(k string) string {
+	return cast.ToString(m[k])
+}
+
+func (m Meta) GetSlice(k string) []string {
+	return cast.ToStringSlice(m[k])
 }
 
 func (m Meta) Set(conf config.Config, k, v string) {
@@ -77,28 +102,6 @@ type (
 	}
 	Pages []*Page
 )
-
-func (page Page) Copy() Page {
-	return Page{}
-}
-
-func (page Page) Get(key string) interface{} {
-	return page.Meta[key]
-}
-
-func (page Page) GetString(key string) string {
-	if v, ok := page.Meta[key]; ok {
-		return v.(string)
-	}
-	return ""
-}
-
-func (page Page) GetSlice(key string) []string {
-	if v, ok := page.Meta[key]; ok {
-		return v.([]string)
-	}
-	return nil
-}
 
 func (page Page) HasPrev() bool {
 	return page.Prev != nil
@@ -332,9 +335,14 @@ func (b *Builder) readFile(file string) (Meta, error) {
 }
 
 func (b *Builder) loadPage(section *Section, file string) (*Page, error) {
-	meta, err := b.readFile(file)
+	filemeta, err := b.readFile(file)
 	if err != nil {
 		return nil, err
+	}
+
+	meta := section.Meta.Copy()
+	for k, v := range filemeta {
+		meta[k] = v
 	}
 
 	now := time.Now()
@@ -382,7 +390,10 @@ func (b *Builder) loadPage(section *Section, file string) (*Page, error) {
 		if slug, ok := meta["slug"]; ok && slug != "" {
 			vars["{slug}"] = slug.(string)
 		}
-		page.Path = utils.StringReplace(section.Config.PagePath, vars)
+		if vars["{filename}"] == "index" {
+			vars["{filename}"] = page.Type
+		}
+		page.Path = utils.StringReplace(section.Meta.GetString("page_path"), vars)
 	}
 	page.Path = b.conf.GetRelURL(page.Path)
 	page.Permalink = b.conf.GetURL(page.Path)

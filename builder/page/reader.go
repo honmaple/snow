@@ -56,7 +56,7 @@ func (b *Builder) Build(ctx context.Context) error {
 	defer func() {
 		ls := make([]string, len(b.sections))
 		for i, section := range b.sections {
-			ls[i] = fmt.Sprintf("%d %s", len(section.Pages), section.Title)
+			ls[i] = fmt.Sprintf("%d %s", len(section.Pages), section.Name())
 		}
 		b.conf.Log.Infoln("Done: Section Processed", strings.Join(ls, ", "), "in", time.Now().Sub(now))
 
@@ -69,7 +69,7 @@ func (b *Builder) Build(ctx context.Context) error {
 
 	b.loadSections()
 	b.loadTaxonomies()
-	return b.Write(b.hooks.BeforePagesWrite(b.pages))
+	return b.Write()
 }
 
 func NewBuilder(conf config.Config, theme theme.Theme, hooks Hooks) *Builder {

@@ -1,9 +1,8 @@
 package page
 
 import (
-	"fmt"
-
 	"github.com/honmaple/snow/builder/theme/template"
+	"github.com/honmaple/snow/utils"
 )
 
 func (b *Builder) getSection(name string) *Section {
@@ -16,8 +15,7 @@ func (b *Builder) getSection(name string) *Section {
 }
 
 func (b *Builder) getSectionURL(name string) string {
-	conf := b.newSectionConfig(name, false)
-	return b.conf.GetURL(conf.Path)
+	return b.getSection(name).Permalink
 }
 
 func (b *Builder) getTaxonomy(name string) *Taxonomy {
@@ -30,18 +28,19 @@ func (b *Builder) getTaxonomy(name string) *Taxonomy {
 }
 
 func (b *Builder) getTaxonomyURL(kind string, names ...string) string {
-	if len(names) >= 1 {
-		conf := b.newTaxonomyTermConfig(kind, names[0])
-		return b.conf.GetURL(conf.Path)
-	}
 	conf := b.newTaxonomyConfig(kind)
-	return b.conf.GetURL(conf.Path)
+	if len(names) >= 1 {
+		return b.conf.GetURL(utils.StringReplace(conf.GetString("term_path"), map[string]string{"{slug}": b.conf.GetSlug(names[0])}))
+	}
+	return b.conf.GetURL(conf.GetString("path"))
 }
 
 func (b *Builder) write(tpl template.Writer, path string, vars map[string]interface{}) {
+	if path == "" {
+		return
+	}
 	rvars := map[string]interface{}{
 		"pages":            b.pages,
-		"sections":         b.sections,
 		"taxonomies":       b.taxonomies,
 		"get_section":      b.getSection,
 		"get_section_url":  b.getSectionURL,
@@ -61,13 +60,28 @@ func (b *Builder) write(tpl template.Writer, path string, vars map[string]interf
 	}
 }
 
+func (b *Builder) writePages(pages Pages) {
+	for _, page := range pages {
+		if tpl, ok := b.theme.LookupTemplate(page.Meta.GetString("page_template")); ok {
+			aliases := append(page.Aliases, page.Path)
+			for _, aliase := range aliases {
+				b.write(tpl, aliase, map[string]interface{}{
+					"page": page,
+				})
+			}
+		}
+	}
+}
+
 func (b *Builder) writeSections(sections Sections) {
 	for _, section := range sections {
-		conf := section.Config
-		if conf.Path != "" {
-			if tpl, ok := b.theme.LookupTemplate(conf.Template, "section.html", "_internal/section.html"); ok {
-				pors := section.Pages.Paginator(conf.Paginate, conf.Path)
-				for _, por := range pors {
+		if path := section.Meta.GetString("path"); path != "" {
+			lookup := []string{section.Meta.GetString("template")}
+			if !section.Hidden {
+				lookup = append(lookup, "section.html", "_internal/section.html")
+			}
+			if tpl, ok := b.theme.LookupTemplate(lookup...); ok {
+				for _, por := range section.Paginator() {
 					b.write(tpl, por.URL, map[string]interface{}{
 						"section":       section,
 						"paginator":     por,
@@ -76,40 +90,30 @@ func (b *Builder) writeSections(sections Sections) {
 					})
 				}
 			}
-		}
-		if conf.PagePath != "" {
-			if tpl, ok := b.theme.LookupTemplate(conf.PageTemplate); ok {
-				for _, page := range section.Pages {
-					// posts/first-page.html
-					aliases := append(page.Aliases, page.Path)
-					for _, aliase := range aliases {
-						b.write(tpl, aliase, map[string]interface{}{
-							"page": page,
-						})
-					}
-				}
+			if section.Hidden {
+				return
 			}
 		}
-		if conf.FeedPath != "" {
-			b.writeFeeds(conf.FeedPath, conf.Template, map[string]interface{}{
+		if path := section.Meta.GetString("feed_path"); path != "" {
+			b.writeFeeds(path, section.Meta.GetString("feed_template"), map[string]interface{}{
 				"section": section,
 				"pages":   section.Pages,
 			})
 		}
-		b.writeSections(section.Children)
 	}
 }
 
 // 写入分类系统, @templates/{name}/list.html, single.html
 func (b *Builder) writeTaxonomies(taxonomies Taxonomies) {
 	for _, taxonomy := range taxonomies {
-		conf := taxonomy.Config
-		if tpl, ok := b.theme.LookupTemplate(conf.Template, "taxonomy.html", "_default/list.html", "_internal/taxonomy.html"); ok {
-			// example.com/tags/index.html
-			b.write(tpl, conf.Path, map[string]interface{}{
-				"taxonomy": taxonomy,
-				"terms":    taxonomy.Terms,
-			})
+		if path := taxonomy.Meta.GetString("path"); path != "" {
+			if tpl, ok := b.theme.LookupTemplate(taxonomy.Meta.GetString("template"), "taxonomy.html", "_default/list.html", "_internal/taxonomy.html"); ok {
+				// example.com/tags/index.html
+				b.write(tpl, path, map[string]interface{}{
+					"taxonomy": taxonomy,
+					"terms":    taxonomy.Terms,
+				})
+			}
 		}
 		b.writeTaxonomyTerms(taxonomy, taxonomy.Terms)
 	}
@@ -117,11 +121,9 @@ func (b *Builder) writeTaxonomies(taxonomies Taxonomies) {
 
 func (b *Builder) writeTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
 	for _, term := range terms {
-		conf := term.Config
-		if conf.Path != "" {
-			if tpl, ok := b.theme.LookupTemplate(conf.Template, "taxonomy.terms.html", "_default/single.html", "_internal/taxonomy.terms.html"); ok {
-				pors := term.List.Paginator(conf.Paginate, conf.Path)
-				for _, por := range pors {
+		if path := term.Meta.GetString("term_path"); path != "" {
+			if tpl, ok := b.theme.LookupTemplate(term.Meta.GetString("term_template"), "taxonomy.terms.html", "_default/single.html", "_internal/taxonomy.terms.html"); ok {
+				for _, por := range term.Paginator() {
 					b.write(tpl, por.URL, map[string]interface{}{
 						"term":      term,
 						"pages":     term.List,
@@ -131,8 +133,8 @@ func (b *Builder) writeTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
 				}
 			}
 		}
-		if conf.FeedPath != "" {
-			b.writeFeeds(conf.FeedPath, conf.FeedTemplate, map[string]interface{}{
+		if path := term.Meta.GetString("feed_path"); path != "" {
+			b.writeFeeds(path, term.Meta.GetString("feed_template"), map[string]interface{}{
 				"term":     term,
 				"pages":    term.List,
 				"taxonomy": taxonomy,
@@ -142,43 +144,15 @@ func (b *Builder) writeTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
 	}
 }
 
-func (b *Builder) writeCustoms(pages Pages) {
-	meta := b.conf.GetStringMap("sections")
-	for name := range meta {
-		if !b.conf.GetBool(fmt.Sprintf("sections.%s.custom", name)) {
-			continue
-		}
-		conf := b.newSectionConfig(name, true)
-		if conf.Path == "" {
-			continue
-		}
-		tpl, ok := b.theme.LookupTemplate(conf.Template)
-		if !ok {
-			return
-		}
-		for _, por := range pages.Filter(conf.Filter).OrderBy(conf.OrderBy).Paginator(conf.Paginate, conf.Path) {
-			b.write(tpl, por.URL, map[string]interface{}{
-				"pages":     pages,
-				"paginator": por,
-			})
-		}
-	}
-}
-
 func (b *Builder) writeFeeds(path string, template string, vars map[string]interface{}) {
-	if path == "" {
-		return
+	if tpl, ok := b.theme.LookupTemplate(template, "_internal/feed.xml"); ok {
+		b.write(tpl, path, vars)
 	}
-	tpl, ok := b.theme.LookupTemplate(template, "_internal/feed.xml")
-	if !ok {
-		return
-	}
-	b.write(tpl, path, vars)
 }
 
-func (b *Builder) Write(pages Pages) error {
+func (b *Builder) Write() error {
+	b.writePages(b.hooks.BeforePagesWrite(b.pages))
 	b.writeSections(b.hooks.BeforeSectionsWrite(b.sections))
 	b.writeTaxonomies(b.hooks.BeforeTaxonomiesWrite(b.taxonomies))
-	b.writeCustoms(pages)
 	return nil
 }
