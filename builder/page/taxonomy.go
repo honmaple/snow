@@ -2,6 +2,7 @@ package page
 
 import (
 	"github.com/honmaple/snow/utils"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -36,6 +37,7 @@ type (
 		Permalink string
 
 		List     Pages
+		Parent   *TaxonomyTerm
 		Children TaxonomyTerms
 
 		Previous *TaxonomyTerm
@@ -45,6 +47,13 @@ type (
 	}
 	TaxonomyTerms []*TaxonomyTerm
 )
+
+func (term TaxonomyTerm) RealName() string {
+	if term.Parent == nil {
+		return term.Name
+	}
+	return filepath.Join(term.Parent.Name, term.Name)
+}
 
 func (term TaxonomyTerm) Paginator() []*paginator {
 	return term.List.Paginator(
@@ -102,7 +111,16 @@ func (b *Builder) loadTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
 	keys := []string{"term_path", "term_template", "feed_path", "feed_template"}
 	for _, term := range terms {
 		term.Meta = taxonomy.Meta.Copy()
-		vars := map[string]string{"{term}": term.Name, "{term:slug}": b.conf.GetSlug(term.Name)}
+
+		name := term.RealName()
+		names := strings.Split(name, "/")
+		slugs := make([]string, len(names))
+		for i, name := range names {
+			slugs[i] = b.conf.GetSlug(name)
+		}
+		slug := strings.Join(slugs, "/")
+
+		vars := map[string]string{"{term}": name, "{term:slug}": slug}
 		for _, k := range keys {
 			term.Meta[k] = utils.StringReplace(term.Meta.GetString(k), vars)
 		}

@@ -15,7 +15,7 @@
     <ul class="entry-pager">
       {% if page.HasPrev() %}
         <li class="previous">
-          <a href="{{ page.Prev.URL | absURL }}" title="Previous article: {{ page.Prev.Title }}">
+          <a href="{{ page.Prev.Permalink }}" title="Previous article: {{ page.Prev.Title }}">
             <i class="fa fa-chevron-left"></i>
             {{ page.Prev.Title }}
           </a>
@@ -23,7 +23,7 @@
       {% endif %}
       {% if page.HasNext() %}
         <li class="next">
-          <a href="{{ page.Next.URL | absURL }}" title="Next article: {{ page.Next.Title }}">
+          <a href="{{ page.Next.Permalink }}" title="Next article: {{ page.Next.Title }}">
             {{ page.Next.Title }}
             <i class="fa fa-chevron-right"></i>
           </a>

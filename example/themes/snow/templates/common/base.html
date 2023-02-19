@@ -7,7 +7,9 @@
     <title>{% block title %}{{ config.site.title }}{% if config.site.subtitle %} · {{ config.site.subtitle }}{% endif %}{%endblock%}</title>
     {% block stylesheet %}
       <link href="https://s.libforest.com/static/css/lib.min.css" rel="stylesheet">
-      <link href="https://honmaple.me/static/lib/css/style.min.css" rel="stylesheet">
+      {% assets "css" %}
+        <link href="{{ config.site.url }}/{{ asset_url }}" rel="stylesheet">
+      {% endassets %}
     {% endblock %}
   </head>
   <body>

@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"path/filepath"
 	"reflect"
 	"strings"
 
 	libsass "github.com/wellington/go-libsass"
-	// "github.com/bep/golibsass/libsass"
 
 	"github.com/spf13/cast"
 	"github.com/tdewolff/minify/v2"
@@ -45,7 +45,7 @@ func filterOptions(data interface{}) (names []string, opts []filterOption) {
 	}
 }
 
-func (ws *assets) execute(opt option) error {
+func (self *assets) execute(opt option) error {
 	var b bytes.Buffer
 	for _, file := range opt.files {
 		var (
@@ -53,7 +53,7 @@ func (ws *assets) execute(opt option) error {
 			err error
 		)
 		if strings.HasPrefix(file, "@theme/") {
-			f, err := ws.theme.Open(file[7:])
+			f, err := self.theme.Open(file[7:])
 			if err != nil {
 				return err
 			}
@@ -70,29 +70,30 @@ func (ws *assets) execute(opt option) error {
 		)
 		for i, filter := range opt.filters {
 			w.Reset()
-			if err := ws.filter(filter, w, r, opt.filterOpts[i]); err != nil {
+			if err := self.filter(filter, w, r, opt.filterOpts[i]); err != nil {
 				return err
 			}
-			r = w
+			*r = *w
 		}
 		b.Write(w.Bytes())
 	}
-	return ws.conf.WriteOutput(opt.output, &b)
+	self.conf.Log.Debugln("Writing", filepath.Join(self.conf.GetOutput(), opt.output))
+	return self.conf.WriteOutput(opt.output, &b)
 }
 
-func (ws *assets) filter(name string, w io.Writer, r io.Reader, opt filterOption) (err error) {
+func (self *assets) filter(name string, w io.Writer, r io.Reader, opt filterOption) (err error) {
 	switch name {
 	case "libscss":
-		err = ws.libscss(w, r, opt)
+		err = self.libscss(w, r, opt)
 	case "cssmin":
-		err = ws.cssmin(w, r, opt)
+		err = self.cssmin(w, r, opt)
 	case "jsmin":
-		err = ws.jsmin(w, r, opt)
+		err = self.jsmin(w, r, opt)
 	}
 	return err
 }
 
-func (ws *assets) libscss(w io.Writer, r io.Reader, opt filterOption) error {
+func (self *assets) libscss(w io.Writer, r io.Reader, opt filterOption) error {
 	paths := make([]string, 0)
 	if opt != nil {
 		paths = cast.ToStringSlice(opt["path"])
@@ -105,14 +106,14 @@ func (ws *assets) libscss(w io.Writer, r io.Reader, opt filterOption) error {
 	return comp.Run()
 }
 
-func (ws *assets) cssmin(w io.Writer, r io.Reader, opt filterOption) error {
+func (self *assets) cssmin(w io.Writer, r io.Reader, opt filterOption) error {
 	m := minify.New()
 	m.AddFunc("css", css.Minify)
 
 	return m.Minify("css", w, r)
 }
 
-func (ws *assets) jsmin(w io.Writer, r io.Reader, opt filterOption) error {
+func (self *assets) jsmin(w io.Writer, r io.Reader, opt filterOption) error {
 	m := minify.New()
 	m.AddFunc("js", js.Minify)
 

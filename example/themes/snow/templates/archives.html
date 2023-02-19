@@ -2,7 +2,7 @@
 {% block title %}{{ "文章归档" }} · {{ block.Super }}{% endblock %}
 {% block content %}
   <div class="entry-archive">
-    {% for term in pages.GroupBy("date:2006-01").OrderBy("name desc") %}
+    {% for term in pages.Filter("posts/org,posts/markdown").GroupBy("date:2006-01").OrderBy("name desc") %}
       {% set date = term.Name | split:"-" %}
       {% set year = date[0] %}
       {% set month = date[1] %}

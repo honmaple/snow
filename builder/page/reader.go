@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -31,24 +29,7 @@ type (
 
 func (b *Builder) Dirs() []string {
 	root := b.conf.GetString("content_dir")
-
-	pageDirs := b.conf.GetStringSlice("page_dirs")
-	if len(pageDirs) > 0 {
-		dirs := make([]string, len(pageDirs))
-		for i, dir := range pageDirs {
-			dirs[i] = filepath.Join(root, dir)
-		}
-		return dirs
-	}
-	subDirs, err := ioutil.ReadDir(root)
-	if err != nil {
-		return nil
-	}
-	dirs := make([]string, len(subDirs))
-	for i, dir := range subDirs {
-		dirs[i] = filepath.Join(root, dir.Name())
-	}
-	return dirs
+	return []string{root}
 }
 
 func (b *Builder) Build(ctx context.Context) error {

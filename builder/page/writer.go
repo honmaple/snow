@@ -30,7 +30,11 @@ func (b *Builder) getTaxonomy(name string) *Taxonomy {
 func (b *Builder) getTaxonomyURL(kind string, names ...string) string {
 	conf := b.newTaxonomyConfig(kind)
 	if len(names) >= 1 {
-		return b.conf.GetURL(utils.StringReplace(conf.GetString("term_path"), map[string]string{"{slug}": b.conf.GetSlug(names[0])}))
+		return b.conf.GetURL(utils.StringReplace(conf.GetString("term_path"), map[string]string{
+			"{taxonomy}":  kind,
+			"{term}":      names[0],
+			"{term:slug}": b.conf.GetSlug(names[0]),
+		}))
 	}
 	return b.conf.GetURL(conf.GetString("path"))
 }

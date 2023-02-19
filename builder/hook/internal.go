@@ -17,24 +17,14 @@ func (b *internal) Name() string {
 
 func (b *internal) BeforePagesWrite(pages page.Pages) page.Pages {
 	var (
-		prev  *page.Page
-		terms = pages.GroupBy("type")
+		prev *page.Page
 	)
-	for _, term := range terms {
-		var prevInType *page.Page
-		for _, page := range term.List {
-			page.PrevInType = prevInType
-			if prevInType != nil {
-				prevInType.NextInType = page
-			}
-			prevInType = page
-
-			page.Prev = prev
-			if prev != nil {
-				prev.Next = page
-			}
-			prev = page
+	for _, page := range pages {
+		page.Prev = prev
+		if prev != nil {
+			prev.Next = page
 		}
+		prev = page
 	}
 	return pages
 }

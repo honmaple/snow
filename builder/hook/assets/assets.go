@@ -31,21 +31,20 @@ const (
 	filtersTemplate = "params.assets.%s.filters"
 )
 
-func (ws *assets) Name() string {
+func (self *assets) Name() string {
 	return "assets"
 }
 
-func (ws *assets) BeforeStaticsWrite(statics static.Statics) static.Statics {
-	for _, opt := range ws.opts {
-		if err := ws.execute(opt); err != nil {
-			ws.conf.Log.Errorln("assets err", err.Error())
+func (self *assets) BeforeStaticsWrite(statics static.Statics) static.Statics {
+	for _, opt := range self.opts {
+		if err := self.execute(opt); err != nil {
+			self.conf.Log.Errorln("hook assets:", err.Error())
 		}
 	}
 	return statics
 }
 
 func New(conf config.Config, theme theme.Theme) hook.Hook {
-
 	opts := make(map[string]option)
 	meta := conf.GetStringMap("params.assets")
 	for name := range meta {
@@ -59,7 +58,7 @@ func New(conf config.Config, theme theme.Theme) hook.Hook {
 		opt.filters, opt.filterOpts = filterOptions(conf.Get(fmt.Sprintf(filtersTemplate, name)))
 		opts[name] = opt
 	}
-	h := &assets{conf: conf, opts: opts}
+	h := &assets{conf: conf, opts: opts, theme: theme}
 	pongo2.RegisterTag("assets", pongo2.TagParser(h.assetParser))
 	return h
 }

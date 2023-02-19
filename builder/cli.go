@@ -17,7 +17,7 @@ import (
 
 	_ "github.com/honmaple/snow/builder/hook/encrypt"
 	_ "github.com/honmaple/snow/builder/hook/shortcode"
-	// _ "github.com/honmaple/snow/builder/hook/assets"
+	_ "github.com/honmaple/snow/builder/hook/assets"
 )
 
 const (

@@ -99,9 +99,15 @@ type (
 		Next       *Page
 		PrevInType *Page
 		NextInType *Page
+
+		Section *Section
 	}
 	Pages []*Page
 )
+
+func (page Page) Get(k string) interface{} {
+	return page.Meta.Get(k)
+}
 
 func (page Page) HasPrev() bool {
 	return page.Prev != nil
@@ -297,13 +303,14 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 	}
 	for _, page := range pages {
 		for _, name := range groupf(page) {
+			name = strings.ToLower(name)
 			var parent *TaxonomyTerm
 
 			// for _, subname := range utils.SplitPrefix(name, "/") {
 			for _, subname := range strings.Split(name, "/") {
 				term, ok := termm[subname]
 				if !ok {
-					term = &TaxonomyTerm{Name: subname}
+					term = &TaxonomyTerm{Name: subname, Parent: parent}
 					if parent == nil {
 						terms = append(terms, term)
 					}
@@ -334,19 +341,21 @@ func (b *Builder) readFile(file string) (Meta, error) {
 	return reader.Read(bytes.NewBuffer(buf))
 }
 
-func (b *Builder) loadPage(section *Section, file string) (*Page, error) {
-	filemeta, err := b.readFile(file)
-	if err != nil {
-		return nil, err
-	}
-
+func (b *Builder) loadPage(section *Section, file string, filemeta Meta) (*Page, error) {
 	meta := section.Meta.Copy()
 	for k, v := range filemeta {
 		meta[k] = v
 	}
 
 	now := time.Now()
-	page := &Page{File: file, Type: section.Name(), Meta: meta, Date: now, Modified: now}
+	page := &Page{
+		File:     file,
+		Type:     section.Name(),
+		Meta:     meta,
+		Date:     now,
+		Modified: now,
+		Section:  section,
+	}
 	for k, v := range meta {
 		if v == "" {
 			continue
@@ -384,7 +393,6 @@ func (b *Builder) loadPage(section *Section, file string) (*Page, error) {
 			"{date:%d}":  page.Date.Format("02"),
 			"{date:%H}":  page.Date.Format("15"),
 			"{filename}": utils.FileBaseName(file),
-			"{section}":  page.Type,
 			"{slug}":     b.conf.GetSlug(page.Title),
 		}
 		if slug, ok := meta["slug"]; ok && slug != "" {
@@ -393,7 +401,7 @@ func (b *Builder) loadPage(section *Section, file string) (*Page, error) {
 		if vars["{filename}"] == "index" {
 			vars["{filename}"] = page.Type
 		}
-		page.Path = utils.StringReplace(section.Meta.GetString("page_path"), vars)
+		page.Path = utils.StringReplace(meta.GetString("page_path"), vars)
 	}
 	page.Path = b.conf.GetRelURL(page.Path)
 	page.Permalink = b.conf.GetURL(page.Path)

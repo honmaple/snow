@@ -11,24 +11,25 @@ mode.publish:
 
 languages.en:
   sections:
-    _index:
+    _default:
       paginate: 2
       filter:
         type: "posts,markdown"
   translations: ""
 
 sections:
-  _index:
-    paginate: 2
-    filter:
-      type: "posts,markdown"
-      # tags: "post3"
   _default:
     orderby: "date desc"
+    path: ""
     templates: "posts.html"
     page_template: "page.html"
   posts:
+    page_path: "articles/{date:%Y}/{date:%m}/{slug}.html"
     page_template: "post.html"
+  posts/org:
+    transparent: true
+  posts/markdown:
+    transparent: true
   pages:
     path: ""
 
@@ -73,6 +74,7 @@ static_paths:
   "@theme/static": "static/"
 
 hooks:
+  - "assets"
   - "encrypt"
   - "shortcode"
 
@@ -119,11 +121,18 @@ params:
   assets:
     css:
       files:
+        - "@theme/static/scss/common.scss"
+        - "@theme/static/scss/reset.scss"
         - "@theme/static/scss/main.scss"
+        - "@theme/static/scss/cover.scss"
+        - "@theme/static/scss/timeline.scss"
+        - "@theme/static/scss/honor.scss"
         - "@theme/static/scss/entry.scss"
+        - "@theme/static/scss/entry-tree.scss"
+        - "@theme/static/css/pygment.css"
       filters:
         - libscss:
-            path: ["@theme/static/scss/"]
+            path: ["themes/snow/static/scss/"]
         - cssmin:
-      output: "static/lib.min.css"
+      output: "static/lib/css/style.min.css"
       retain: true

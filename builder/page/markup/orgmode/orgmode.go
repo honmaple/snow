@@ -22,7 +22,11 @@ var (
 	ORGMODE_META = regexp.MustCompile(`^#\+([^:]+):(\s+(.*)|$)`)
 )
 
-func highlightCodeBlock(source, lang string) string {
+type orgmode struct {
+	conf config.Config
+}
+
+func (m *orgmode) highlightCodeBlock(source, lang string) string {
 	var w strings.Builder
 	l := lexers.Get(lang)
 	if l == nil {
@@ -30,12 +34,8 @@ func highlightCodeBlock(source, lang string) string {
 	}
 	l = chroma.Coalesce(l)
 	it, _ := l.Tokenise(nil, source)
-	_ = html.New().Format(&w, styles.Get("friendly"), it)
+	_ = html.New().Format(&w, styles.Get("monokai"), it)
 	return `<div class="highlight">` + "\n" + w.String() + "\n" + `</div>`
-}
-
-type orgmode struct {
-	conf config.Config
 }
 
 func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
@@ -83,9 +83,9 @@ func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
 
 func (m *orgmode) HTML(r io.Reader) string {
 	rd := render.HTML{
-		Toc:      false,
-		Document: org.New(r),
-		// Highlight: highlightCodeBlock,
+		Toc:       false,
+		Document:  org.New(r),
+		Highlight: m.highlightCodeBlock,
 	}
 	return rd.String()
 }

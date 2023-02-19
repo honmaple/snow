@@ -6,7 +6,7 @@
         <article>
           <div class="entry-header">
             <h1 class="entry-title">
-              {% if page.Get("top") %}<i class="fa fa-thumb-tack text-danger"></i>{% endif %}
+              {% if page.Meta.Get("top") %}<i class="fa fa-thumb-tack text-danger"></i>{% endif %}
               <a href="{{ page.Permalink }}" rel="bookmark" title="Permalink to {{ page.Title }}">{{ page.Title }}</a>
             </h1>
             {% include 'post.info.html' %}

@@ -44,8 +44,8 @@ func (node *assetNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 	return node.wrapper.Execute(newctx, writer)
 }
 
-func (ws *assets) assetParser(doc *pongo2.Parser, start *pongo2.Token, arguments *pongo2.Parser) (pongo2.INodeTag, *pongo2.Error) {
-	node := &assetNode{pairs: make(map[string]pongo2.IEvaluator)}
+func (self *assets) assetParser(doc *pongo2.Parser, start *pongo2.Token, arguments *pongo2.Parser) (pongo2.INodeTag, *pongo2.Error) {
+	node := &assetNode{pairs: make(map[string]pongo2.IEvaluator), assets: self}
 
 	wrapper, endargs, err := doc.WrapUntilTag("endassets")
 	if err != nil {
