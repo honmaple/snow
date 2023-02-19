@@ -64,6 +64,9 @@ func (conf Config) Load(path string) error {
 }
 
 func (conf Config) WriteOutput(file string, r io.Reader) error {
+	if file == "" {
+		return nil
+	}
 	output := filepath.Join(conf.GetOutput(), file)
 
 	if dir := filepath.Dir(output); !utils.FileExists(output) {
@@ -149,12 +152,12 @@ func (conf Config) SetMode(mode string) error {
 
 var (
 	sectionConfig = map[string]interface{}{
-		"sections._default.path":          "{section}/index.html",
+		"sections._default.path":          "{section:slug}/index.html",
 		"sections._default.orderby":       "date desc",
 		"sections._default.paginate":      10,
 		"sections._default.paginate_path": "{name}{number}{extension}",
 		"sections._default.template":      "posts.html",
-		"sections._default.page_path":     "{section}/{slug}/index.html",
+		"sections._default.page_path":     "{section:slug}/{slug}/index.html",
 		"sections._default.page_template": "page.html",
 
 		"sections._index.path":     "index{number}.html",
@@ -165,7 +168,7 @@ var (
 	taxonomyConfig = map[string]interface{}{
 		"taxonomies._default.path":               "{taxonomy}/index.html",
 		"taxonomies._default.template":           "{taxonomy}/list.html",
-		"taxonomies._default.term_path":          "{taxonomy}/{slug}/index.html",
+		"taxonomies._default.term_path":          "{taxonomy}/{term:slug}/index.html",
 		"taxonomies._default.term_template":      "{taxonomy}/single.html",
 		"taxonomies._default.term_paginate_path": "{name}{number}{extension}",
 

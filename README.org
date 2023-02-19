@@ -109,13 +109,11 @@
        #+end_src
 
 **** 路径变量(*sections.xxx.path*)
-     |-----------+------------------|
-     | 变量      | 描述             |
-     |-----------+------------------|
-     | {section} | section名称      |
-     | {number}  | 使用分页时的页码 |
-
-     ={number}= 在第一页时会自动配置成空字符串，如果需要禁止该动作，可以使用 ={number:one}= 代替
+     |----------------+---------------------------------|
+     | 变量           | 描述                            |
+     |----------------+---------------------------------|
+     | {section}      | section名称                     |
+     | {section:slug} | section slug, 中国 -> zhong-guo |
 
 **** 模版变量(*sections.xxx.template*)
      |-------------------+-------------------------|
@@ -135,10 +133,6 @@
      #+begin_src yaml
      # 文章目录所在, 其中该目录下应该包括一系列子目录，这些子目录的名称对应为 *文章的类型*, 比如 *content/drafts/* 目录下的文章类型为 *drafts*, 当然也可以直接在文章文件头添加 =type: drafts=
      content_dir: "content"
-     # 所有类型的文章列表，当 *page_dirs* 为空时，snow将会搜索 *content* 目录下的所有子目录
-     page_dirs:
-       - "drafts"
-       - "posts"
      #+end_src
 **** 路径变量(*sections.xxx.page_path*)
      |------------+----------------------|
@@ -183,7 +177,7 @@
          # terms排序, 可选name,count
          orderby: ""
          template: "{taxonomy}/list.html"
-         term_path: "{taxonomy}/{slug}/index.html"
+         term_path: "{taxonomy}/{term:slug}/index.html"
          term_template: "{taxonomy}/single.html"
          # 文章列表筛选
          term_filter: ""
@@ -204,12 +198,12 @@
        |------------+--------------|
        | {taxonomy} | 分类系统名称 |
      - *taxonomies.xxx.term_path*
-       |------------+------------------|
-       | 变量       | 描述             |
-       |------------+------------------|
-       | {taxonomy} | 分类系统名称     |
-       | {number}   | 使用分页时的页码 |
-       | {slug}     | 分类具体名称     |
+       |-------------+------------------|
+       | 变量        | 描述             |
+       |-------------+------------------|
+       | {taxonomy}  | 分类系统名称     |
+       | {term}      | 分类具体名称     |
+       | {term:slug} | 分类slug         |
 
 **** 模版变量
      - *taxonomies.xxx.template*
@@ -236,12 +230,36 @@
       date:2006/01:
         path: "archives/index.html"
         template: "archives.html"
-        term_path: "archives/{slug}/index.html"
+        term_path: "archives/{term}/index.html"
         term_template: "period_archives.html"
     #+end_src
     归档页面类似分类系统，其它 *date:2006/01* 表示按年月归档, 并生成链接 */archives/2022/10/index.html*
 
 *** Pagination
+**** 路径变量
+     |--------------+-------------------|
+     | 变量         | 描述              |
+     |--------------+-------------------|
+     | {name}       | 路径名称          |
+     | {extension}  | 路径扩展          |
+     | {number}     | 页码, 第一页为空  |
+     | {number:one} | 页码, 第一页为"1" |
+     - 示例一:
+       #+begin_src yaml
+       path: "section/index.html"
+       paginate_path: "{name}{number}{extension}"
+       #+end_src
+       - 第一页: =section/index.html=
+       - 第二页: =section/index2.html=
+       - 第三页: =section/index3.html=
+     - 示例二:
+       #+begin_src yaml
+       path: "section/index.html"
+       paginate_path: "page/{number:one}{extension}"
+       #+end_src
+       - 第一页: =section/page/1.html=
+       - 第二页: =section/page/2.html=
+       - 第三页: =section/page/3.html=
 **** 模版变量
      |---------------------+----------------|
      | 变量                | 描述           |
@@ -283,13 +301,13 @@
      sections:
        _default:
          # feed生成路径
-         feed_path: "{section}/index.xml"
+         feed_path: "{section:slug}/index.xml"
          # feed查找模版，为空时默认使用_internal/feed.xml
          feed_template: "rss.xml"
 
      taxonomies:
        _default:
-         feed_path: "{taxonomy}/{slug}/index.xml"
+         feed_path: "{taxonomy}/{term:slug}/index.xml"
        tags:
          # 为空时禁止生成feed
          feed_path: ""
@@ -323,20 +341,7 @@
        override: "layouts"
      #+end_src
 
-*** shortcode
-    用于快速插入已有模版, 示例:
-    #+begin_example
-    <shortcode _name="encrypt" password="1234567">
-    hello *markdown*
-    </shortcode>
-
-    <shortcode _name="gist" author="spf13" id="7896402" />
-    #+end_example
-
-    可以自定义 *shortcode* 到主题的 =templates/shortcodes= 目录下, 目前内置 *gist*, *encrypt*
-
 *** hook
-    插件接口
     #+begin_src yaml
     hooks:
       - "assets"
@@ -354,8 +359,30 @@
                 path: ["@theme/static/scss/"]
             - cssmin:
           output: "static/lib.min.css"
-          retain: true
     #+end_src
+
+**** shortcode
+     用于快速插入已有模版, 示例:
+     #+begin_example
+     <shortcode _name="encrypt" password="1234567">
+     hello *markdown*
+     </shortcode>
+
+     <shortcode _name="gist" author="spf13" id="7896402" />
+     #+end_example
+
+     可以自定义 *shortcode* 到主题的 =templates/shortcodes= 目录下, 目前内置 *gist*, *encrypt*
+**** assets
+     静态文件处理
+     #+begin_src html
+     {% assets files="css/style.scss" filters="libsass,cssmin" output="css/style.min.css" %}
+       <link rel="stylesheet" href="{{ config.site.url }}/{{ asset_url }}">
+     {% endassets %}
+
+     {% assets css %}
+       <link rel="stylesheet" href="{{ config.site.url }}/{{ asset_url }}">
+     {% endassets %}
+     #+end_src
 
 *** 本地测试和正式发布
     snow 提供了 *mode* 配置用于区分本地测试和正式发布

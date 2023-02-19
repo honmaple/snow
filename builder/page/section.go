@@ -129,12 +129,9 @@ func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
 		}
 		slug = strings.Join(slugs, "/")
 	}
-	vars := map[string]string{"{section}": slug}
-	for _, k := range []string{"path", "page_path", "feed_path"} {
-		section.Meta[k] = utils.StringReplace(section.Meta.GetString(k), vars)
-	}
-	vars["{section}"] = name
-	for _, k := range []string{"template", "page_template", "feed_template"} {
+	vars := map[string]string{"{section}": name, "{section:slug}": slug}
+	keys := []string{"path", "template", "page_path", "page_template", "feed_path", "feed_template"}
+	for _, k := range keys {
 		section.Meta[k] = utils.StringReplace(section.Meta.GetString(k), vars)
 	}
 	defer b.loadSectionDone(section)

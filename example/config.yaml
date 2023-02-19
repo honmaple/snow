@@ -34,13 +34,13 @@ sections:
 
 taxonomies:
   _default:
-    feed_path: "{taxonomy}/{slug}/index.xml"
+    feed_path: "{taxonomy}/{term:slug}/index.xml"
     feed_template: ""
   categories:
     lang: "zh"
     path: "categories/index.html"
     template: "categories/list.html"
-    term_path: "categories/{slug}/index.html"
+    term_path: "categories/{term:slug}/index.html"
     term_template: "categories/single.html"
   tags:
     weight: -1
@@ -48,7 +48,7 @@ taxonomies:
   date:2006/01:
     path: "archives/index.html"
     template: "archives.html"
-    term_path: "archives/{slug}/index.html"
+    term_path: "archives/{term:slug}/index.html"
     term_template: "period_archives.html"
     feed_path: ""
 
@@ -57,7 +57,7 @@ content_dir: "content"
 
 # page_dirs:
 #   - "markdown"
-page_paginate: 3
+# page_paginate: 3
 
 # static_exts:
 #   - ".js"

@@ -99,17 +99,13 @@ func (terms TaxonomyTerms) OrderBy(key string) TaxonomyTerms {
 }
 
 func (b *Builder) loadTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
+	keys := []string{"term_path", "term_template", "feed_path", "feed_template"}
 	for _, term := range terms {
-		meta := taxonomy.Meta.Copy()
-		vars := map[string]string{"{slug}": b.conf.GetSlug(term.Name)}
-		meta["term_path"] = utils.StringReplace(meta.GetString("term_path"), vars)
-		meta["feed_path"] = utils.StringReplace(meta.GetString("feed_path"), vars)
-
-		vars["slug"] = taxonomy.Name
-		meta["term_template"] = utils.StringReplace(meta.GetString("term_template"), vars)
-		meta["feed_template"] = utils.StringReplace(meta.GetString("feed_template"), vars)
-
-		term.Meta = meta
+		term.Meta = taxonomy.Meta.Copy()
+		vars := map[string]string{"{term}": term.Name, "{term:slug}": b.conf.GetSlug(term.Name)}
+		for _, k := range keys {
+			term.Meta[k] = utils.StringReplace(term.Meta.GetString(k), vars)
+		}
 		term.List = term.List.Filter(term.Meta.Get("term_filter")).OrderBy(term.Meta.GetString("term_orderby"))
 		term.Path = b.conf.GetRelURL(term.Meta.GetString("term_path"))
 		term.Permalink = b.conf.GetURL(term.Path)
