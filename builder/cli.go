@@ -9,15 +9,16 @@ import (
 
 	"github.com/honmaple/snow/builder/hook"
 	"github.com/honmaple/snow/config"
+	"github.com/honmaple/snow/utils"
 	"github.com/urfave/cli/v2"
 
 	_ "github.com/honmaple/snow/builder/page/markup/html"
 	_ "github.com/honmaple/snow/builder/page/markup/markdown"
 	_ "github.com/honmaple/snow/builder/page/markup/orgmode"
 
+	_ "github.com/honmaple/snow/builder/hook/assets"
 	_ "github.com/honmaple/snow/builder/hook/encrypt"
 	_ "github.com/honmaple/snow/builder/hook/shortcode"
-	_ "github.com/honmaple/snow/builder/hook/assets"
 )
 
 const (
@@ -150,29 +151,36 @@ tags: [linux,emacs,snow]
 	return c.WriteConfig()
 }
 
+func commonAction(clx *cli.Context) error {
+	if clx.Bool("debug") {
+		conf.SetDebug()
+	}
+	if err := conf.SetMode(clx.String("mode")); err != nil {
+		return err
+	}
+	conf.SetOutput(clx.String("output"))
+	if clx.Bool("clean") {
+		conf.Log.Infoln("Removing the contents of", conf.GetOutput())
+		return utils.RemoveDir(conf.GetOutput())
+	}
+	return nil
+}
+
 func buildAction(clx *cli.Context) error {
 	if clx.Bool("hooks") {
 		hook.Print()
 		return nil
 	}
-	if clx.Bool("debug") {
-		conf.SetDebug()
-	}
-	if err := conf.SetMode(clx.String("mode")); err != nil {
+	if err := commonAction(clx); err != nil {
 		return err
 	}
-	conf.SetOutput(clx.String("output"))
 	return Build(conf)
 }
 
 func serverAction(clx *cli.Context) error {
-	if clx.Bool("debug") {
-		conf.SetDebug()
-	}
-	if err := conf.SetMode(clx.String("mode")); err != nil {
+	if err := commonAction(clx); err != nil {
 		return err
 	}
-	conf.SetOutput(clx.String("output"))
 	return Server(conf, clx.String("listen"), clx.Bool("autoload"))
 }
 

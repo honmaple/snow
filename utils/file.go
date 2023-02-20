@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 func CopyFile(src, dst string) (written int64, err error) {
@@ -46,6 +47,22 @@ func CopyDir(src, dst string) (written int64, err error) {
 		}
 	}
 	return
+}
+
+func RemoveDir(path string) error {
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		if strings.HasPrefix(file.Name(), ".") {
+			continue
+		}
+		if err := os.RemoveAll(filepath.Join(path, file.Name())); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func FileExists(path string) bool {

@@ -61,9 +61,9 @@ type (
 		Meta      Meta
 		Path      string
 		Permalink string
+		Slug      string
 		Title     string
 		Content   string
-		Hidden    bool
 		Pages     Pages
 		Assets    []string
 		Parent    *Section
@@ -72,13 +72,17 @@ type (
 	Sections []*Section
 )
 
-func (sec Section) allPages() Pages {
+func (sec *Section) vars() map[string]string {
+	return map[string]string{"{section}": sec.Name(), "{section:slug}": sec.Slug}
+}
+
+func (sec *Section) allPages() Pages {
 	pages := make(Pages, 0)
 	if !sec.Meta.GetBool("transparent") {
 		pages = append(pages, sec.Pages...)
 	}
 	for _, child := range sec.Children {
-		if child.Hidden {
+		if child.isHidden() {
 			continue
 		}
 		pages = append(pages, child.allPages()...)
@@ -86,7 +90,7 @@ func (sec Section) allPages() Pages {
 	return pages
 }
 
-func (sec Section) allSections() Sections {
+func (sec *Section) allSections() Sections {
 	sections := make(Sections, 0)
 	for _, child := range sec.Children {
 		sections = append(sections, child)
@@ -95,7 +99,15 @@ func (sec Section) allSections() Sections {
 	return sections
 }
 
-func (sec Section) Paginator() []*paginator {
+func (sec *Section) isRoot() bool {
+	return sec.Parent == nil
+}
+
+func (sec *Section) isHidden() bool {
+	return sec.Meta.GetBool("hidden")
+}
+
+func (sec *Section) Paginator() []*paginator {
 	return sec.Pages.Paginator(
 		sec.Meta.GetInt("paginate"),
 		sec.Path,
@@ -103,20 +115,32 @@ func (sec Section) Paginator() []*paginator {
 	)
 }
 
-func (sec Section) Name() string {
-	if sec.Parent == nil || sec.Parent.Title == "" {
+func (sec *Section) Root() *Section {
+	if sec.Parent == nil {
+		return sec
+	}
+	return sec.Parent.Root()
+}
+
+func (sec *Section) Name() string {
+	if sec.Parent == nil || sec.Parent.Parent == nil {
 		return sec.Title
 	}
 	return fmt.Sprintf("%s/%s", sec.Parent.Name(), sec.Title)
 }
 
+func (sec *Section) FirstName() string {
+	if sec.Parent == nil || sec.Parent.Title == "" {
+		return sec.Title
+	}
+	return sec.Parent.FirstName()
+}
+
 func (b *Builder) loadSectionDone(section *Section) {
 	pages := section.Pages
-	if section.Hidden {
+	if section.isHidden() {
 		pages = section.Parent.allPages()
 	}
-	section.Path = b.conf.GetRelURL(section.Meta.GetString("path"))
-	section.Permalink = b.conf.GetURL(section.Path)
 	section.Pages = pages.Filter(section.Meta.Get("filter")).OrderBy(section.Meta.GetString("orderby"))
 
 	sort.SliceStable(section.Children, func(i, j int) bool {
@@ -131,12 +155,6 @@ func (b *Builder) loadSectionDone(section *Section) {
 }
 
 func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
-	section := &Section{Parent: parent}
-	if parent != nil {
-		section.Title = utils.FileBaseName(path)
-	}
-	section.Meta = b.newSectionConfig(section, path)
-
 	names, err := utils.FileList(path)
 	if err != nil {
 		return nil, err
@@ -149,11 +167,9 @@ func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
 			assets:   make(chan string),
 			sections: make(chan *Section),
 		}
-		wg = sync.WaitGroup{}
+		wg      = sync.WaitGroup{}
+		section = b.newSection(parent, path)
 	)
-
-	// 如果设置transparent = true, 表示可以分目录存储page，但该目录不单独生成section
-	transparent := section.Meta.GetBool("transparent")
 
 	for _, name := range names {
 		wg.Add(1)
@@ -182,13 +198,12 @@ func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
 						ch.sendErr(err)
 						return
 					}
-					if transparent || sec.Meta.GetBool("transparent") {
+					if sec.Meta.GetBool("transparent") {
 						ch.sendPage(sec.Pages...)
-						ch.sendAsset(sec.Assets...)
-						ch.sendSection(sec.Children...)
-					} else {
-						ch.sendSection(sec)
+						// ch.sendAsset(sec.Assets...)
+						// ch.sendSection(sec.Children...)
 					}
+					ch.sendSection(sec)
 					return
 				}
 				file = matches[matched]
@@ -208,23 +223,21 @@ func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
 			}
 			// 自定义页面, 该页面的page列表与父级section一致
 			if template, ok := filemeta["template"]; ok && template != "" {
-				meta := section.Meta.Copy()
-				for k, v := range filemeta {
-					meta[k] = v
-				}
+				meta := make(Meta)
+				meta.load(filemeta)
+				meta["hidden"] = true
 				child := &Section{
 					Meta:    meta,
 					Title:   meta.GetString("title"),
 					Content: meta.GetString("content"),
-					Hidden:  true,
 					Parent:  section,
 				}
+				child.Path = b.conf.GetRelURL(meta.GetString("path"))
+				child.Permalink = b.conf.GetURL(child.Path)
 				ch.sendSection(child)
 				return
 			}
-			if page, err := b.loadPage(section, file, filemeta); err == nil {
-				ch.sendPage(page)
-			}
+			ch.sendPage(b.newPage(section, file, filemeta))
 		}(name)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -236,12 +249,14 @@ LOOP:
 	for {
 		select {
 		case page := <-ch.pages:
-			section.Pages = append(section.Pages, page)
-		case sec := <-ch.sections:
-			section.Children = append(section.Children, sec)
-			defer b.loadSectionDone(sec)
+			if !page.Meta.GetBool("hidden") {
+				section.Pages = append(section.Pages, page)
+			}
 		case file := <-ch.assets:
 			section.Assets = append(section.Assets, file)
+		case child := <-ch.sections:
+			section.Children = append(section.Children, child)
+			defer b.loadSectionDone(child)
 		case err := <-ch.errs:
 			return nil, err
 		case <-ctx.Done():
@@ -262,22 +277,18 @@ func (b *Builder) loadSections() error {
 	return nil
 }
 
-func (b *Builder) newSectionConfig(section *Section, path string) (meta Meta) {
-	if section.Parent == nil {
-		meta = make(Meta)
-		for k, v := range b.conf.GetStringMap("sections._default") {
-			meta[k] = v
-		}
+func (b *Builder) newSection(parent *Section, path string) *Section {
+	section := &Section{
+		Parent: parent,
+	}
+	// 根目录
+	if parent == nil {
+		section.Meta = make(Meta)
+		section.Meta.load(b.conf.GetStringMap("sections._default"))
 	} else {
-		meta = section.Parent.Meta.Copy()
+		section.Meta = parent.Meta.copy()
+		section.Title = utils.FileBaseName(path)
 	}
-	name := section.Name()
-	if name != "" {
-		for k, v := range b.conf.GetStringMap("sections." + name) {
-			meta[k] = v
-		}
-	}
-
 	// _index.md包括配置信息
 	matches, _ := filepath.Glob(filepath.Join(path, "_index.*"))
 	matched := -1
@@ -289,18 +300,24 @@ func (b *Builder) newSectionConfig(section *Section, path string) (meta Meta) {
 	}
 	if matched > -1 {
 		filemeta, _ := b.readFile(matches[matched])
-		for k, v := range filemeta {
-			switch strings.ToLower(k) {
-			case "title":
-				section.Title = v.(string)
-			case "content":
-				section.Content = v.(string)
-			default:
-				section.Meta[k] = v
-			}
+		section.Meta.load(filemeta)
+	}
+
+	name := section.Name()
+	if name != "" {
+		section.Meta.load(b.conf.GetStringMap("sections." + name))
+	}
+
+	for k, v := range section.Meta {
+		switch strings.ToLower(k) {
+		case "title":
+			section.Title = v.(string)
+		case "content":
+			section.Content = v.(string)
 		}
 	}
-	slug := meta.GetString("slug")
+
+	slug := section.Meta.GetString("slug")
 	if slug == "" {
 		names := strings.Split(name, "/")
 		slugs := make([]string, len(names))
@@ -309,10 +326,8 @@ func (b *Builder) newSectionConfig(section *Section, path string) (meta Meta) {
 		}
 		slug = strings.Join(slugs, "/")
 	}
-	vars := map[string]string{"{section}": name, "{section:slug}": slug}
-	keys := []string{"path", "template", "page_path", "page_template", "feed_path", "feed_template"}
-	for _, k := range keys {
-		meta[k] = utils.StringReplace(meta.GetString(k), vars)
-	}
-	return meta
+	section.Slug = slug
+	section.Path = b.conf.GetRelURL(utils.StringReplace(section.Meta.GetString("path"), section.vars()))
+	section.Permalink = b.conf.GetURL(section.Path)
+	return section
 }

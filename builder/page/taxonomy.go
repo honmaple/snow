@@ -48,14 +48,22 @@ type (
 	TaxonomyTerms []*TaxonomyTerm
 )
 
-func (term TaxonomyTerm) RealName() string {
+func (t *Taxonomy) vars() map[string]string {
+	return map[string]string{"{taxonomy}": t.Name}
+}
+
+func (term *TaxonomyTerm) vars() map[string]string {
+	return map[string]string{"{taxonomy}": term.Taxonomy.Name, "{term}": term.FullName(), "{term:slug}": term.Slug}
+}
+
+func (term *TaxonomyTerm) FullName() string {
 	if term.Parent == nil {
 		return term.Name
 	}
 	return filepath.Join(term.Parent.Name, term.Name)
 }
 
-func (term TaxonomyTerm) Paginator() []*paginator {
+func (term *TaxonomyTerm) Paginator() []*paginator {
 	return term.List.Paginator(
 		term.Meta.GetInt("term_paginate"),
 		term.Path,
@@ -108,26 +116,20 @@ func (terms TaxonomyTerms) OrderBy(key string) TaxonomyTerms {
 }
 
 func (b *Builder) loadTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
-	keys := []string{"term_path", "term_template", "feed_path", "feed_template"}
 	for _, term := range terms {
-		term.Meta = taxonomy.Meta.Copy()
+		term.Meta = taxonomy.Meta.copy()
+		term.Taxonomy = taxonomy
 
-		name := term.RealName()
+		name := term.FullName()
 		names := strings.Split(name, "/")
 		slugs := make([]string, len(names))
 		for i, name := range names {
 			slugs[i] = b.conf.GetSlug(name)
 		}
-		slug := strings.Join(slugs, "/")
-
-		vars := map[string]string{"{term}": name, "{term:slug}": slug}
-		for _, k := range keys {
-			term.Meta[k] = utils.StringReplace(term.Meta.GetString(k), vars)
-		}
-		term.List = term.List.Filter(term.Meta.Get("term_filter")).OrderBy(term.Meta.GetString("term_orderby"))
-		term.Path = b.conf.GetRelURL(term.Meta.GetString("term_path"))
+		term.Slug = strings.Join(slugs, "/")
+		term.Path = b.conf.GetRelURL(utils.StringReplace(term.Meta.GetString("term_path"), term.vars()))
 		term.Permalink = b.conf.GetURL(term.Path)
-		term.Taxonomy = taxonomy
+		term.List = term.List.Filter(term.Meta.Get("term_filter")).OrderBy(term.Meta.GetString("term_orderby"))
 		b.loadTaxonomyTerms(taxonomy, term.Children)
 	}
 }
@@ -137,11 +139,7 @@ func (b *Builder) loadTaxonomies() error {
 		if name == "_default" {
 			continue
 		}
-		taxonomy := &Taxonomy{Name: name}
-		taxonomy.Meta = b.newTaxonomyConfig(name)
-		taxonomy.Path = b.conf.GetRelURL(taxonomy.Meta.GetString("path"))
-		taxonomy.Permalink = b.conf.GetURL(taxonomy.Path)
-		taxonomy.Terms = b.pages.GroupBy(name).OrderBy(taxonomy.Meta.GetString("orderby"))
+		taxonomy := b.newTaxonomy(name)
 
 		b.loadTaxonomyTerms(taxonomy, taxonomy.Terms)
 		b.taxonomies = append(b.taxonomies, taxonomy)
@@ -158,18 +156,14 @@ func (b *Builder) loadTaxonomies() error {
 	return nil
 }
 
-func (b *Builder) newTaxonomyConfig(name string) Meta {
-	meta := make(Meta)
-	for k, v := range b.conf.GetStringMap("taxonomies._default") {
-		meta[k] = v
-	}
-	for k, v := range b.conf.GetStringMap("taxonomies." + name) {
-		meta[k] = v
-	}
-	vars := map[string]string{"{taxonomy}": name}
-	keys := []string{"path", "template", "term_path", "term_template", "feed_path", "feed_template"}
-	for _, k := range keys {
-		meta[k] = utils.StringReplace(meta.GetString(k), vars)
-	}
-	return meta
+func (b *Builder) newTaxonomy(name string) *Taxonomy {
+	taxonomy := &Taxonomy{Name: name}
+	taxonomy.Meta = make(Meta)
+	taxonomy.Meta.load(b.conf.GetStringMap("taxonomies._default"))
+	taxonomy.Meta.load(b.conf.GetStringMap("taxonomies." + name))
+
+	taxonomy.Path = b.conf.GetRelURL(utils.StringReplace(taxonomy.Meta.GetString("path"), taxonomy.vars()))
+	taxonomy.Permalink = b.conf.GetURL(taxonomy.Path)
+	taxonomy.Terms = b.pages.GroupBy(name).OrderBy(taxonomy.Meta.GetString("orderby"))
+	return taxonomy
 }

@@ -16,7 +16,13 @@ import (
 
 type Meta map[string]interface{}
 
-func (m Meta) Copy() Meta {
+func (m Meta) load(other map[string]interface{}) {
+	for k, v := range other {
+		m[k] = v
+	}
+}
+
+func (m Meta) copy() Meta {
 	nm := make(Meta)
 	for k, v := range m {
 		nm[k] = v
@@ -175,6 +181,12 @@ func (pages Pages) Filter(filter interface{}) Pages {
 				m := matchList(newv.(string))
 				matcher := func(page *Page) bool {
 					return m(page.Type)
+				}
+				matchers = append(matchers, matcher)
+			case "section":
+				m := matchList(newv.(string))
+				matcher := func(page *Page) bool {
+					return m(page.Section.Name())
 				}
 				matchers = append(matchers, matcher)
 			default:
@@ -341,16 +353,14 @@ func (b *Builder) readFile(file string) (Meta, error) {
 	return reader.Read(bytes.NewBuffer(buf))
 }
 
-func (b *Builder) loadPage(section *Section, file string, filemeta Meta) (*Page, error) {
-	meta := section.Meta.Copy()
-	for k, v := range filemeta {
-		meta[k] = v
-	}
+func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
+	meta := section.Meta.copy()
+	meta.load(filemeta)
 
 	now := time.Now()
 	page := &Page{
 		File:     file,
-		Type:     section.Name(),
+		Type:     section.FirstName(),
 		Meta:     meta,
 		Date:     now,
 		Modified: now,
@@ -388,12 +398,14 @@ func (b *Builder) loadPage(section *Section, file string, filemeta Meta) (*Page,
 	}
 	if page.Path == "" {
 		vars := map[string]string{
-			"{date:%Y}":  page.Date.Format("2006"),
-			"{date:%m}":  page.Date.Format("01"),
-			"{date:%d}":  page.Date.Format("02"),
-			"{date:%H}":  page.Date.Format("15"),
-			"{filename}": utils.FileBaseName(file),
-			"{slug}":     b.conf.GetSlug(page.Title),
+			"{date:%Y}":      page.Date.Format("2006"),
+			"{date:%m}":      page.Date.Format("01"),
+			"{date:%d}":      page.Date.Format("02"),
+			"{date:%H}":      page.Date.Format("15"),
+			"{filename}":     utils.FileBaseName(file),
+			"{slug}":         b.conf.GetSlug(page.Title),
+			"{section}":      section.Name(),
+			"{section:slug}": section.Slug,
 		}
 		if slug, ok := meta["slug"]; ok && slug != "" {
 			vars["{slug}"] = slug.(string)
@@ -405,5 +417,5 @@ func (b *Builder) loadPage(section *Section, file string, filemeta Meta) (*Page,
 	}
 	page.Path = b.conf.GetRelURL(page.Path)
 	page.Permalink = b.conf.GetURL(page.Path)
-	return b.hooks.AfterPageParse(page), nil
+	return b.hooks.AfterPageParse(page)
 }
