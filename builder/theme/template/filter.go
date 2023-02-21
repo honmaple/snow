@@ -91,15 +91,3 @@ func (t *template) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Va
 	}
 	return pongo2.AsValue(utils.StringConcat("/", v)), nil
 }
-
-func (t *template) getSection(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
-	out, err = t.relURL(in, param)
-	if err != nil {
-		return
-	}
-	v := out.Interface().(string)
-	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
-		return pongo2.AsValue(v), nil
-	}
-	return pongo2.AsValue(utils.StringConcat(t.conf.GetString("site.url"), v)), nil
-}

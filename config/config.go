@@ -86,6 +86,12 @@ func (conf Config) HasTaxonomy(name string) bool {
 	return conf.IsSet(fmt.Sprintf("taxonomies.%s", name))
 }
 
+func (conf Config) GetSummary(text string) string {
+	length := conf.GetInt("content_truncate_len")
+	ellipsis := conf.GetString("content_truncate_ellipsis")
+	return utils.TruncateHTML(text, length, ellipsis)
+}
+
 func (conf Config) GetSlug(name string) string {
 	if conf.GetBool("slugify") {
 		return slug.Make(name)
@@ -177,13 +183,15 @@ var (
 		"taxonomies.authors.weight":    3,
 	}
 	siteConfig = map[string]interface{}{
-		"site.url":       "http://127.0.0.1:8000",
-		"site.title":     "snow",
-		"site.subtitle":  "snow is a static site generator.",
-		"theme.override": "layouts",
-		"output_dir":     "output",
-		"content_dir":    "content",
-		"slugify":        true,
+		"site.url":                  "http://127.0.0.1:8000",
+		"site.title":                "snow",
+		"site.subtitle":             "snow is a static site generator.",
+		"theme.override":            "layouts",
+		"output_dir":                "output",
+		"content_dir":               "content",
+		"content_truncate_len":      49,
+		"content_truncate_ellipsis": "...",
+		"slugify":                   true,
 	}
 )
 

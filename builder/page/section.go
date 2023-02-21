@@ -2,6 +2,7 @@ package page
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -159,6 +160,9 @@ func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(names) == 0 {
+		return nil, errors.New("There are no pages")
+	}
 
 	var (
 		ch = &sectionChan{
@@ -249,9 +253,7 @@ LOOP:
 	for {
 		select {
 		case page := <-ch.pages:
-			if !page.Meta.GetBool("hidden") {
-				section.Pages = append(section.Pages, page)
-			}
+			section.Pages = append(section.Pages, page)
 		case file := <-ch.assets:
 			section.Assets = append(section.Assets, file)
 		case child := <-ch.sections:

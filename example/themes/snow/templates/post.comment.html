@@ -1,4 +1,4 @@
-{% if page.Get("comment") != "false" %}
+{% if page.Meta.GetBool("comment") %}
   <div class="comments">
     <div class="text-center">
       <a class="btn entry-read-more entry-comment">{{ "加载评论" }}</a>

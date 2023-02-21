@@ -5,7 +5,7 @@
     <li>
       {% for link in config.params.extra.links %}
         <a href="{{ link.url | absURL }}">{{ link.name }}</a>
-        {% if not loop.Last %}
+        {% if not forloop.Last %}
           <span> | </span>
         {% endif %}
       {% endfor %}

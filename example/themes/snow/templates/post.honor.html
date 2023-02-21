@@ -1,13 +1,19 @@
 <div class="entry-copyright">
-  <div>
-    <i class="fa fa-user-o"></i>
-    {{ "作者" }}:
-    <a href="{{ site.url }}/{{ page.author.url }}">{{ page.Authors | join:"," }}</a>
-  </div>
+  {% with authors = page.Meta.Get("authors") %}
+    {% if authors %}
+      <div>
+        <i class="fa fa-user-o"></i>
+        {{ "作者" }}:
+        {% for author in authors %}
+          <a href="{{ get_taxonomy_url("authors", author) }}">{{ author }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
   <div>
     <i class="fa fa-link"></i>
     {{ "链接" }}:
-    <a href="{{ site.url }}/{{ page.URL }}">{{ site.url }}/{{ page.URL }}</a>
+    <a href="{{ page.Permalink }}">{{ page.Permalink }}</a>
   </div>
   <div>
     <i class="fa fa-copyright"></i>

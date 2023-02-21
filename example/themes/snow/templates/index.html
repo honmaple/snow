@@ -12,7 +12,7 @@
             {% include 'post.info.html' %}
           </div>
           <hr class="entry-hr" />
-          {%- if loop.First and paginator.PageNum == 1 %}
+          {%- if forloop.First and paginator.PageNum == 1 %}
             <div class="entry-content entry-summary">
               {{ page.Content | safe }}
             </div>

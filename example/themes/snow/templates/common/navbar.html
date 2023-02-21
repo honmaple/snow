@@ -20,15 +20,15 @@
         {% for term in categories.Terms %}
           {% if term.Children %}
             <li class="dropdown">
-              <a href="{{ term.Permalink }}">{{ term.Name }}</a>
+              <a href="{{ term.Permalink }}">{{ _(term.Name) }}</a>
               <ul class="dropdown-menu">
                 {% for child in term.Children %}
-                  <li><a href="{{ child.Permalink }}">{{ child.Name }}</a></li>
+                  <li><a href="{{ child.Permalink }}">{{ _(child.Name) }}</a></li>
                 {% endfor %}
               </ul>
             </li>
           {% else %}
-            <li><a href="{{ term.Permalink }}">{{ term.Name }}</a></li>
+            <li><a href="{{ term.Permalink }}">{{ _(term.Name) }}</a></li>
           {% endif %}
         {% endfor %}
       {% endif %}

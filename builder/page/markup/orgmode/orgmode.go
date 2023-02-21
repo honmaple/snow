@@ -76,7 +76,11 @@ func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
 		content.WriteString(line)
 		content.WriteString("\n")
 	}
-	meta["summary"] = m.HTML(&summary)
+	if summary.Len() == content.Len() {
+		meta["summary"] = m.conf.GetSummary(m.HTML(&summary))
+	} else {
+		meta["summary"] = m.HTML(&summary)
+	}
 	meta["content"] = m.HTML(&content)
 	return meta, nil
 }

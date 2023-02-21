@@ -69,12 +69,16 @@ func (m *markdown) Read(r io.Reader) (page.Meta, error) {
 		content.WriteString(line)
 		content.WriteString("\n")
 	}
-	meta["summary"] = m.HTML(summary.Bytes())
+	if summary.Len() == content.Len() {
+		meta["summary"] = m.conf.GetSummary(m.HTML(summary.Bytes()))
+	} else {
+		meta["summary"] = m.HTML(summary.Bytes())
+	}
 	meta["content"] = m.HTML(content.Bytes())
 	return meta, nil
 }
 
-func (s *markdown) HTML(data []byte) string {
+func (m *markdown) HTML(data []byte) string {
 	d := blackfriday.MarkdownCommon(data)
 	return string(d)
 }

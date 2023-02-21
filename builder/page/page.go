@@ -64,6 +64,7 @@ func (m Meta) GetSlice(k string) []string {
 }
 
 func (m Meta) Set(conf config.Config, k, v string) {
+	k = strings.ToLower(k)
 	switch k {
 	case "date", "modified":
 		if t, err := utils.ParseTime(v); err == nil {
@@ -318,11 +319,11 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 			name = strings.ToLower(name)
 			var parent *TaxonomyTerm
 
-			// for _, subname := range utils.SplitPrefix(name, "/") {
-			for _, subname := range strings.Split(name, "/") {
+			for _, subname := range utils.SplitPrefix(name, "/") {
+				// for _, subname := range names {
 				term, ok := termm[subname]
 				if !ok {
-					term = &TaxonomyTerm{Name: subname, Parent: parent}
+					term = &TaxonomyTerm{Name: subname[strings.LastIndex(subname, "/")+1:], Parent: parent}
 					if parent == nil {
 						terms = append(terms, term)
 					}

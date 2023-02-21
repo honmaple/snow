@@ -10,7 +10,7 @@ var DateFormats = []string{"2006-01-02 15:04:05", "2006-01-02 15:04", "2006-01-0
 
 func ParseTime(value string) (time.Time, error) {
 	for _, f := range DateFormats {
-		if date, err := time.Parse(f, value); err == nil {
+		if date, err := time.ParseInLocation(f, value, time.Local); err == nil {
 			return date, nil
 		}
 	}

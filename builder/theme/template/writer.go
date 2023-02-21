@@ -10,6 +10,21 @@ import (
 	"github.com/honmaple/snow/utils"
 )
 
+var (
+	Globals        = make(map[string]interface{})
+	GlobalFuncs    = make(map[string]func(map[string]interface{}) interface{})
+	RegisterTag    = pongo2.RegisterTag
+	RegisterFilter = pongo2.RegisterFilter
+)
+
+func Register(k string, v interface{}) {
+	Globals[k] = v
+}
+
+func RegisterFunc(k string, v func(map[string]interface{}) interface{}) {
+	GlobalFuncs[k] = v
+}
+
 type (
 	Writer interface {
 		Name() string
@@ -60,6 +75,16 @@ func (t *writer) Write(file string, context map[string]interface{}) error {
 	}
 	for k, v := range context {
 		vars[k] = v
+	}
+	for k, v := range Globals {
+		if _, ok := vars[k]; !ok {
+			vars[k] = v
+		}
+	}
+	for k, v := range GlobalFuncs {
+		if _, ok := vars[k]; !ok {
+			vars[k] = v(vars)
+		}
 	}
 	t.t.conf.Log.Debugln("Writing", writefile)
 	// _ = tpl

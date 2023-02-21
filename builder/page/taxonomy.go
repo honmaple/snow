@@ -73,7 +73,7 @@ func (term *TaxonomyTerm) Paginator() []*paginator {
 
 func (terms TaxonomyTerms) Has(name string) bool {
 	for _, term := range terms {
-		if term.Name == name {
+		if term.FullName() == name {
 			return true
 		}
 	}

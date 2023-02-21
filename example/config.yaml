@@ -9,13 +9,25 @@ mode.publish:
   site:
     url: "https://example.com"
 
+languages.zh:
+  translations:
+    - id: "life"
+      tr: "代码人生"
+    - id: "coding"
+      tr: "分享世界"
+    - id: "love"
+      tr: "你不懂我"
+    - id: "recall"
+      tr: "我不怪你"
+    - id: "linux"
+      tr: "字符艺术"
+    - id: "python"
+      tr: "人生苦短"
+    - id: "security"
+      tr: "极客安全"
+
 languages.en:
-  sections:
-    _default:
-      paginate: 2
-      filter:
-        type: "posts,markdown"
-  translations: ""
+  translations: "i18n/en.yaml"
 
 sections:
   _default:
@@ -23,6 +35,7 @@ sections:
     path: ""
     templates: "posts.html"
     page_template: "page.html"
+    comment: true
   posts:
     page_path: "articles/{date:%Y}/{date:%m}/{slug}.html"
     page_template: "post.html"
@@ -74,6 +87,7 @@ static_paths:
   "@theme/static": "static/"
 
 hooks:
+  - "i18n"
   - "assets"
   - "encrypt"
   - "shortcode"
