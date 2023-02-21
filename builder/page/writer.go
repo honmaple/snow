@@ -1,6 +1,8 @@
 package page
 
 import (
+	"strings"
+
 	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/utils"
 )
@@ -36,7 +38,7 @@ func (b *Builder) getTaxonomyTerm(kind, name string) *TaxonomyTerm {
 			continue
 		}
 		for _, term := range taxonomy.Terms {
-			if name == term.Name {
+			if strings.ToLower(name) == term.Name {
 				return term
 			}
 		}
@@ -85,11 +87,43 @@ func (b *Builder) write(tpl template.Writer, path string, vars map[string]interf
 
 func (b *Builder) writePages(pages Pages) {
 	for _, page := range pages {
-		if tpl, ok := b.theme.LookupTemplate(page.Meta.GetString("page_template")); ok {
-			aliases := append(page.Aliases, page.Path)
-			for _, aliase := range aliases {
-				b.write(tpl, aliase, map[string]interface{}{
-					"page": page,
+		if !page.Meta.GetBool("section") {
+			if tpl, ok := b.theme.LookupTemplate(page.Meta.GetString("page_template")); ok {
+				aliases := append(page.Aliases, page.Path)
+				for _, aliase := range aliases {
+					b.write(tpl, aliase, map[string]interface{}{
+						"page": page,
+					})
+				}
+			}
+			continue
+		}
+
+		var (
+			path     = page.Meta.GetString("path")
+			template = page.Meta.GetString("template")
+		)
+		if path == "" {
+			continue
+		}
+		section := &Section{
+			Meta:    page.Meta,
+			Title:   page.Title,
+			Content: page.Content,
+			Pages:   page.Section.allPages(),
+		}
+		section.Path = b.conf.GetRelURL(path)
+		section.Permalink = b.conf.GetURL(path)
+
+		pages := page.Section.allPages()
+		section.Pages = pages.Filter(page.Meta.Get("filter")).OrderBy(page.Meta.GetString("orderby"))
+		if tpl, ok := b.theme.LookupTemplate(template); ok {
+			for _, por := range section.Paginator() {
+				b.write(tpl, por.URL, map[string]interface{}{
+					"section":       section,
+					"paginator":     por,
+					"pages":         section.Pages,
+					"current_index": por.PageNum,
 				})
 			}
 		}
@@ -107,11 +141,7 @@ func (b *Builder) writeSections(sections Sections) {
 		)
 
 		if path != "" {
-			lookup := []string{template}
-			if !section.isHidden() {
-				lookup = append(lookup, "section.html", "_internal/section.html")
-			}
-			if tpl, ok := b.theme.LookupTemplate(lookup...); ok {
+			if tpl, ok := b.theme.LookupTemplate(template, "section.html", "_internal/section.html"); ok {
 				for _, por := range section.Paginator() {
 					b.write(tpl, por.URL, map[string]interface{}{
 						"section":       section,
@@ -120,9 +150,6 @@ func (b *Builder) writeSections(sections Sections) {
 						"current_index": por.PageNum,
 					})
 				}
-			}
-			if section.isHidden() {
-				return
 			}
 		}
 		if feedPath != "" {
@@ -195,6 +222,9 @@ func (b *Builder) writeFeeds(path string, template string, vars map[string]inter
 
 func (b *Builder) Write() error {
 	b.writePages(b.hooks.BeforePagesWrite(b.pages))
+	b.writePages(b.hooks.BeforePagesWrite(b.hiddenPages))
+	b.writePages(b.hooks.BeforePagesWrite(b.sectionPages))
+
 	b.writeSections(b.hooks.BeforeSectionsWrite(b.sections))
 	b.writeTaxonomies(b.hooks.BeforeTaxonomiesWrite(b.taxonomies))
 	return nil

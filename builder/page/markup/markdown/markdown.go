@@ -9,7 +9,7 @@ import (
 
 	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/config"
-	"github.com/russross/blackfriday"
+	"github.com/russross/blackfriday/v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -79,7 +79,7 @@ func (m *markdown) Read(r io.Reader) (page.Meta, error) {
 }
 
 func (m *markdown) HTML(data []byte) string {
-	d := blackfriday.MarkdownCommon(data)
+	d := blackfriday.Run(data, blackfriday.WithRenderer(NewChromaRenderer(m.conf.GetHighlightStyle())))
 	return string(d)
 }
 

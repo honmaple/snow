@@ -9,26 +9,6 @@ mode.publish:
   site:
     url: "https://example.com"
 
-languages.zh:
-  translations:
-    - id: "life"
-      tr: "代码人生"
-    - id: "coding"
-      tr: "分享世界"
-    - id: "love"
-      tr: "你不懂我"
-    - id: "recall"
-      tr: "我不怪你"
-    - id: "linux"
-      tr: "字符艺术"
-    - id: "python"
-      tr: "人生苦短"
-    - id: "security"
-      tr: "极客安全"
-
-languages.en:
-  translations: "i18n/en.yaml"
-
 sections:
   _default:
     orderby: "date desc"
@@ -37,6 +17,7 @@ sections:
     page_template: "page.html"
     comment: true
   posts:
+    paginate_filter: ""
     page_path: "articles/{date:%Y}/{date:%m}/{slug}.html"
     page_template: "post.html"
   posts/org:
@@ -45,6 +26,7 @@ sections:
     transparent: true
   pages:
     path: ""
+    hidden: true
 
 taxonomies:
   _default:
@@ -87,6 +69,7 @@ static_paths:
   "@theme/static": "static/"
 
 hooks:
+  - "pelican"
   - "i18n"
   - "assets"
   - "encrypt"

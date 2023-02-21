@@ -83,6 +83,8 @@
          paginate: 10
          # 分页路径
          paginate_path: "{name}{number}{extension}"
+         # 分页前筛选pages
+         paginate_filter: ""
          # 生成路径, 为空表示禁止生成相关页面
          path: "{section}/index.html"
          # 使用的模版
@@ -186,6 +188,7 @@
          # 文章列表分页
          term_paginate: 0
          term_paginate_path: ""
+         term_paginate_filter: ""
        categories:
        authors:
        tags:

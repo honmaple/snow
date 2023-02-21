@@ -64,7 +64,7 @@ func (term *TaxonomyTerm) FullName() string {
 }
 
 func (term *TaxonomyTerm) Paginator() []*paginator {
-	return term.List.Paginator(
+	return term.List.Filter(term.Meta.Get("term_paginate_filter")).Paginator(
 		term.Meta.GetInt("term_paginate"),
 		term.Path,
 		term.Meta.GetString("term_paginate_path"),

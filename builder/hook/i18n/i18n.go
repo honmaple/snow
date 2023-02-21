@@ -66,16 +66,20 @@ func getTrans(conf config.Config, theme theme.Theme) map[string]map[string]tran 
 		for _, t := range ts {
 			tr[t.Id] = t
 		}
-		trans[filepath.Base(stat.Name())] = tr
+
+		name := filepath.Base(stat.Name())
+		lang := name[:len(name)-len(filepath.Ext(name))]
+		trans[lang] = tr
 	}
 
 	languages := conf.GetStringMap("languages")
 	for lang := range languages {
 		k := "languages." + lang + ".translations"
+
 		ts := make([]tran, 0)
 		switch reflect.ValueOf(conf.Get(k)).Kind() {
 		case reflect.String:
-			file := conf.GetString("languages." + lang + ".translations")
+			file := conf.GetString(k)
 			if file == "" {
 				continue
 			}
@@ -91,7 +95,10 @@ func getTrans(conf config.Config, theme theme.Theme) map[string]map[string]tran 
 				continue
 			}
 		}
-		tr := make(map[string]tran)
+		tr, ok := trans[lang]
+		if !ok {
+			tr = make(map[string]tran)
+		}
 		for _, t := range ts {
 			tr[t.Id] = t
 		}

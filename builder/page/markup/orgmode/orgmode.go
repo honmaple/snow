@@ -27,15 +27,33 @@ type orgmode struct {
 }
 
 func (m *orgmode) highlightCodeBlock(source, lang string) string {
-	var w strings.Builder
-	l := lexers.Get(lang)
-	if l == nil {
-		l = lexers.Fallback
+	theme := m.conf.GetHighlightStyle()
+	if theme == "" {
+		return source
 	}
-	l = chroma.Coalesce(l)
-	it, _ := l.Tokenise(nil, source)
-	_ = html.New().Format(&w, styles.Get("monokai"), it)
-	return `<div class="highlight">` + "\n" + w.String() + "\n" + `</div>`
+
+	var w strings.Builder
+	var lexer chroma.Lexer
+
+	if lang != "" {
+		lexer = lexers.Get(lang)
+	} else {
+		lexer = lexers.Analyse(source)
+	}
+	if lexer == nil {
+		lexer = lexers.Fallback
+	}
+
+	style := styles.Get(theme)
+	if style == nil {
+		style = styles.Fallback
+	}
+
+	// lexer = chroma.Coalesce(lexer)
+	it, _ := lexer.Tokenise(nil, source)
+	_ = html.New().Format(&w, style, it)
+	return w.String()
+	// return `<div class="highlight">` + "\n" + w.String() + "\n" + `</div>`
 }
 
 func (m *orgmode) Read(r io.Reader) (page.Meta, error) {

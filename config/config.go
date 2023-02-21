@@ -92,6 +92,10 @@ func (conf Config) GetSummary(text string) string {
 	return utils.TruncateHTML(text, length, ellipsis)
 }
 
+func (conf Config) GetHighlightStyle() string {
+	return conf.GetString("content_highlight_style")
+}
+
 func (conf Config) GetSlug(name string) string {
 	if conf.GetBool("slugify") {
 		return slug.Make(name)
@@ -191,6 +195,7 @@ var (
 		"content_dir":               "content",
 		"content_truncate_len":      49,
 		"content_truncate_ellipsis": "...",
+		"content_highlight_style":   "monokai",
 		"slugify":                   true,
 	}
 )

@@ -18,9 +18,11 @@ type (
 		hooks   Hooks
 		readers map[string]Reader
 
-		pages      Pages
-		sections   Sections
-		taxonomies Taxonomies
+		pages        Pages
+		hiddenPages  Pages
+		sectionPages Pages
+		sections     Sections
+		taxonomies   Taxonomies
 	}
 	Reader interface {
 		Read(io.Reader) (Meta, error)
@@ -35,6 +37,13 @@ func (b *Builder) Dirs() []string {
 func (b *Builder) Build(ctx context.Context) error {
 	now := time.Now()
 	defer func() {
+		ps := []string{
+			fmt.Sprintf("%d normal pages", len(b.pages)),
+			fmt.Sprintf("%d hidden pages", len(b.hiddenPages)),
+			fmt.Sprintf("%d section pages", len(b.sectionPages)),
+		}
+		b.conf.Log.Infoln("Done: Page Processed", strings.Join(ps, ", "), "in", time.Now().Sub(now))
+
 		ls := make([]string, len(b.sections))
 		for i, section := range b.sections {
 			ls[i] = fmt.Sprintf("%d %s", len(section.Pages), section.Name())

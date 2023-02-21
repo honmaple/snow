@@ -42,15 +42,18 @@ func (p *paginator) HasNext() bool {
 }
 
 func (pages Pages) Paginator(number int, path string, paginatePath string) []*paginator {
-	if paginatePath == "" {
-		paginatePath = "{name}{number}{extension}"
+	output := path
+	if number > 0 {
+		if paginatePath == "" {
+			paginatePath = "{name}{number}{extension}"
+		}
+		file := filepath.Base(path)
+		exts := filepath.Ext(file)
+		output = filepath.Join(filepath.Dir(path), utils.StringReplace(paginatePath, map[string]string{
+			"{name}":      file[:len(file)-len(exts)],
+			"{extension}": exts,
+		}))
 	}
-	file := filepath.Base(path)
-	exts := filepath.Ext(file)
-	output := filepath.Join(filepath.Dir(path), utils.StringReplace(paginatePath, map[string]string{
-		"{name}":      file[:len(file)-len(exts)],
-		"{extension}": exts,
-	}))
 
 	var maxpage int
 

@@ -6,6 +6,7 @@ tags:
 authors:
   - snow
 save_as: about/index.html
+hidden: true
 ---
 
 about me

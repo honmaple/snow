@@ -58,17 +58,19 @@ type (
 		// page_template:
 		// feed_path:
 		// feed_template:
-		File      string
-		Meta      Meta
-		Path      string
-		Permalink string
-		Slug      string
-		Title     string
-		Content   string
-		Pages     Pages
-		Assets    []string
-		Parent    *Section
-		Children  Sections
+		File         string
+		Meta         Meta
+		Path         string
+		Permalink    string
+		Slug         string
+		Title        string
+		Content      string
+		Pages        Pages
+		HiddenPages  Pages
+		SectionPages Pages
+		Assets       []string
+		Parent       *Section
+		Children     Sections
 	}
 	Sections []*Section
 )
@@ -79,14 +81,30 @@ func (sec *Section) vars() map[string]string {
 
 func (sec *Section) allPages() Pages {
 	pages := make(Pages, 0)
-	if !sec.Meta.GetBool("transparent") {
-		pages = append(pages, sec.Pages...)
-	}
+
+	pages = append(pages, sec.Pages...)
 	for _, child := range sec.Children {
-		if child.isHidden() {
-			continue
-		}
 		pages = append(pages, child.allPages()...)
+	}
+	return pages
+}
+
+func (sec *Section) allHiddenPages() Pages {
+	pages := make(Pages, 0)
+
+	pages = append(pages, sec.HiddenPages...)
+	for _, child := range sec.Children {
+		pages = append(pages, child.allHiddenPages()...)
+	}
+	return pages
+}
+
+func (sec *Section) allSectionPages() Pages {
+	pages := make(Pages, 0)
+
+	pages = append(pages, sec.SectionPages...)
+	for _, child := range sec.Children {
+		pages = append(pages, child.allSectionPages()...)
 	}
 	return pages
 }
@@ -104,12 +122,12 @@ func (sec *Section) isRoot() bool {
 	return sec.Parent == nil
 }
 
-func (sec *Section) isHidden() bool {
-	return sec.Meta.GetBool("hidden")
+func (sec *Section) isPaginate() bool {
+	return sec.Meta.GetInt("paginate") > 0
 }
 
 func (sec *Section) Paginator() []*paginator {
-	return sec.Pages.Paginator(
+	return sec.Pages.Filter(sec.Meta.Get("paginate_filter")).Paginator(
 		sec.Meta.GetInt("paginate"),
 		sec.Path,
 		sec.Meta.GetString("paginate_path"),
@@ -135,24 +153,6 @@ func (sec *Section) FirstName() string {
 		return sec.Title
 	}
 	return sec.Parent.FirstName()
-}
-
-func (b *Builder) loadSectionDone(section *Section) {
-	pages := section.Pages
-	if section.isHidden() {
-		pages = section.Parent.allPages()
-	}
-	section.Pages = pages.Filter(section.Meta.Get("filter")).OrderBy(section.Meta.GetString("orderby"))
-
-	sort.SliceStable(section.Children, func(i, j int) bool {
-		ti := section.Children[i]
-		tj := section.Children[j]
-		if wi, wj := ti.Meta.GetInt("weight"), tj.Meta.GetInt("weight"); wi == wj {
-			return ti.Title > tj.Title
-		} else {
-			return wi > wj
-		}
-	})
 }
 
 func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
@@ -202,11 +202,6 @@ func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
 						ch.sendErr(err)
 						return
 					}
-					if sec.Meta.GetBool("transparent") {
-						ch.sendPage(sec.Pages...)
-						// ch.sendAsset(sec.Assets...)
-						// ch.sendSection(sec.Children...)
-					}
 					ch.sendSection(sec)
 					return
 				}
@@ -225,22 +220,6 @@ func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
 				ch.sendErr(err)
 				return
 			}
-			// 自定义页面, 该页面的page列表与父级section一致
-			if template, ok := filemeta["template"]; ok && template != "" {
-				meta := make(Meta)
-				meta.load(filemeta)
-				meta["hidden"] = true
-				child := &Section{
-					Meta:    meta,
-					Title:   meta.GetString("title"),
-					Content: meta.GetString("content"),
-					Parent:  section,
-				}
-				child.Path = b.conf.GetRelURL(meta.GetString("path"))
-				child.Permalink = b.conf.GetURL(child.Path)
-				ch.sendSection(child)
-				return
-			}
 			ch.sendPage(b.newPage(section, file, filemeta))
 		}(name)
 	}
@@ -253,19 +232,37 @@ LOOP:
 	for {
 		select {
 		case page := <-ch.pages:
-			section.Pages = append(section.Pages, page)
+			// page分类: section page，hidden page, normal page
+			if page.Meta.GetBool("section") {
+				// section: 自定义页面，该页面下的page列表是父section下的所有正常page
+				section.SectionPages = append(section.SectionPages, page)
+			} else if page.Meta.GetBool("hidden") {
+				// hidden: 不会出现在任意列表内，但会输出详情页
+				section.HiddenPages = append(section.HiddenPages, page)
+			} else {
+				section.Pages = append(section.Pages, page)
+			}
 		case file := <-ch.assets:
 			section.Assets = append(section.Assets, file)
 		case child := <-ch.sections:
 			section.Children = append(section.Children, child)
-			defer b.loadSectionDone(child)
 		case err := <-ch.errs:
 			return nil, err
 		case <-ctx.Done():
 			break LOOP
 		}
 	}
-	b.loadSectionDone(section)
+	section.Pages = section.Pages.Filter(section.Meta.Get("filter")).OrderBy(section.Meta.GetString("orderby"))
+
+	sort.SliceStable(section.Children, func(i, j int) bool {
+		ti := section.Children[i]
+		tj := section.Children[j]
+		if wi, wj := ti.Meta.GetInt("weight"), tj.Meta.GetInt("weight"); wi == wj {
+			return ti.Title > tj.Title
+		} else {
+			return wi > wj
+		}
+	})
 	return section, nil
 }
 
@@ -276,6 +273,8 @@ func (b *Builder) loadSections() error {
 	}
 	b.pages = root.allPages()
 	b.sections = root.allSections()
+	b.hiddenPages = root.allHiddenPages()
+	b.sectionPages = root.allSectionPages()
 	return nil
 }
 
