@@ -1,16 +1,16 @@
-{% extends "common/base.html" %}
-{% block title %}{{ taxonomy.Name }} · {{ block.Super }}{% endblock %}
-{% block content %}
+{%- extends "common/base.html" %}
+{%- block title %}{{ _(taxonomy.Name) }} · {{ block.Super }}{%- endblock %}
+{%- block content %}
   <div class="entry-archive">
     <ul class="inline">
-      {% for term in taxonomy.Terms %}
+      {%- for term in taxonomy.Terms %}
         <li>
           <a class="label label-default" href="{{ term.Permalink }}">
             {{ term.Name }}
             <span class="badge">{{ term.List | length }}</span>
           </a>
         </li>
-      {% endfor %}
+      {%- endfor %}
     </ul>
   </div>
-{% endblock %}
+{%- endblock %}

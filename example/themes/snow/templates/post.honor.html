@@ -1,15 +1,15 @@
 <div class="entry-copyright">
-  {% with authors = page.Meta.Get("authors") %}
-    {% if authors %}
+  {%- with authors = page.Meta.Get("authors") %}
+    {%- if authors %}
       <div>
         <i class="fa fa-user-o"></i>
         {{ "作者" }}:
-        {% for author in authors %}
+        {%- for author in authors %}
           <a href="{{ get_taxonomy_url("authors", author) }}">{{ author }}</a>
-        {% endfor %}
+        {%- endfor %}
       </div>
-    {% endif %}
-  {% endwith %}
+    {%- endif %}
+  {%- endwith %}
   <div>
     <i class="fa fa-link"></i>
     {{ "链接" }}:

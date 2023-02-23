@@ -64,7 +64,7 @@ func (term *TaxonomyTerm) FullName() string {
 }
 
 func (term *TaxonomyTerm) Paginator() []*paginator {
-	return term.List.Filter(term.Meta.Get("term_paginate_filter")).Paginator(
+	return term.List.Filter(term.Meta.GetString("term_paginate_filter")).Paginator(
 		term.Meta.GetInt("term_paginate"),
 		term.Path,
 		term.Meta.GetString("term_paginate_path"),
@@ -129,7 +129,7 @@ func (b *Builder) loadTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
 		term.Slug = strings.Join(slugs, "/")
 		term.Path = b.conf.GetRelURL(utils.StringReplace(term.Meta.GetString("term_path"), term.vars()))
 		term.Permalink = b.conf.GetURL(term.Path)
-		term.List = term.List.Filter(term.Meta.Get("term_filter")).OrderBy(term.Meta.GetString("term_orderby"))
+		term.List = term.List.Filter(term.Meta.GetString("term_filter")).OrderBy(term.Meta.GetString("term_orderby"))
 		b.loadTaxonomyTerms(taxonomy, term.Children)
 	}
 }

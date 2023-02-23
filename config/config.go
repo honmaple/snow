@@ -58,6 +58,7 @@ func (conf Config) Load(path string) error {
 		}
 	}
 	conf.Reset(siteConfig)
+	conf.Reset(otherConfig)
 	conf.Reset(sectionConfig)
 	conf.Reset(taxonomyConfig)
 	return nil
@@ -114,7 +115,11 @@ func (conf Config) GetRelURL(path string) string {
 }
 
 func (conf Config) GetURL(path string) string {
-	return utils.StringConcat(conf.GetString("site.url"), conf.GetRelURL(path))
+	relURL := conf.GetRelURL(path)
+	if strings.HasPrefix(relURL, "http://") || strings.HasPrefix(relURL, "https://") {
+		return relURL
+	}
+	return utils.StringConcat(conf.GetString("site.url"), relURL)
 }
 
 func (conf Config) GetOutput() string {
@@ -181,22 +186,29 @@ var (
 		"taxonomies._default.term_path":          "{taxonomy}/{term:slug}/index.html",
 		"taxonomies._default.term_template":      "{taxonomy}/single.html",
 		"taxonomies._default.term_paginate_path": "{name}{number}{extension}",
+		"taxonomies._default.term_orderby":       "date desc",
 
 		"taxonomies.categories.weight": 1,
 		"taxonomies.tags.weight":       2,
 		"taxonomies.authors.weight":    3,
 	}
-	siteConfig = map[string]interface{}{
-		"site.url":                  "http://127.0.0.1:8000",
-		"site.title":                "snow",
-		"site.subtitle":             "snow is a static site generator.",
-		"theme.override":            "layouts",
-		"output_dir":                "output",
-		"content_dir":               "content",
+	// 默认不需要修改的配置
+	otherConfig = map[string]interface{}{
 		"content_truncate_len":      49,
 		"content_truncate_ellipsis": "...",
 		"content_highlight_style":   "monokai",
 		"slugify":                   true,
+	}
+	// 默认需要修改的配置
+	siteConfig = map[string]interface{}{
+		"site.url":       "http://127.0.0.1:8000",
+		"site.title":     "snow",
+		"site.subtitle":  "snow is a static site generator.",
+		"site.author":    "snow",
+		"site.language":  "en",
+		"theme.override": "layouts",
+		"output_dir":     "output",
+		"content_dir":    "content",
 	}
 )
 

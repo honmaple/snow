@@ -4,26 +4,32 @@
     <meta charset="UTF-8"/>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}{{ config.site.title }}{% if config.site.subtitle %} · {{ config.site.subtitle }}{% endif %}{%endblock%}</title>
-    {% block stylesheet %}
+    <title>{%- block title %}{{ config.site.title }}{%- if config.site.subtitle and current_template == "index.html" %} · {{ config.site.subtitle }}{%- endif %}{%endblock%}</title>
+    {%- block stylesheet %}
       <link href="https://s.libforest.com/static/css/lib.min.css" rel="stylesheet">
-      {% assets "css" %}
+      {%- assets "css" %}
         <link href="{{ config.site.url }}/{{ asset_url }}" rel="stylesheet">
-      {% endassets %}
-    {% endblock %}
+      {%- endassets %}
+    {%- endblock %}
   </head>
   <body>
     <div class="scrollbar"></div>
-    {% include "common/cover.html" %}
+    {%- include "common/cover.html" %}
     <div class="wrap">
       <div class="main">
-        {% include "common/navbar.html" %}
-        {% block content %}{% endblock %}
+        {%- include "common/navbar.html" %}
+        {%- block content %}{%- endblock %}
       </div>
     </div>
-    {% include "common/footer.html" %}
+    {%- include "common/footer.html" %}
     <div class="back-to-top back-to-top-on">
       <i class="fa fa-hand-o-up" title="back to top"></i>
     </div>
+    {%- block javascript %}
+      <script src="https://s.libforest.com/static/js/lib.min.js"></script>
+      {%- assets "js" %}
+        <script src="{{ config.site.url }}/{{ asset_url }}"></script>
+      {%- endassets %}
+    {%- endblock %}
   </body>
 </html>

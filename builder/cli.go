@@ -50,6 +50,12 @@ var (
 			Value:   false,
 			Usage:   "Clean output content",
 		},
+		&cli.StringFlag{
+			Name:    "filter",
+			Aliases: []string{"F"},
+			Value:   "",
+			Usage:   "Filter when build",
+		},
 		&cli.BoolFlag{
 			Name:    "debug",
 			Aliases: []string{"D"},
@@ -156,6 +162,9 @@ tags: [linux,emacs,snow]
 func commonAction(clx *cli.Context) error {
 	if clx.Bool("debug") {
 		conf.SetDebug()
+	}
+	if filter := clx.String("filter"); filter != "" {
+		conf.Set("build_filter", filter)
 	}
 	if err := conf.SetMode(clx.String("mode")); err != nil {
 		return err

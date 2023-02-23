@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
 	"github.com/honmaple/snow/utils"
 	"github.com/spf13/cast"
@@ -74,7 +75,7 @@ func (m Meta) Set(conf config.Config, k, v string) {
 		if a, ok := m[k]; ok {
 			switch b := a.(type) {
 			case string:
-				m[k] = []string{b, strings.TrimSpace(v)}
+				m[k] = b + "," + strings.TrimSpace(v)
 			case []string:
 				m[k] = append(b, strings.TrimSpace(v))
 			}
@@ -91,6 +92,7 @@ type (
 		File     string
 		Meta     Meta
 		Type     string
+		Lang     string
 		Date     time.Time
 		Modified time.Time
 
@@ -112,123 +114,84 @@ type (
 	Pages []*Page
 )
 
-func (page Page) Get(k string) interface{} {
-	return page.Meta.Get(k)
-}
-
-func (page Page) HasPrev() bool {
-	return page.Prev != nil
-}
-
-func (page Page) HasNext() bool {
-	return page.Next != nil
-}
-
-func (page Page) HasPrevInType() bool {
-	return page.PrevInType != nil
-}
-
-func (page Page) HasNextInType() bool {
-	return page.NextInType != nil
-}
-
-func (pages Pages) Filter(filter interface{}) Pages {
-	if filter == nil || filter == "" {
-		return pages
-	}
-	matchList := func(value string) func(...string) bool {
-		include := make(map[string]bool)
-		exclude := make(map[string]bool)
-		for _, val := range strings.Split(value, ",") {
-			if strings.HasPrefix(val, "-") {
-				exclude[val[1:]] = true
-			} else {
-				include[val] = true
-			}
-		}
-		return func(values ...string) bool {
-			for _, val := range values {
-				if include[val] {
-					return true
-				}
-				if exclude[val] {
-					return false
-				}
-			}
-			if len(include) > 0 {
-				return false
-			}
+func filterExpr(filter string) func(*Page) bool {
+	if filter == "" {
+		return func(*Page) bool {
 			return true
 		}
 	}
+	newstr := make([]byte, 0, len(filter))
+	for i := 0; i < len(filter); i++ {
+		newstr = append(newstr, filter[i])
+		if filter[i] == '=' {
+			if i > 0 && filter[i-1] != '!' {
+				newstr = append(newstr, '=')
+			}
+			if i < len(filter)-1 && filter[i+1] == '=' {
+				i++
+			}
+		}
+	}
+	tpl, err := template.Expr(string(newstr))
+	if err != nil {
+		panic(err)
+	}
+	return func(page *Page) bool {
+		args := page.Meta.copy()
+		args["page"] = page
+		args["type"] = page.Type
 
+		result, err := tpl.Execute(map[string]interface{}(args))
+		if err == nil {
+			return result == "True"
+		}
+		return false
+	}
+}
+
+func (page *Page) isDraft() bool {
+	return page.Meta.GetBool("draft")
+}
+
+func (page *Page) isHidden() bool {
+	return page.Meta.GetBool("hidden")
+}
+
+func (page *Page) isSection() bool {
+	return page.Meta.GetBool("section")
+}
+
+func (page *Page) Get(k string) interface{} {
+	return page.Meta.Get(k)
+}
+
+func (page *Page) HasPrev() bool {
+	return page.Prev != nil
+}
+
+func (page *Page) HasNext() bool {
+	return page.Next != nil
+}
+
+func (page *Page) HasPrevInType() bool {
+	return page.PrevInType != nil
+}
+
+func (page *Page) HasNextInType() bool {
+	return page.NextInType != nil
+}
+
+func (pages Pages) Filter(filter string) Pages {
+	if filter == "" {
+		return pages
+	}
 	npages := make(Pages, 0)
-	switch fs := filter.(type) {
-	case string:
-		matcher := matchList(fs)
-		for _, page := range pages {
-			if !matcher(page.Type) {
-				continue
-			}
+
+	expr := filterExpr(filter)
+	for _, page := range pages {
+		if expr(page) {
 			npages = append(npages, page)
 		}
-	case map[string]interface{}:
-		matchers := make([]func(*Page) bool, 0)
-		for k, v := range fs {
-			newk := k
-			newv := v
-			switch k {
-			case "type":
-				m := matchList(newv.(string))
-				matcher := func(page *Page) bool {
-					return m(page.Type)
-				}
-				matchers = append(matchers, matcher)
-			case "section":
-				m := matchList(newv.(string))
-				matcher := func(page *Page) bool {
-					return m(page.Section.Name())
-				}
-				matchers = append(matchers, matcher)
-			default:
-				matcher := func(page *Page) bool {
-					mv, ok := page.Meta[newk]
-					if !ok {
-						return true
-					}
-					switch value := mv.(type) {
-					case []string:
-						m := matchList(newv.(string))
-						return m(value...)
-					// case []interface{}:
-					//	m := matchList(newv.(string))
-					//	newvalue := make([]string, len(value))
-					//	for i, v := range value {
-					//		newvalue[i] = v.(string)
-					//	}
-					//	return m(newvalue...)
-					default:
-						return utils.Compare(value, newv) >= 0
-					}
-				}
-				matchers = append(matchers, matcher)
-			}
-		}
-		for _, page := range pages {
-			matched := true
-			for _, m := range matchers {
-				if !m(page) {
-					matched = false
-					break
-				}
-			}
-			if !matched {
-				continue
-			}
-			npages = append(npages, page)
-		}
-	default:
-		npages = pages
 	}
 	return npages
 }
@@ -381,6 +344,8 @@ func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
 		switch strings.ToLower(k) {
 		case "type":
 			page.Type = v.(string)
+		case "lang":
+			page.Lang = v.(string)
 		case "title":
 			page.Title = v.(string)
 		case "date":
@@ -397,22 +362,40 @@ func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
 			page.Content = v.(string)
 		}
 	}
+	filename := utils.FileBaseName(file)
+	if filename == "index" && section.Parent != nil {
+		filename = filepath.Base(filepath.Dir(file))
+	}
+	if page.Title == "" {
+		page.Title = filename
+	}
+	if page.Lang == "" {
+		lang := filepath.Ext(filename)
+		if lang == "" {
+			page.Lang = b.conf.GetString("site.language")
+		} else {
+			langs := b.conf.GetStringMap("languages")
+			lang = lang[1:]
+			if _, ok := langs[lang]; ok {
+				page.Lang = lang
+			}
+		}
+	}
 	if page.Path == "" {
 		vars := map[string]string{
 			"{date:%Y}":      page.Date.Format("2006"),
 			"{date:%m}":      page.Date.Format("01"),
 			"{date:%d}":      page.Date.Format("02"),
 			"{date:%H}":      page.Date.Format("15"),
-			"{filename}":     utils.FileBaseName(file),
-			"{slug}":         b.conf.GetSlug(page.Title),
+			"{lang}":         page.Lang,
+			"{filename}":     filename,
 			"{section}":      section.Name(),
 			"{section:slug}": section.Slug,
 		}
 		if slug, ok := meta["slug"]; ok && slug != "" {
 			vars["{slug}"] = slug.(string)
-		}
-		if vars["{filename}"] == "index" {
-			vars["{filename}"] = page.Type
+		} else {
+			vars["{slug}"] = b.conf.GetSlug(page.Title)
 		}
 		page.Path = utils.StringReplace(meta.GetString("page_path"), vars)
 	}

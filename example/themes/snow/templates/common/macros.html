@@ -1,26 +1,26 @@
-{% macro archive_list(pages) export %}
-  {% for subterm in pages.GroupBy("date:2006-01").OrderBy("name desc") %}
-    {% set date = subterm.Name | split:"-" %}
-    {% set year = date[0] %}
-    {% set month = date[1] %}
+{%- macro archive_list(pages) export %}
+  {%- for subterm in pages.GroupBy("date:2006-01").OrderBy("name desc") %}
+    {%- set date = subterm.Name | split:"-" %}
+    {%- set year = date[0] %}
+    {%- set month = date[1] %}
     <ul class="timeline">
       <li class="timeline-count">
         <a href="{{ config.site.url }}/archives/{{ year }}/{{ month }}/index.html">{{  year + "年" + month + "月"  }}</a>
         <span>{{ subterm.List | length | stringformat:"（%d篇文章）" }}</span>
       </li>
-      {% for d in subterm.List.GroupBy("date:02").OrderBy("name desc") %}
-        {% set dloop = forloop %}
-        {% for page in d.List %}
+      {%- for d in subterm.List.GroupBy("date:02").OrderBy("name desc") %}
+        {%- set dloop = forloop %}
+        {%- for page in d.List %}
           <li class="timeline-item">
-            <p class="timeline-date{% if not forloop.First and (not forloop.Last or forloop.Last and not dloop.Last) %} timeline-date-more{% endif %}" title="{{ page.Date | date:"01月02日" }}">
+            <p class="timeline-date{%- if not forloop.First and (not forloop.Last or forloop.Last and not dloop.Last) %} timeline-date-more{%- endif %}" title="{{ page.Date | date:"01月02日" }}">
               <span>{{ d.Name }}</span>
             </p>
             <div class="timeline-content">
-              <span class="timeline-text"><a href="{{ page.Permalink }}">{{ page.Title }}</a></span>
+              <span class="timeline-text"><a href="{{ page.Permalink }}">{%- if page.Meta.Get("draft") %}「草稿」{%- endif %}{{ page.Title }}</a></span>
             </div>
           </li>
-        {% endfor %}
-      {% endfor %}
+        {%- endfor %}
+      {%- endfor %}
     </ul>
-  {% endfor %}
-{% endmacro %}
+  {%- endfor %}
+{%- endmacro %}

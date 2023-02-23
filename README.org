@@ -26,36 +26,36 @@
    #+end_example
 *** 创建新的站点
     #+begin_example
-      ──╼ ./snow init
-      Welcome to snow 0.1.0.
-      > Where do you want to create your new web site? [.] example.com
-      > What will be the title of this web site? [snow]
-      > Who will be the author of this web site?
-      The input is required
-      > Who will be the author of this web site? aaa
-      > What is your URL prefix? (no trailing slash) [http://127.0.0.1:8000]
-      > Do you want to create first page? [Y/n] y
+    ──╼ ./snow init
+    Welcome to snow 0.1.0.
+    > Where do you want to create your new web site? [.] mysnow
+    > What will be the title of this web site? [snow]
+    > Who will be the author of this web site?
+    The input is required
+    > Who will be the author of this web site? honmaple
+    > What is your URL prefix? (no trailing slash) [http://127.0.0.1:8000]
+    > Do you want to create first page? [Y/n]
     #+end_example
 
 *** 编译和预览
     #+begin_example
-      └──╼ cd example.com
-      └──╼ ../snow server -D
-      DEBU Copying @theme/static/css/main.css to output/static/css/main.css
-      INFO Done: Static Processed 1 static files in 331.023µs
-      DEBU Writing output/authors/index.html
-      DEBU Writing output/authors/snow/index.html
-      DEBU Writing output/tags/index.html
-      DEBU Writing output/tags/linux/index.html
-      DEBU Writing output/tags/emacs/index.html
-      DEBU Writing output/tags/snow/index.html
-      DEBU Writing output/categories/index.html
-      DEBU Writing output/categories/linux/index.html
-      DEBU Writing output/categories/linux/emacs/index.html
-      DEBU Writing output/index.html
-      INFO Done: Section Processed 1 posts in 4.381323ms
-      INFO Done: Taxonomy Processed 1 authors, 3 tags, 1 categories in 4.391732ms
-      INFO Listen 127.0.0.1:8000 ...
+    └──╼ cd mysnow
+    └──╼ ../snow server -D
+    DEBU Copying @theme/static/css/main.css to output/static/css/main.css
+    INFO Done: Static Processed 1 static files in 588.705µs
+    DEBU Writing output/categories/index.html
+    DEBU Writing output/authors/index.html
+    DEBU Writing output/tags/index.html
+    DEBU Writing output/posts/index.html
+    DEBU Writing output/authors/snow/index.html
+    DEBU Writing output/tags/snow/index.html
+    DEBU Writing output/categories/linux/index.html
+    DEBU Writing output/tags/linux/index.html
+    DEBU Writing output/tags/emacs/index.html
+    DEBU Writing output/categories/linux/emacs/index.html
+    INFO Done: Page Processed 1 normal pages, 0 hidden pages, 0 section pages in 10.087804ms
+    INFO Done: Section Processed 1 posts in 10.1831ms
+    INFO Done: Taxonomy Processed 1 authors, 3 tags, 1 categories in 10.18788ms
     #+end_example
 
 ** 内容
@@ -102,13 +102,10 @@
          page_path: "{slug}/index.html"
      #+end_src
      *filter* 格式(下同):
-     - 字符串格式: =type1= 表示只展示类型为type1的页面, =-type2= 表示排除类型为type1的页面, 多个类型使用英文逗号分隔
-     - 字典格式:
-       #+begin_src yaml
-       filter:
-         is_top: true
-         tags: "linux,-emacs"
-       #+end_src
+     #+begin_example
+     'emacs' in tags and not draft or weight > 1
+     #+end_example
+     其中 *tags*, *draft* 等都是page元数据
 
 **** 路径变量(*sections.xxx.path*)
      |----------------+---------------------------------|
@@ -144,6 +141,7 @@
      | {date:%m}  | 创建文章的月份       |
      | {date:%d}  | 创建文章的日期       |
      | {date:%H}  | 创建文章的小时       |
+     | {lang}     | 文章语言             |
      | {slug}     | 文章标题或自定义slug |
      | {filename} | 文件名称(不带后缀名) |
 
@@ -153,6 +151,7 @@
      |----------------------+----------------------|
      | page                 |                      |
      | page.Title           | 页面标题             |
+     | page.Lang            | 页面语言             |
      | page.Date            | 页面创建时间         |
      | page.Modified        | 页面修改时间         |
      | page.Aliases         | 页面其它链接         |
@@ -169,6 +168,22 @@
      | page.NextInType      | 同一类型下一篇       |
      | page.HasPrevInType() | 是否有同一类型上一篇 |
      | page.HasNextInType() | 是否有同一类型下一篇 |
+
+*** Draft
+    默认草稿标志为 =draft: true=, 也可以将所有草稿放入同一个 *drafts* 目录, 然后就可以在构建时增加筛选条件
+    - 排除草稿
+      #+begin_example
+      snow build -F 'not draft'
+      #+end_example
+      或者
+      #+begin_example
+      snow build --filter 'type != "drafts"'
+      #+end_example
+    - 包括草稿
+      #+begin_example
+      snow build -F 'not draft or draft = true'
+      #+end_example
+      默认筛选条件可以写入配置 =build_filter=
 
 *** Taxonomy
 **** 配置
@@ -347,22 +362,53 @@
 *** hook
     #+begin_src yaml
     hooks:
+      - "i18n"
       - "assets"
       - "encrypt"
       - "shortcode"
-
-    params:
-      assets:
-        css:
-          files:
-            - "@theme/static/scss/main.scss"
-            - "@theme/static/scss/entry.scss"
-          filters:
-            - libscss:
-                path: ["@theme/static/scss/"]
-            - cssmin:
-          output: "static/lib.min.css"
     #+end_src
+**** i18n
+     - 模版
+       #+begin_src html
+       {% i18n "tags" %}
+       {% T "tags %d" 12 %}
+       {{ i18n("authors") }}
+       {{ T("authors") }}
+       {{ _("authors %f", 3.14) }}
+       #+end_src
+       甚至可以直接使用变量
+       {{ _(term.Name) }}
+     - 翻译文件
+       默认会加载主题下 *i18n* 目录下的文件
+       #+begin_example
+       i18n
+       ├── en.yaml
+       └── zh.yaml
+       #+end_example
+       文件内容
+       #+begin_src yaml
+       ---
+       - id: "authors"
+         tr: "作者"
+       - id: "tags"
+         tr: "标签"
+       #+end_src
+
+       也可以自定义文件位置或翻译内容覆盖主题原有的翻译
+       #+begin_src yaml
+       languages.en:
+         translations: "i18n/en.yaml"
+       languages.zh:
+         translations:
+           - id: "authors"
+             tr: "作者"
+       #+end_src
+
+**** encrypt
+     内容加密, 需要一个密码
+     #+begin_src html
+     {{ page.Content | encrypt:"123456" }}
+     #+end_src
 
 **** shortcode
      用于快速插入已有模版, 示例:
@@ -377,13 +423,26 @@
      可以自定义 *shortcode* 到主题的 =templates/shortcodes= 目录下, 目前内置 *gist*, *encrypt*
 **** assets
      静态文件处理
+     #+begin_src yaml
+     params:
+       assets:
+         css:
+           files:
+             - "@theme/static/scss/main.scss"
+             - "@theme/static/scss/entry.scss"
+           filters:
+             - libscss:
+                 path: ["@theme/static/scss/"]
+             - cssmin:
+           output: "static/lib.min.css"
+     #+end_src
      #+begin_src html
      {% assets files="css/style.scss" filters="libsass,cssmin" output="css/style.min.css" %}
-       <link rel="stylesheet" href="{{ config.site.url }}/{{ asset_url }}">
+     <link rel="stylesheet" href="{{ config.site.url }}/{{ asset_url }}">
      {% endassets %}
 
      {% assets css %}
-       <link rel="stylesheet" href="{{ config.site.url }}/{{ asset_url }}">
+     <link rel="stylesheet" href="{{ config.site.url }}/{{ asset_url }}">
      {% endassets %}
      #+end_src
 

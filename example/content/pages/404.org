@@ -1,13 +1,17 @@
 #+TITLE: 404 Not Found
+#+AUTHOR: honmaple
+#+DATE: 2015-12-22
+#+CATEGORY: Life
 #+PROPERTY: TAGS travel
-#+PROPERTY: HIDDEN true
-#+PROPERTY: COMMENT false
-#+PROPERTY: URL 404.html
+#+PROPERTY: COMMENT False
+#+PROPERTY: SAVE_AS 404.html
+
 
 #+BEGIN_CENTER
 #+BEGIN_QUOTE
-路漫漫其修远兮 吾将上下而求索
+路漫漫其修远兮 吾将上下而求索 
 
 =The road ahead will be long, I shall search=
 #+END_QUOTE
 #+END_CENTER
+

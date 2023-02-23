@@ -10,6 +10,6 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
-example/content/posts
+example/content
 example/output
 example/snow

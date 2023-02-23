@@ -1,36 +1,36 @@
 <header class="entry-info">
-  <span title="{% if page.Modified %}Updated at {{ page.Modified | date:"2006-01-02" }}{% else %}{{ page.Date | date:"2006" }}{% endif %}">
+  <span title="{%- if page.Modified %}Updated at {{ page.Modified | date:"2006-01-02" }}{%- else %}{{ page.Date | date:"2006" }}{%- endif %}">
     <i class="fa fa-calendar-o"></i>
     {{ page.Date | date:"2006-01-02" }}
   </span>
-  {% if page.Meta.Get("authors") %}
+  {%- if page.Meta.Get("authors") %}
     <span class="entry-info-sep hidden-xs">|</span>
     <span class="hidden-xs">
       <i class="fa fa-user-o"></i>
       By
-      {% for name in page.Meta.Get("authors") %}
+      {%- for name in page.Meta.Get("authors") %}
         <a href="{{ get_taxonomy_url("authors", name) }}">{{ name }}</a>
-      {% endfor %}
+      {%- endfor %}
     </span>
-  {% endif %}
-  {% if page.Meta.Get("categories") %}
+  {%- endif %}
+  {%- if page.Meta.Get("categories") %}
     <span class="entry-info-sep">|</span>
     <span>
       <i class="fa fa-folder-o"></i>
       In
-      {% for name in page.Meta.Get("categories") %}
+      {%- for name in page.Meta.Get("categories") %}
         <a href="{{ get_taxonomy_url("categories", name) }}">{{ name }}</a>
-      {% endfor %}
+      {%- endfor %}
     </span>
-  {% endif %}
-  {% if page.Meta.Get("tags") %}
+  {%- endif %}
+  {%- if page.Meta.Get("tags") %}
     <span class="entry-info-sep">|</span>
     <span>
       <i class="fa fa-bookmark-o"></i>
       0f
-      {% for name in page.Meta.Get("tags") %}
+      {%- for name in page.Meta.Get("tags") %}
         <a href="{{ get_taxonomy_url("tags", name) }}">{{ name }}</a>
-      {% endfor %}
+      {%- endfor %}
     </span>
-  {% endif %}
+  {%- endif %}
 </header>

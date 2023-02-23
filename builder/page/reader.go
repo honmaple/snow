@@ -13,10 +13,12 @@ import (
 
 type (
 	Builder struct {
-		conf    config.Config
-		theme   theme.Theme
-		hooks   Hooks
-		readers map[string]Reader
+		conf        config.Config
+		theme       theme.Theme
+		hooks       Hooks
+		readers     map[string]Reader
+		buildFilter func(*Page) bool
+		tasks       *taskPool
 
 		pages        Pages
 		hiddenPages  Pages
@@ -46,7 +48,7 @@ func (b *Builder) Build(ctx context.Context) error {
 
 		ls := make([]string, len(b.sections))
 		for i, section := range b.sections {
-			ls[i] = fmt.Sprintf("%d %s", len(section.Pages), section.Name())
+			ls[i] = fmt.Sprintf("%d %s", len(section.Pages)+len(section.HiddenPages)+len(section.SectionPages), section.Name())
 		}
 		b.conf.Log.Infoln("Done: Section Processed", strings.Join(ls, ", "), "in", time.Now().Sub(now))
 
@@ -68,10 +70,11 @@ func NewBuilder(conf config.Config, theme theme.Theme, hooks Hooks) *Builder {
 		readers[ext] = c(conf)
 	}
 	return &Builder{
-		conf:    conf,
-		theme:   theme,
-		hooks:   hooks,
-		readers: readers,
+		conf:        conf,
+		theme:       theme,
+		hooks:       hooks,
+		readers:     readers,
+		buildFilter: filterExpr(conf.GetString("build_filter")),
 	}
 }
 

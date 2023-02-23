@@ -3,11 +3,9 @@ package template
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/flosch/pongo2/v6"
-	"github.com/honmaple/snow/utils"
 )
 
 const (
@@ -49,11 +47,13 @@ func (t *template) timeSince(in *pongo2.Value, param *pongo2.Value) (out *pongo2
 }
 
 func (t *template) absURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
-	out, err = t.relURL(in, param)
-	if err != nil {
-		return
+	v, ok := in.Interface().(string)
+	if !ok {
+		return nil, &pongo2.Error{
+			Sender:    "filter:absURL",
+			OrigError: errors.New("filter input argument must be of type 'string'"),
+		}
 	}
-	v := out.Interface().(string)
 	return pongo2.AsValue(t.conf.GetURL(v)), nil
 }
 
@@ -65,29 +65,5 @@ func (t *template) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Va
 			OrigError: errors.New("filter input argument must be of type 'string'"),
 		}
 	}
-	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
-		return pongo2.AsValue(v), nil
-	}
-	key, ok := "", false
-	if param.Interface() != nil {
-		key, ok = param.Interface().(string)
-		if !ok {
-			return nil, &pongo2.Error{
-				Sender:    "filter:relURL",
-				OrigError: errors.New("filter input argument must be of type 'string'"),
-			}
-		}
-	}
-	if key != "" {
-		vars := map[string]string{
-			"{slug}":       v,
-			"{number}":     "",
-			"{number:one}": "1",
-		}
-		v = utils.StringReplace(t.conf.GetString(key), vars)
-	}
-	if strings.HasPrefix(v, "/") {
-		return pongo2.AsValue(v), nil
-	}
-	return pongo2.AsValue(utils.StringConcat("/", v)), nil
+	return pongo2.AsValue(t.conf.GetRelURL(v)), nil
 }

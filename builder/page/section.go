@@ -122,12 +122,16 @@ func (sec *Section) isRoot() bool {
 	return sec.Parent == nil
 }
 
+func (sec *Section) isEmpty() bool {
+	return len(sec.Children) == 0 && len(sec.Pages) == 0 && len(sec.HiddenPages) == 0 && len(sec.SectionPages) == 0
+}
+
 func (sec *Section) isPaginate() bool {
 	return sec.Meta.GetInt("paginate") > 0
 }
 
 func (sec *Section) Paginator() []*paginator {
-	return sec.Pages.Filter(sec.Meta.Get("paginate_filter")).Paginator(
+	return sec.Pages.Filter(sec.Meta.GetString("paginate_filter")).Paginator(
 		sec.Meta.GetInt("paginate"),
 		sec.Path,
 		sec.Meta.GetString("paginate_path"),
@@ -233,26 +237,30 @@ LOOP:
 		select {
 		case page := <-ch.pages:
 			// page分类: section page，hidden page, normal page
-			if page.Meta.GetBool("section") {
+			if page.isSection() {
 				// section: 自定义页面，该页面下的page列表是父section下的所有正常page
 				section.SectionPages = append(section.SectionPages, page)
-			} else if page.Meta.GetBool("hidden") {
+			} else if page.isHidden() {
 				// hidden: 不会出现在任意列表内，但会输出详情页
 				section.HiddenPages = append(section.HiddenPages, page)
-			} else {
+			} else if b.buildFilter(page) {
 				section.Pages = append(section.Pages, page)
 			}
 		case file := <-ch.assets:
 			section.Assets = append(section.Assets, file)
 		case child := <-ch.sections:
-			section.Children = append(section.Children, child)
+			if !child.isEmpty() {
+				section.Children = append(section.Children, child)
+			}
 		case err := <-ch.errs:
-			return nil, err
+			if err != nil {
+				return nil, err
+			}
 		case <-ctx.Done():
 			break LOOP
 		}
 	}
-	section.Pages = section.Pages.Filter(section.Meta.Get("filter")).OrderBy(section.Meta.GetString("orderby"))
+	section.Pages = section.Pages.Filter(section.Meta.GetString("filter")).OrderBy(section.Meta.GetString("orderby"))
 
 	sort.SliceStable(section.Children, func(i, j int) bool {
 		ti := section.Children[i]

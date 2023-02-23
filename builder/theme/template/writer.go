@@ -25,6 +25,14 @@ func RegisterFunc(k string, v func(map[string]interface{}) interface{}) {
 	GlobalFuncs[k] = v
 }
 
+func Expr(expr string) (*pongo2.Template, error) {
+	tpl, err := pongo2.FromString("{{" + expr + "}}")
+	if err != nil {
+		return nil, err
+	}
+	return tpl, nil
+}
+
 type (
 	Writer interface {
 		Name() string
@@ -42,11 +50,10 @@ type (
 		w *pongo2.Template
 	}
 	template struct {
-		conf    config.Config
-		output  string
-		context map[string]interface{}
-		loader  *loader
-		tplset  *pongo2.TemplateSet
+		conf   config.Config
+		output string
+		loader *loader
+		tplset *pongo2.TemplateSet
 	}
 )
 
@@ -70,9 +77,6 @@ func (t *writer) Write(file string, context map[string]interface{}) error {
 	defer f.Close()
 
 	vars := make(map[string]interface{})
-	for k, v := range t.t.context {
-		vars[k] = v
-	}
 	for k, v := range context {
 		vars[k] = v
 	}
@@ -109,17 +113,13 @@ func New(conf config.Config, theme fs.FS) Interface {
 	t := &template{
 		conf:   conf,
 		output: conf.GetOutput(),
-		context: map[string]interface{}{
-			"site":   conf.GetStringMap("site"),
-			"params": conf.GetStringMap("params"),
-			"config": conf.AllSettings(),
-		},
 		loader: newLoader(theme, conf.GetString("theme.override")),
 	}
 	t.tplset = pongo2.NewSet("app", t.loader)
 
-	pongo2.RegisterFilter("absURL", t.absURL)
-	pongo2.RegisterFilter("relURL", t.relURL)
-	pongo2.RegisterFilter("timesince", t.timeSince)
+	Register("config", conf.AllSettings())
+	RegisterFilter("absURL", t.absURL)
+	RegisterFilter("relURL", t.relURL)
+	RegisterFilter("timesince", t.timeSince)
 	return t
 }

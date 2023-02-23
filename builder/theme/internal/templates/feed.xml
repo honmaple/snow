@@ -14,7 +14,7 @@
         </link>
         <description>{{ config.site.subtitle }}</description>
         <generator>Snow</generator>
-        {%- for page in pages %}
+        {%- for page in pages|slice:":10" %}
           <item>
             <title>{{ page.Title }}</title>
             <pubDate>{{ page.Date | date:"Mon, 02 Jan 2006 15:04:05 -0700" }}</pubDate>
