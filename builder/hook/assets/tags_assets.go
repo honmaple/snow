@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/flosch/pongo2/v6"
@@ -14,7 +15,9 @@ type assetNode struct {
 }
 
 func (node *assetNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
+	hash := ""
 	assetURL := ""
+	showVersion := false
 	if node.name == "" {
 		opt := option{}
 		for key, value := range node.pairs {
@@ -29,15 +32,25 @@ func (node *assetNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 				opt.filters = strings.Split(val.String(), ",")
 			case "output":
 				opt.output = val.String()
+			case "version":
+				opt.version = val.Bool()
 			}
 		}
 		opt.filterOpts = make([]filterOption, len(opt.filters))
-		if err := node.assets.execute(opt); err != nil {
+		h, err := node.assets.execute(opt)
+		if err != nil {
 			return &pongo2.Error{Sender: "tag:assets", OrigError: err}
 		}
+		hash = h
 		assetURL = opt.output
+		showVersion = opt.version
 	} else {
-		assetURL = node.assets.conf.GetString("params.assets." + node.name + ".output")
+		hash = node.assets.hash[node.name]
+		assetURL = node.assets.conf.GetString(fmt.Sprintf(outputTemplate, node.name))
+		showVersion = node.assets.conf.GetBool(fmt.Sprintf(versionTemplate, node.name))
+	}
+	if hash != "" && showVersion {
+		assetURL = assetURL + "?" + hash[:8]
 	}
 	newctx := pongo2.NewChildExecutionContext(ctx)
 	newctx.Private["asset_url"] = assetURL

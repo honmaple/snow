@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	MAKRDOWN_LINE = "---" // 兼容hugo
-	MAKRDOWN_MORE = "<!--more-->"
-	MAKRDOWN_META = regexp.MustCompile(`^([^:]+):(\s+(.*)|$)`)
+	// 兼容hugo
+	MARKDOWN_LINE = regexp.MustCompile(`^[-|\+]{3}\s*$`)
+	MARKDOWN_MORE = regexp.MustCompile(`^\s*(?i:<!--more-->)\s*$`)
+	MARKDOWN_META = regexp.MustCompile(`^([^:]+):(\s+(.*)|$)`)
 )
 
 type markdown struct {
@@ -25,61 +26,68 @@ type markdown struct {
 
 func (m *markdown) Read(r io.Reader) (page.Meta, error) {
 	var (
-		summary    bytes.Buffer
-		content    bytes.Buffer
-		summeryEnd = false
-		metaEnd    = false
-		meta       = make(page.Meta)
-		scanner    = bufio.NewScanner(r)
+		summary   bytes.Buffer
+		content   bytes.Buffer
+		isMeta    = true
+		isFormat  = true
+		isSummery = true
+		meta      = make(page.Meta)
+		scanner   = bufio.NewScanner(r)
 	)
-	isYAML := true
+
 	for scanner.Scan() {
 		line := scanner.Text()
-		if isYAML && line == MAKRDOWN_LINE {
+		if isFormat && MARKDOWN_LINE.MatchString(line) {
 			var b bytes.Buffer
 			for scanner.Scan() {
 				l := scanner.Text()
-				if l == MAKRDOWN_LINE || l == "" {
+				if strings.TrimSpace(l) == "" || MARKDOWN_LINE.MatchString(l) {
 					break
 				}
 				b.WriteString(l)
 				b.WriteString("\n")
 			}
-			if err := yaml.Unmarshal(b.Bytes(), &meta); err != nil {
+			// 不要直接使用meta反序列化数据, 否则子元素map类型也会是page.Meta
+			mm := make(map[string]interface{})
+			if err := yaml.Unmarshal(b.Bytes(), &mm); err != nil {
 				return nil, err
 			}
+			meta = page.Meta(mm)
 			meta.Fix()
-			isYAML = false
+			isFormat = false
 			continue
 		}
-		if !metaEnd {
-			if match := MAKRDOWN_META.FindStringSubmatch(line); match != nil {
+		isFormat = false
+
+		if isMeta {
+			if match := MARKDOWN_META.FindStringSubmatch(line); match != nil {
 				meta.Set(m.conf, strings.ToLower(match[1]), strings.TrimSpace(match[3]))
 				continue
 			}
 		}
-		metaEnd = true
-		if line == MAKRDOWN_MORE {
-			summeryEnd = true
-		}
-		if !summeryEnd {
-			summary.WriteString(line)
-			summary.WriteString("\n")
+		isMeta = false
+		if isSummery && MARKDOWN_MORE.MatchString(line) {
+			summary.WriteString(content.String())
+			isSummery = false
 		}
 		content.WriteString(line)
 		content.WriteString("\n")
 	}
-	if summary.Len() == content.Len() {
-		meta["summary"] = m.conf.GetSummary(m.HTML(summary.Bytes()))
+	buf := content.Bytes()
+	if summary.Len() == 0 {
+		meta["summary"] = m.HTML(buf, true)
 	} else {
-		meta["summary"] = m.HTML(summary.Bytes())
+		meta["summary"] = m.HTML(summary.Bytes(), true)
 	}
-	meta["content"] = m.HTML(content.Bytes())
+	meta["content"] = m.HTML(buf, false)
 	return meta, nil
 }
 
-func (m *markdown) HTML(data []byte) string {
+func (m *markdown) HTML(data []byte, summary bool) string {
 	d := blackfriday.Run(data, blackfriday.WithRenderer(NewChromaRenderer(m.conf.GetHighlightStyle())))
+	if summary {
+		return m.conf.GetSummary(string(d))
+	}
 	return string(d)
 }
 

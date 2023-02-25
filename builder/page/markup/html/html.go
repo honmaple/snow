@@ -35,12 +35,13 @@ func (m *htmlReader) parse(meta page.Meta, n *html.Node) error {
 			}
 		case "body":
 			var buf bytes.Buffer
+
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				if err := html.Render(&buf, c); err == nil {
+				if err := html.Render(&buf, c); err != nil {
 					return err
 				}
 			}
-			meta["content"] = buf.String()
+			meta["content"] = strings.TrimSpace(buf.String())
 			return nil
 		}
 	}

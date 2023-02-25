@@ -38,9 +38,11 @@ func (l *loader) GetBytes(path string) ([]byte, error) {
 		}
 	}
 
-	if strings.HasPrefix(path, "_internal") {
-		path = filepath.Join("_internal/templates", path[9:])
-	} else {
+	if strings.HasPrefix(path, "_internal/") {
+		if !strings.HasPrefix(path, "_internal/templates/") {
+			path = filepath.Join("_internal/templates", path[9:])
+		}
+	} else if !strings.HasPrefix(path, "templates/") {
 		path = filepath.Join("templates", path)
 	}
 

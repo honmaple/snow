@@ -2,6 +2,8 @@ package assets
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -45,8 +47,11 @@ func filterOptions(data interface{}) (names []string, opts []filterOption) {
 	}
 }
 
-func (self *assets) execute(opt option) error {
-	var b bytes.Buffer
+func (self *assets) execute(opt option) (string, error) {
+	var (
+		b bytes.Buffer
+		h = md5.New()
+	)
 	for _, file := range opt.files {
 		var (
 			buf []byte
@@ -55,30 +60,37 @@ func (self *assets) execute(opt option) error {
 		if strings.HasPrefix(file, "@theme/") {
 			f, err := self.theme.Open(file[7:])
 			if err != nil {
-				return err
+				return "", err
 			}
 			buf, err = ioutil.ReadAll(f)
 		} else {
 			buf, err = ioutil.ReadFile(file)
 		}
 		if err != nil {
-			return err
+			return "", err
 		}
 		var (
 			w = bytes.NewBuffer(nil)
 			r = bytes.NewBuffer(buf)
 		)
+		w.Write(r.Bytes())
 		for i, filter := range opt.filters {
 			w.Reset()
 			if err := self.filter(filter, w, r, opt.filterOpts[i]); err != nil {
-				return err
+				return "", err
 			}
-			*r = *w
+			r.Reset()
+			r.Write(w.Bytes())
 		}
 		b.Write(w.Bytes())
 	}
 	self.conf.Log.Debugln("Writing", filepath.Join(self.conf.GetOutput(), opt.output))
-	return self.conf.WriteOutput(opt.output, &b)
+
+	// 边读边写
+	if err := self.conf.WriteOutput(opt.output, io.TeeReader(&b, h)); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func (self *assets) filter(name string, w io.Writer, r io.Reader, opt filterOption) (err error) {

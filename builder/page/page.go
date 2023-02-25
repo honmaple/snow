@@ -64,6 +64,10 @@ func (m Meta) GetSlice(k string) []string {
 	return cast.ToStringSlice(m[k])
 }
 
+func (m Meta) GetStringMap(k string) map[string]interface{} {
+	return cast.ToStringMap(m[k])
+}
+
 func (m Meta) Set(conf config.Config, k, v string) {
 	k = strings.ToLower(k)
 	switch k {
@@ -181,6 +185,20 @@ func (page *Page) HasNextInType() bool {
 	return page.NextInType != nil
 }
 
+func (pages Pages) First() *Page {
+	if len(pages) > 0 {
+		return pages[0]
+	}
+	return nil
+}
+
+func (pages Pages) Last() *Page {
+	if len(pages) > 0 {
+		return pages[len(pages)-1]
+	}
+	return nil
+}
+
 func (pages Pages) Filter(filter string) Pages {
 	if filter == "" {
 		return pages
@@ -206,11 +224,12 @@ func (pages Pages) OrderBy(key string) Pages {
 			sortf   func(int, int) int
 			reverse bool
 		)
+		newk := k
 		if strings.HasSuffix(strings.ToUpper(k), " DESC") {
-			k = k[:len(k)-5]
+			newk = newk[:len(k)-5]
 			reverse = true
 		}
-		switch k {
+		switch newk {
 		case "title":
 			sortf = func(i, j int) int {
 				return strings.Compare(pages[i].Title, pages[j].Title)
@@ -229,7 +248,7 @@ func (pages Pages) OrderBy(key string) Pages {
 			}
 		default:
 			sortf = func(i, j int) int {
-				return utils.Compare(pages[i].Meta[k], pages[j].Meta[k])
+				return utils.Compare(pages[i].Meta[newk], pages[j].Meta[newk])
 			}
 		}
 		if reverse {
@@ -279,7 +298,8 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 	}
 	for _, page := range pages {
 		for _, name := range groupf(page) {
-			name = strings.ToLower(name)
+			// 不要忽略大小写
+			// name = strings.ToLower(name)
 			var parent *TaxonomyTerm
 
 			for _, subname := range utils.SplitPrefix(name, "/") {
@@ -319,6 +339,8 @@ func (b *Builder) readFile(file string) (Meta, error) {
 
 func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
 	meta := section.Meta.copy()
+	meta["path"] = meta["page_path"]
+	meta["template"] = meta["page_template"]
 	meta.load(filemeta)
 
 	now := time.Now()
@@ -397,7 +419,7 @@ func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
 		} else {
 			vars["{slug}"] = b.conf.GetSlug(page.Title)
 		}
-		page.Path = utils.StringReplace(meta.GetString("page_path"), vars)
+		page.Path = utils.StringReplace(meta.GetString("path"), vars)
 	}
 	page.Path = b.conf.GetRelURL(page.Path)
 	page.Permalink = b.conf.GetURL(page.Path)

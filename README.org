@@ -313,30 +313,38 @@
       "@theme/static": "static/"
     #+end_src
 
-*** Feed
+*** Formats
+    可以生成 *rss*，*atom* 或者其它任意格式(需要自定义模版)
 **** 配置
      #+begin_src yaml
+     # 设置rss格式的默认值
+     formats.rss:
+       template: "_internal/rss.xml"
+
+     formats.atom:
+       template: "_internal/atom.xml"
+
      sections:
        _default:
-         # feed生成路径
-         feed_path: "{section:slug}/index.xml"
-         # feed查找模版，为空时默认使用_internal/feed.xml
-         feed_template: "rss.xml"
+         # rss生成路径, 模版将会使用默认模版
+         formats.rss.path: "{section:slug}/index.xml"
+         # 为空时禁止生成
+         formats.atom.path: ""
 
      taxonomies:
-       _default:
-         feed_path: "{taxonomy}/{term:slug}/index.xml"
        tags:
-         # 为空时禁止生成feed
-         feed_path: ""
+         formats.atom:
+           path: "tags/{term:slug}/index.xml"
+           # 自定义模版
+           template: "custom.atom.xml"
      #+end_src
 **** 模版变量
-     |---------+------------------------------|
-     | 变量    | 描述                         |
-     |---------+------------------------------|
-     | section | 仅生成section feed有效       |
-     | term    | 仅生成taxonomy term feed有效 |
-     | pages   | 文章列表                     |
+     |---------+--------------------------|
+     | 变量    | 描述                     |
+     |---------+--------------------------|
+     | section | 仅生成section 有效       |
+     | term    | 仅生成taxonomy term 有效 |
+     | pages   | 文章列表                 |
 
 *** theme
 **** 主题目录结构

@@ -37,6 +37,7 @@ type (
 	Writer interface {
 		Name() string
 		Write(string, map[string]interface{}) error
+		Execute(map[string]interface{}) (string, error)
 	}
 	Interface interface {
 		Lookup(string) (Writer, error)
@@ -96,6 +97,10 @@ func (t *writer) Write(file string, context map[string]interface{}) error {
 	return t.w.ExecuteWriter(vars, f)
 }
 
+func (t *writer) Execute(context map[string]interface{}) (string, error) {
+	return t.w.Execute(context)
+}
+
 func (t *template) Lookup(name string) (Writer, error) {
 	buf, err := t.loader.GetBytes(name)
 	if err != nil {
@@ -117,9 +122,16 @@ func New(conf config.Config, theme fs.FS) Interface {
 	}
 	t.tplset = pongo2.NewSet("app", t.loader)
 
+	Register("dict", dict)
+	Register("slice", slice)
 	Register("config", conf.AllSettings())
+
+	RegisterFunc("scratch", newScratch)
+	RegisterFunc("newScratch", newScratchFunc)
+
 	RegisterFilter("absURL", t.absURL)
 	RegisterFilter("relURL", t.relURL)
-	RegisterFilter("timesince", t.timeSince)
+	RegisterFilter("slient", t.slient)
+	RegisterFilter("jsonify", t.jsonify)
 	return t
 }

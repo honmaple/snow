@@ -14,12 +14,26 @@
         </link>
         <description>{{ config.site.subtitle }}</description>
         <generator>Snow</generator>
+        <language>{{ current_lang | default:config.site.language }}</language>
+        <atom:link href="{{ current_url }}" rel="self" type="application/rss+xml"/>
+        {%- if pages | length > 0 %}
+          <lastBuildDate>{{ pages.First().Modified | default:pages.First().Date | date:"Mon, 02 Jan 2006 15:04:05 -0700" }}</lastBuildDate>
+        {%- endif %}
         {%- for page in pages|slice:":10" %}
           <item>
             <title>{{ page.Title }}</title>
             <pubDate>{{ page.Date | date:"Mon, 02 Jan 2006 15:04:05 -0700" }}</pubDate>
-            <link>{{ page.Permalink | safe }}</link>
-            <guid>{{ page.Permalink | safe }}</guid>
+            <author>
+              {%- if page.Meta.Get("authors") -%}
+                {{ page.Meta.Get("authors")[0] }}
+              {%- elif config.site.author -%}
+                {{ config.site.author }}
+              {%- else -%}
+                Unknown
+              {%- endif -%}
+            </author>
+            <link>{{ page.Permalink }}</link>
+            <guid>{{ page.Permalink }}</guid>
             <description>{% if page.Summary %}{{ page.Summary }}{% else %}{{ page.Content }}{% endif %}</description>
           </item>
         {%- endfor %}

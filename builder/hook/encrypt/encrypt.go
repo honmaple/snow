@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"strings"
+
 	// "crypto/sha256"
 	"encoding/base64"
 	"errors"
@@ -13,9 +15,11 @@ import (
 	// "golang.org/x/crypto/pbkdf2"
 
 	"crypto/md5"
+
 	"github.com/honmaple/snow/builder/hook"
 	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/builder/theme"
+	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
 )
 
@@ -93,12 +97,17 @@ func (e *Encrypt) decrypt(ciphertext, key string) (string, error) {
 }
 
 func (e *Encrypt) AfterPageParse(page *page.Page) *page.Page {
-	password := page.Meta.Get("password")
-	if password == nil || password == "" {
+	password := page.Meta.GetString("password")
+	if password == "" {
 		return page
 	}
-	page.Summary = fmt.Sprintf(`<shortcode _name="encrypt" password="%s">%s</shortcode>`, password, page.Summary)
-	page.Content = fmt.Sprintf(`<shortcode _name="encrypt" password="%s">%s</shortcode>`, password, page.Content)
+	description := "这是一篇加密的文章，你需要输入正确的密码."
+	if v := strings.SplitN(password, ",", 2); len(v) == 2 {
+		password = v[0]
+		description = v[1]
+	}
+	page.Summary = fmt.Sprintf(`<shortcode _name="encrypt" password="%s" description="%s">%s</shortcode>`, password, description, page.Summary)
+	page.Content = fmt.Sprintf(`<shortcode _name="encrypt" password="%s" description="%s">%s</shortcode>`, password, description, page.Content)
 	return page
 }
 
@@ -137,7 +146,7 @@ func New(conf config.Config, theme theme.Theme) hook.Hook {
 		conf: conf,
 	}
 
-	pongo2.RegisterFilter("encrypt", e.filter)
+	template.RegisterFilter("encrypt", e.filter)
 	return e
 }
 

@@ -198,6 +198,8 @@ var (
 		"content_truncate_ellipsis": "...",
 		"content_highlight_style":   "monokai",
 		"slugify":                   true,
+		"formats.rss.template":      "_internal/rss.xml",
+		"formats.atom.template":     "_internal/atom.xml",
 	}
 	// 默认需要修改的配置
 	siteConfig = map[string]interface{}{

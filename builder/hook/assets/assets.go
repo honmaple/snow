@@ -3,10 +3,10 @@ package assets
 import (
 	"fmt"
 
-	"github.com/flosch/pongo2/v6"
 	"github.com/honmaple/snow/builder/hook"
 	"github.com/honmaple/snow/builder/static"
 	"github.com/honmaple/snow/builder/theme"
+	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
 )
 
@@ -15,11 +15,13 @@ type (
 		hook.BaseHook
 		conf  config.Config
 		opts  map[string]option
+		hash  map[string]string
 		theme theme.Theme
 	}
 	option struct {
 		files      []string
 		output     string
+		version    bool
 		filters    []string
 		filterOpts []filterOption
 	}
@@ -29,6 +31,7 @@ const (
 	filesTemplate   = "params.assets.%s.files"
 	outputTemplate  = "params.assets.%s.output"
 	filtersTemplate = "params.assets.%s.filters"
+	versionTemplate = "params.assets.%s.version"
 )
 
 func (self *assets) Name() string {
@@ -36,9 +39,12 @@ func (self *assets) Name() string {
 }
 
 func (self *assets) BeforeStaticsWrite(statics static.Statics) static.Statics {
-	for _, opt := range self.opts {
-		if err := self.execute(opt); err != nil {
+	for name, opt := range self.opts {
+		h, err := self.execute(opt)
+		if err != nil {
 			self.conf.Log.Errorln("hook assets:", err.Error())
+		} else {
+			self.hash[name] = h
 		}
 	}
 	return statics
@@ -49,8 +55,9 @@ func New(conf config.Config, theme theme.Theme) hook.Hook {
 	meta := conf.GetStringMap("params.assets")
 	for name := range meta {
 		opt := option{
-			files:  conf.GetStringSlice(fmt.Sprintf(filesTemplate, name)),
-			output: conf.GetString(fmt.Sprintf(outputTemplate, name)),
+			files:   conf.GetStringSlice(fmt.Sprintf(filesTemplate, name)),
+			output:  conf.GetString(fmt.Sprintf(outputTemplate, name)),
+			version: conf.GetBool(fmt.Sprintf(versionTemplate, name)),
 		}
 		if len(opt.files) == 0 || opt.output == "" {
 			continue
@@ -58,8 +65,8 @@ func New(conf config.Config, theme theme.Theme) hook.Hook {
 		opt.filters, opt.filterOpts = filterOptions(conf.Get(fmt.Sprintf(filtersTemplate, name)))
 		opts[name] = opt
 	}
-	h := &assets{conf: conf, opts: opts, theme: theme}
-	pongo2.RegisterTag("assets", pongo2.TagParser(h.assetParser))
+	h := &assets{conf: conf, opts: opts, hash: make(map[string]string), theme: theme}
+	template.RegisterTag("assets", h.assetParser)
 	return h
 }
 

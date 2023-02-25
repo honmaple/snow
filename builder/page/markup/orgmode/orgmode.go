@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	ORGMODE_MORE = "#+more"
+	ORGMODE_MORE = regexp.MustCompile(`^(?i:#\+more)\s*$`)
 	ORGMODE_META = regexp.MustCompile(`^#\+([^:]+):(\s+(.*)|$)`)
 )
 
@@ -58,16 +58,16 @@ func (m *orgmode) highlightCodeBlock(source, lang string) string {
 
 func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
 	var (
-		content    bytes.Buffer
-		summary    bytes.Buffer
-		summeryEnd = false
-		metaEnd    = false
-		meta       = make(page.Meta)
-		scanner    = bufio.NewScanner(r)
+		content   bytes.Buffer
+		summary   bytes.Buffer
+		meta      = make(page.Meta)
+		scanner   = bufio.NewScanner(r)
+		isMeta    = false
+		isSummary = false
 	)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if !metaEnd {
+		if isMeta {
 			if match := ORGMODE_META.FindStringSubmatch(line); match != nil {
 				if match[1] == "PROPERTY" {
 					s := strings.SplitN(match[3], " ", 2)
@@ -83,31 +83,31 @@ func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
 				continue
 			}
 		}
-		metaEnd = true
-		if line == ORGMODE_MORE {
-			summeryEnd = true
-		}
-		if !summeryEnd {
-			summary.WriteString(line)
-			summary.WriteString("\n")
+		isMeta = false
+		if isSummary && ORGMODE_MORE.MatchString(line) {
+			summary.WriteString(content.String())
+			isSummary = false
 		}
 		content.WriteString(line)
 		content.WriteString("\n")
 	}
-	if summary.Len() == content.Len() {
-		meta["summary"] = m.conf.GetSummary(m.HTML(&summary))
+	if summary.Len() == 0 {
+		meta["summary"] = m.HTML(&content, true)
 	} else {
-		meta["summary"] = m.HTML(&summary)
+		meta["summary"] = m.HTML(&summary, true)
 	}
-	meta["content"] = m.HTML(&content)
+	meta["content"] = m.HTML(&content, false)
 	return meta, nil
 }
 
-func (m *orgmode) HTML(r io.Reader) string {
+func (m *orgmode) HTML(r io.Reader, summary bool) string {
 	rd := render.HTML{
-		Toc:       false,
+		Toc:       !summary,
 		Document:  org.New(r),
 		Highlight: m.highlightCodeBlock,
+	}
+	if summary {
+		return m.conf.GetSummary(rd.String())
 	}
 	return rd.String()
 }

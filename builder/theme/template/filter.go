@@ -1,8 +1,8 @@
 package template
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/flosch/pongo2/v6"
@@ -15,44 +15,59 @@ const (
 	DAY   = 24 * time.Hour
 )
 
-func (t *template) timeSince(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
-	v, ok := in.Interface().(time.Time)
-	if !ok {
-		return nil, &pongo2.Error{
-			Sender:    "filter:timesince",
-			OrigError: errors.New("filter input argument must be of type 'time.Time'"),
-		}
+func newError(name string, err error) *pongo2.Error {
+	return &pongo2.Error{
+		Sender:    "filter:" + name,
+		OrigError: err,
 	}
-	if param != nil {
-		if i := param.String(); i != "" {
-			return pongo2.AsValue(v.Format(i)), nil
-		}
-	}
+}
 
-	since := time.Since(v)
-	value := pongo2.AsValue("刚刚")
-	switch {
-	case since > DAY90:
-		value = pongo2.AsValue(v.Format("2006年01月02日"))
-	case since > DAY10:
-		value = pongo2.AsValue(v.Format("01月02日"))
-	case since > DAY:
-		value = pongo2.AsValue(fmt.Sprintf("%d天前", since/DAY))
-	case since > time.Hour:
-		value = pongo2.AsValue(fmt.Sprintf("%d小时前", since/time.Hour))
-	case since > time.Minute:
-		value = pongo2.AsValue(fmt.Sprintf("%d分钟前", since/time.Minute))
+// {% set newDict = dict("title", "h1", "weight", 0) %}
+func dict(args ...interface{}) map[string]interface{} {
+	m := make(map[string]interface{})
+
+	for i := 0; i < len(args); i = i + 2 {
+		key, ok := args[i].(string)
+		if !ok {
+			continue
+		}
+		if i+1 == len(args) {
+			m[key] = nil
+		} else {
+			m[key] = args[i+1]
+		}
 	}
-	return value, nil
+	return m
+}
+
+// {% set newSlice = slice("item1", "item2") %}
+func slice(args ...interface{}) []interface{} {
+	m := make([]interface{}, len(args))
+	for i, arg := range args {
+		m[i] = arg
+	}
+	return m
+}
+
+// call function and return nothing
+func (t *template) slient(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	return pongo2.AsValue(""), nil
+}
+
+func (t *template) jsonify(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	v := in.Interface()
+
+	buf, err := json.Marshal(v)
+	if err != nil {
+		return nil, newError("jsonify", err)
+	}
+	return pongo2.AsValue(string(buf)), nil
 }
 
 func (t *template) absURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
 	v, ok := in.Interface().(string)
 	if !ok {
-		return nil, &pongo2.Error{
-			Sender:    "filter:absURL",
-			OrigError: errors.New("filter input argument must be of type 'string'"),
-		}
+		return nil, newError("absURL", errors.New("filter input argument must be of type 'string'"))
 	}
 	return pongo2.AsValue(t.conf.GetURL(v)), nil
 }
@@ -60,10 +75,7 @@ func (t *template) absURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Va
 func (t *template) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
 	v, ok := in.Interface().(string)
 	if !ok {
-		return nil, &pongo2.Error{
-			Sender:    "filter:relURL",
-			OrigError: errors.New("filter input argument must be of type 'string'"),
-		}
+		return nil, newError("relURL", errors.New("filter input argument must be of type 'string'"))
 	}
 	return pongo2.AsValue(t.conf.GetRelURL(v)), nil
 }

@@ -80,6 +80,18 @@ func (terms TaxonomyTerms) Has(name string) bool {
 	return false
 }
 
+func (terms TaxonomyTerms) Find(name string) *TaxonomyTerm {
+	for _, term := range terms {
+		if term.FullName() == name {
+			return term
+		}
+		if result := term.Children.Find(name); result != nil {
+			return result
+		}
+	}
+	return nil
+}
+
 func (terms TaxonomyTerms) OrderBy(key string) TaxonomyTerms {
 	if key == "" {
 		return terms

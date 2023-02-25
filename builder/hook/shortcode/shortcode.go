@@ -2,10 +2,10 @@ package shortcode
 
 import (
 	"bytes"
+	"errors"
 	"io/fs"
 	"strings"
 
-	"github.com/flosch/pongo2/v6"
 	"github.com/honmaple/snow/builder/hook"
 	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/builder/theme"
@@ -16,137 +16,126 @@ import (
 
 type shortcode struct {
 	hook.BaseHook
-	conf       config.Config
-	theme      theme.Theme
-	shortcodes map[string]func(map[string]interface{}) string
+	conf  config.Config
+	theme theme.Theme
+	tpls  map[string]func(map[string]interface{}) string
 }
 
-func (s *shortcode) Name() string {
+func (self *shortcode) Name() string {
 	return "shortcode"
 }
 
-func (s *shortcode) template(path string) func(map[string]interface{}) string {
+func (self *shortcode) template(path string) (func(map[string]interface{}) string, error) {
+	tpl, ok := self.theme.LookupTemplate(path)
+	if !ok {
+		return nil, errors.New("not found1")
+	}
 	return func(vars map[string]interface{}) string {
-		buf, err := fs.ReadFile(s.theme, path)
+		out, err := tpl.Execute(vars)
 		if err != nil {
-			s.conf.Log.Error(err.Error())
-			return ""
-		}
-		tpl, err := pongo2.FromBytes(buf)
-		if err != nil {
-			s.conf.Log.Error(err.Error())
-			return ""
-		}
-		out, err := tpl.Execute(pongo2.Context(vars))
-		if err != nil {
-			s.conf.Log.Error(err.Error())
+			self.conf.Log.Error(err.Error())
 			return ""
 		}
 		return out
-	}
+	}, nil
 }
 
-func (s *shortcode) shortcode(content string) string {
-	var (
-		w    bytes.Buffer
-		z    = html.NewTokenizer(strings.NewReader(content))
-		once = make(map[string]int)
-	)
+func (self *shortcode) renderNext(page *page.Page, w *bytes.Buffer, z *html.Tokenizer, startToken *html.Token, times map[string]int) bool {
 	for {
 		next := z.Next()
 		if next == html.ErrorToken {
-			break
+			return false
 		}
 
 		token := z.Token()
 		switch next {
-		case html.StartTagToken:
+		case html.StartTagToken, html.SelfClosingTagToken:
+			name := token.Data
 			if token.Data == "shortcode" {
-				vars := make(map[string]interface{})
 				for _, attr := range token.Attr {
-					vars[attr.Key] = attr.Val
+					if attr.Key == "_name" {
+						name = attr.Val
+						break
+					}
 				}
-				name := vars["_name"].(string)
-				shortcode, ok := s.shortcodes[name]
-				if !ok {
-					w.WriteString(token.String())
+				if name == "" {
+					self.conf.Log.Warnf("%s: shortcode no name", page.File)
 					break
 				}
-				var (
-					end = false
-					buf bytes.Buffer
-				)
-				for {
-					next = z.Next()
-					if next == html.ErrorToken {
-						break
-					}
-					ton := z.Token()
-					if next == html.EndTagToken && ton.Data == token.Data {
-						end = true
-						break
-					}
-					buf.WriteString(ton.String())
-				}
-				if !end {
-					s.conf.Log.Warnln(token.String(), "closing delimiter '</shortcode>' is missing")
-				}
-				vars["once"] = once[name]
-				vars["body"] = buf.String()
-				once[name]++
-				w.WriteString(shortcode(vars))
-			} else {
-				w.WriteString(token.String())
 			}
-		case html.SelfClosingTagToken:
-			if token.Data == "shortcode" {
+			shortcode, ok := self.tpls[name]
+			if ok {
 				vars := make(map[string]interface{})
+
+				attrs := make(map[string]interface{})
 				for _, attr := range token.Attr {
 					vars[attr.Key] = attr.Val
+					attrs[attr.Key] = attr.Val
 				}
-				name := vars["_name"].(string)
-				shortcode, ok := s.shortcodes[name]
-				if !ok {
-					w.WriteString(token.String())
-					break
-				}
-				vars["once"] = once[name]
+				vars["page"] = page
+				vars["attr"] = attrs
 				vars["body"] = ""
-				once[name]++
+				vars["times"] = times[name]
+				times[name]++
+
+				if next == html.StartTagToken {
+					var buf bytes.Buffer
+
+					if !self.renderNext(page, &buf, z, &token, times) {
+						self.conf.Log.Warnf("%s: closing delimiter '</%s>' is missing", page.File, token.Data)
+					}
+					vars["body"] = buf.String()
+				}
 				w.WriteString(shortcode(vars))
-			} else {
-				w.WriteString(token.String())
+				continue
 			}
-		default:
-			w.WriteString(token.String())
+		case html.EndTagToken:
+			if startToken != nil && startToken.Data == token.Data {
+				return true
+			}
 		}
+		w.WriteString(token.String())
 	}
+	return false
+}
+
+func (self *shortcode) shortcode(page *page.Page, content string) string {
+	var (
+		w     bytes.Buffer
+		z     = html.NewTokenizer(strings.NewReader(content))
+		times = make(map[string]int)
+	)
+	self.renderNext(page, &w, z, nil, times)
 	return w.String()
 }
 
-func (s *shortcode) AfterPageParse(page *page.Page) *page.Page {
-	page.Content = s.shortcode(page.Content)
-	page.Summary = s.shortcode(page.Summary)
+func (self *shortcode) AfterPageParse(page *page.Page) *page.Page {
+	if len(self.tpls) == 0 {
+		return page
+	}
+	page.Content = self.shortcode(page, page.Content)
+	page.Summary = self.shortcode(page, page.Summary)
 	return page
 }
 
 func newShortcode(conf config.Config, theme theme.Theme) hook.Hook {
 	h := &shortcode{conf: conf, theme: theme}
-	h.shortcodes = make(map[string]func(map[string]interface{}) string)
-	fs.WalkDir(theme, "_internal/templates/shortcodes", func(path string, d fs.DirEntry, err error) error {
+	h.tpls = make(map[string]func(map[string]interface{}) string)
+
+	walkFunc := func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		h.shortcodes[utils.FileBaseName(path)] = h.template(path)
-		return nil
-	})
-	fs.WalkDir(theme, "templates/shortcodes", func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
+		tpl, err := h.template(path)
+		if err != nil {
+			conf.Log.Errorln(path, err.Error())
+			return nil
 		}
-		h.shortcodes[utils.FileBaseName(path)] = h.template(path)
+		h.tpls[utils.FileBaseName(path)] = tpl
 		return nil
-	})
+	}
+	fs.WalkDir(theme, "_internal/templates/shortcodes", walkFunc)
+	fs.WalkDir(theme, "templates/shortcodes", walkFunc)
 	return h
 }
 

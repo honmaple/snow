@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="{{ current_lang | default:config.site.language }}">
+  <title>{{ config.site.title }}
+    {%- if term %} - {{ term.Name }}
+    {%- elif section.Title %} - {{ section.Title }}
+    {%- endif -%}
+  </title>
+  {%- if config.site.subtitle %}
+    <subtitle>{{ config.site.subtitle }}</subtitle>
+  {%- endif %}
+  <link href="{{ current_url }}" rel="self" type="application/atom+xml"/>
+  <link href="
+              {%- if section -%}
+              {{ section.Permalink }}
+              {%- else -%}
+              {{ config.site.url }}
+              {%- endif -%}
+              "/>
+  <generator uri="https://github.com/honmaple/snow">Snow</generator>
+  {%- if pages | length > 0 %}
+    <updated>{{ pages.First().Modified | default:pages.First().Date | date:"Mon, 02 Jan 2006 15:04:05 -0700" }}</updated>
+  {%- endif %}
+  <id>{{ config.site.url }}</id>
+  {%- for page in pages|slice:":10" %}
+    <entry xml:lang="{{ page.Lang | default:config.site.language }}">
+      <title>{{ page.Title }}</title>
+      <link href="{{ perm.Permalink }}" rel="alternate"></link>
+      <published>{{ page.Date | date:"Mon, 02 Jan 2006 15:04:05 -0700" }}</published>
+      <updated>{{ page.Modified | default:page.Date | date:"Mon, 02 Jan 2006 15:04:05 -0700" }}</updated>
+      <author>
+        <name>
+          {%- if page.Meta.Get("authors") -%}
+            {{ page.Meta.Get("authors")[0] }}
+          {%- elif config.site.author -%}
+            {{ config.site.author }}
+          {%- else -%}
+            Unknown
+          {%- endif -%}
+        </name>
+      </author>
+      <link rel="alternate" href="{{ page.Permalink }}" type="text/html"/>
+      <id>{{ page.Permalink }}</id>
+      <summary type="html">{{ page.Summary }}</summary>
+      <content type="html">{{ page.Content }}</content>
+      {%- for name in page.Meta.Get("categories") %}
+        <category term="{{ name }}"></category>
+      {%- endfor %}
+    </entry>
+  {%- endfor %}
+</feed>
