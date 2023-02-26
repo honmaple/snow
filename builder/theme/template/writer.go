@@ -1,6 +1,7 @@
 package template
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -66,6 +67,9 @@ func (t *writer) Write(file string, context map[string]interface{}) error {
 	if file == "" {
 		return nil
 	}
+	if filepath.Clean(file) != file {
+		return fmt.Errorf("The path '%s' is not valid", file)
+	}
 	writefile := filepath.Join(t.t.output, file)
 	if dir := filepath.Dir(writefile); !utils.FileExists(dir) {
 		os.MkdirAll(dir, 0755)
@@ -92,8 +96,6 @@ func (t *writer) Write(file string, context map[string]interface{}) error {
 		}
 	}
 	t.t.conf.Log.Debugln("Writing", writefile)
-	// _ = tpl
-	// return nil
 	return t.w.ExecuteWriter(vars, f)
 }
 

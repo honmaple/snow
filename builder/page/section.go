@@ -168,6 +168,21 @@ func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
 		return nil, errors.New("There are no pages")
 	}
 
+	section := b.newSection(parent, path)
+
+	ignoreFiles := make(map[string]bool)
+	for _, m := range section.Meta.GetSlice("ignore_files") {
+		if m == "*" {
+			return nil, nil
+		}
+		matches, _ := filepath.Glob(filepath.Join(path, m))
+		for _, match := range matches {
+			ignoreFiles[filepath.Base(match)] = true
+		}
+	}
+	// 子目录不要继承
+	delete(section.Meta, "ignore_files")
+
 	var (
 		ch = &sectionChan{
 			errs:     make(chan error),
@@ -175,11 +190,13 @@ func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
 			assets:   make(chan string),
 			sections: make(chan *Section),
 		}
-		wg      = sync.WaitGroup{}
-		section = b.newSection(parent, path)
+		wg = sync.WaitGroup{}
 	)
 
 	for _, name := range names {
+		if ignoreFiles[name] {
+			continue
+		}
 		wg.Add(1)
 		go func(name string) {
 			defer wg.Done()
@@ -249,7 +266,7 @@ LOOP:
 		case file := <-ch.assets:
 			section.Assets = append(section.Assets, file)
 		case child := <-ch.sections:
-			if !child.isEmpty() {
+			if child != nil && !child.isEmpty() {
 				section.Children = append(section.Children, child)
 			}
 		case err := <-ch.errs:

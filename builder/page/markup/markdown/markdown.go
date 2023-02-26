@@ -77,7 +77,7 @@ func (m *markdown) Read(r io.Reader) (page.Meta, error) {
 	if summary.Len() == 0 {
 		meta["summary"] = m.HTML(buf, true)
 	} else {
-		meta["summary"] = m.HTML(summary.Bytes(), true)
+		meta["summary"] = m.HTML(summary.Bytes(), false)
 	}
 	meta["content"] = m.HTML(buf, false)
 	return meta, nil

@@ -1,10 +1,11 @@
 package page
 
 import (
-	"github.com/honmaple/snow/utils"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/honmaple/snow/utils"
 )
 
 type (
@@ -123,6 +124,9 @@ func (terms TaxonomyTerms) OrderBy(key string) TaxonomyTerms {
 		})
 	} else {
 		sort.SliceStable(terms, sortf)
+	}
+	for _, term := range terms {
+		term.Children.OrderBy(key)
 	}
 	return terms
 }

@@ -59,7 +59,7 @@ func New(conf config.Config, theme theme.Theme) Hooks {
 		}
 		if creator, ok := _hooks[name]; ok {
 			hooks = append(hooks, creator(conf, theme))
-		}else {
+		} else {
 			conf.Log.Warnf("The hook %s not found", name)
 		}
 	}

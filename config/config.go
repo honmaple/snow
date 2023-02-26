@@ -73,7 +73,7 @@ func (conf Config) WriteOutput(file string, r io.Reader) error {
 	if dir := filepath.Dir(output); !utils.FileExists(output) {
 		os.MkdirAll(dir, 0755)
 	}
-	dstFile, err := os.OpenFile(output, os.O_WRONLY|os.O_CREATE, 0644)
+	dstFile, err := os.OpenFile(output, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}

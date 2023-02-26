@@ -215,9 +215,6 @@ func (pages Pages) Filter(filter string) Pages {
 }
 
 func (pages Pages) OrderBy(key string) Pages {
-	if key == "" {
-		return pages
-	}
 	sortfs := make([]func(int, int) int, 0)
 	for _, k := range strings.Split(key, ",") {
 		var (
@@ -260,14 +257,14 @@ func (pages Pages) OrderBy(key string) Pages {
 		}
 	}
 	sort.SliceStable(pages, func(i, j int) bool {
-		var result int
 		for _, f := range sortfs {
-			result = f(i, j)
+			result := f(i, j)
 			if result != 0 {
 				return result > 0
 			}
 		}
-		return result >= 0
+		// 增加一个默认排序, 避免时间相同时排序混乱
+		return strings.Compare(pages[i].Title, pages[j].Title) >= 0
 	})
 	return pages
 }
@@ -345,12 +342,11 @@ func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
 
 	now := time.Now()
 	page := &Page{
-		File:     file,
-		Type:     section.FirstName(),
-		Meta:     meta,
-		Date:     now,
-		Modified: now,
-		Section:  section,
+		File:    file,
+		Type:    section.FirstName(),
+		Meta:    meta,
+		Date:    now,
+		Section: section,
 	}
 	for k, v := range meta {
 		if v == "" {
@@ -402,6 +398,9 @@ func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
 				page.Lang = lang
 			}
 		}
+	}
+	if page.Modified.IsZero() {
+		page.Modified = page.Date
 	}
 	if page.Path == "" {
 		vars := map[string]string{

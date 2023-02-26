@@ -2,70 +2,183 @@
   静态博客生成器
 
 ** 快速开始
-   #+begin_example
-     └──╼ ./snow --help
-     NAME:
-        snow - snow is a static site generator.
+*** 开始(Quickstart)
+**** 创建新的站点
+     #+begin_example
+     ──╼ ./snow init
+     Welcome to snow 0.1.0.
+     > Where do you want to create your new web site? [.] mysnow
+     > What will be the title of this web site? [snow]
+     > Who will be the author of this web site?
+     The input is required
+     > Who will be the author of this web site? honmaple
+     > What is your URL prefix? (no trailing slash) [http://127.0.0.1:8000]
+     > Do you want to create first page? [Y/n]
+     #+end_example
 
-     USAGE:
-        snow [global options] command [command options] [arguments...]
+**** 编译和预览
+     #+begin_example
+     └──╼ cd mysnow
+     └──╼ ../snow server -D
+     DEBU Copying @theme/static/css/main.css to output/static/css/main.css
+     INFO Done: Static Processed 1 static files in 588.705µs
+     DEBU Writing output/categories/index.html
+     DEBU Writing output/authors/index.html
+     DEBU Writing output/tags/index.html
+     DEBU Writing output/posts/index.html
+     DEBU Writing output/authors/snow/index.html
+     DEBU Writing output/tags/snow/index.html
+     DEBU Writing output/categories/linux/index.html
+     DEBU Writing output/tags/linux/index.html
+     DEBU Writing output/tags/emacs/index.html
+     DEBU Writing output/categories/linux/emacs/index.html
+     INFO Done: Page Processed 1 normal pages, 0 hidden pages, 0 section pages in 10.087804ms
+     INFO Done: Section Processed 1 posts in 10.1831ms
+     INFO Done: Taxonomy Processed 1 authors, 3 tags, 1 categories in 10.18788ms
+     #+end_example
 
-     VERSION:
-        0.1.0
-
-     COMMANDS:
-        init     init a new site
-        build    build and output
-        server   server local files
-        help, h  Shows a list of commands or help for one command
-
-     GLOBAL OPTIONS:
-        --conf FILE, -c FILE  load configuration from FILE (default: "config.yaml")
-        --help, -h            show help (default: false)
-        --version, -v         print the version (default: false)
-   #+end_example
-*** 创建新的站点
+*** 安装(Installation)
     #+begin_example
-    ──╼ ./snow init
-    Welcome to snow 0.1.0.
-    > Where do you want to create your new web site? [.] mysnow
-    > What will be the title of this web site? [snow]
-    > Who will be the author of this web site?
-    The input is required
-    > Who will be the author of this web site? honmaple
-    > What is your URL prefix? (no trailing slash) [http://127.0.0.1:8000]
-    > Do you want to create first page? [Y/n]
+    └──╼ git clone https://github.com/honmaple/snow --depth=1
+    └──╼ cd snow
+    └──╼ go mod tidy
+    └──╼ go build .
     #+end_example
-
-*** 编译和预览
+*** 命令行(Cli usage)
     #+begin_example
-    └──╼ cd mysnow
-    └──╼ ../snow server -D
-    DEBU Copying @theme/static/css/main.css to output/static/css/main.css
-    INFO Done: Static Processed 1 static files in 588.705µs
-    DEBU Writing output/categories/index.html
-    DEBU Writing output/authors/index.html
-    DEBU Writing output/tags/index.html
-    DEBU Writing output/posts/index.html
-    DEBU Writing output/authors/snow/index.html
-    DEBU Writing output/tags/snow/index.html
-    DEBU Writing output/categories/linux/index.html
-    DEBU Writing output/tags/linux/index.html
-    DEBU Writing output/tags/emacs/index.html
-    DEBU Writing output/categories/linux/emacs/index.html
-    INFO Done: Page Processed 1 normal pages, 0 hidden pages, 0 section pages in 10.087804ms
-    INFO Done: Section Processed 1 posts in 10.1831ms
-    INFO Done: Taxonomy Processed 1 authors, 3 tags, 1 categories in 10.18788ms
-    #+end_example
+      └──╼ ./snow --help
+      NAME:
+         snow - snow is a static site generator.
 
-** 内容
+      USAGE:
+         snow [global options] command [command options] [arguments...]
+
+      VERSION:
+         0.1.0
+
+      COMMANDS:
+         init     init a new site
+         build    build and output
+         server   server local files
+         help, h  Shows a list of commands or help for one command
+
+      GLOBAL OPTIONS:
+         --conf FILE, -c FILE  load configuration from FILE (default: "config.yaml")
+         --help, -h            show help (default: false)
+         --version, -v         print the version (default: false)
+    #+end_example
+**** init
+     #+begin_example
+      └──╼ ./snow init
+      └──╼ ./snow init myblog
+     #+end_example
+     如果不指定 *myblog* 目录，默认会在当前目录下生成一个 *config.yaml* 文件和一个 *content* 目录
+**** build
+     该命令会构建站点内容内写入到 *{output_dir}* 目录, 如果该目录已经有文件存在，除非制定 =-C= 参数，否则不会自动清理
+     - 清理输出目录
+       #+begin_example
+       └──╼ ./snow build --clean
+       └──╼ ./snow build -C
+       #+end_example
+     - 显示输出详情
+       #+begin_example
+       └──╼ ./snow build --debug
+       └──╼ ./snow build -D
+       #+end_example
+     - 指定输出目录
+       #+begin_example
+       └──╼ ./snow build --output {output_dir}
+       └──╼ ./snow build -o {output_dir}
+       #+end_example
+     - 指定mode
+       #+begin_example
+       └──╼ ./snow build --mode {mode}
+       └──╼ ./snow build -m {mode}
+       #+end_example
+     - 筛选页面
+       #+begin_example
+       └──╼ ./snow build --filter {build_filter}
+       └──╼ ./snow build -F {build_filter}
+       #+end_example
+     - 显示所有hooks
+       #+begin_example
+       └──╼ ./snow build --hooks
+       #+end_example
+**** server
+     build 支持的命令 server也同样支持, 除此之外，还有
+     - 指定监听地址
+       #+begin_example
+       └──╼ ./snow server --listen 127.0.0.1:8088
+       └──╼ ./snow server -l 127.0.0.1:8088
+       #+end_example
+       默认监听地址是 =site.url=
+     - 监听文件修改并重新构建
+       #+begin_example
+       └──╼ ./snow server --autoload
+       └──╼ ./snow server -r
+       #+end_example
+
+*** 目录结构(Driectory structure)
+    #+begin_example
+    .
+    ├── config.yaml
+    ├── content
+    │   └── posts
+    │       └── first-page.md
+    ├── static
+    ├── layouts
+    └── themes
+    │   └── snow
+    │       └── static
+    │       └── template
+    #+end_example
+    - *config.yaml*:
+      使用的配置文件
+    - *content*:
+      包括所有的页面内容, 比如 =.md=, =.org= 等,如果一个子目录包括 =index.{md,org}= 文件，那么这个目录将会成为一个页面，否则每一个子目录都是一个 *section*, 同样的，子目录下 =_index.{md,org}= 文件也是该 *section* 的配置文件
+    - *static*:
+      =static_dirs= 指定的静态文件或目录，名称可修改
+    - *layouts*: 主题模版覆盖目录
+      =theme.override= 指定的主题覆盖文件，比如有一个主题模版 ={theme}/templates/post.html=, 当指定了 =override= 目录后就可以在该目录创建一个同样名称为 =post.html= 的文件进行覆盖
+    - *themes*:
+      主题目录, 该目录下包括的子目录就是主题名称，可以在 =theme.name= 里指定
+*** 配置文件(Configuration)
+    #+begin_src yaml
+    # 站点配置信息
+    site:
+      url: "http://127.0.0.1:8000"
+      title: "snow"
+      subtitle: "Snow is a static generator."
+      language: "zh"
+      author: "honmaple"
+
+    # 发布时使用的配置
+    mode.publish:
+      site:
+        url: "https://honmaple.me"
+
+    output_dir: "output"
+    content_dir: "content"
+    build_filter: "not draft"
+
+    theme:
+      name: "snow"
+      override: "layouts"
+
+    # 按照主题需要进行配置
+    params.extra:
+      menus:
+        - name: "关于"
+          url: "/pages/about.html"
+    #+end_src
+** 内容管理
 *** Section
     #+begin_example
       content/
-      ├── drafts            // <- http://127.0.0.1:8000/drafts/index.html
-      │   └── draft1.org    // <- http://127.0.0.1:8000/drafts/index.html
       ├── pages             // no url, because sections.pages.path is ""
-      │   └── 404.org       // <- http://127.0.0.1:8000/404.html
+      │   └── about         // <- http://127.0.0.1:8000/pages/about.html
+      │       └── index.org // no url
+      │   └── contact.org   // <- http://127.0.0.1:8000/pages/contact.html
       └── posts             // <- http://127.0.0.1:8000/posts/index.html
           ├── post1.org     // <- http://127.0.0.1:8000/posts/2022/02/post1.html
           └── subposts      // <- http://127.0.0.1:8000/posts/subposts/index.html
@@ -93,6 +206,8 @@
          page_path: "{section}/{slug}/index.html"
          # 文章使用的模版
          page_template: "post.html"
+         formats.atom:
+           path: "{section:slug}/atom.xml"
        posts:
          page_path: "posts/{date:%Y}/{date:%m}/{slug}.html"
        pages:
@@ -127,7 +242,36 @@
      | section.Children  | 子section               |
      | section.Parent    | 父section               |
 
-*** Page
+*** 页面(Page)
+**** 元数据
+     - markdown
+       #+begin_example
+       ---
+       title: "title"
+       categories:
+         - Snow/Templates
+       tags:
+         - linux
+         - snow
+       ---
+       #+end_example
+     - orgmode
+       #+begin_example
+       #+TITLE: title
+       #+DATE: 2022-02-26 17:14:46
+       #+CATEGORIES: Snow/Templates
+       #+PROPERTY: TAGS linux,snow
+       #+PROPERTY: MODIFIED 2023-02-26 14:35:37
+       #+end_example
+     - html
+       #+begin_src html
+       <head>
+         <title>Project</title>
+         <meta name="categories" content="Snow/Templates" />
+         <meta name="tags" content="linux,snow" />
+         <meta name="date" content="2015-12-22" />
+       </head>
+       #+end_src
 **** 配置
      #+begin_src yaml
      # 文章目录所在, 其中该目录下应该包括一系列子目录，这些子目录的名称对应为 *文章的类型*, 比如 *content/drafts/* 目录下的文章类型为 *drafts*, 当然也可以直接在文章文件头添加 =type: drafts=
@@ -169,23 +313,7 @@
      | page.HasPrevInType() | 是否有同一类型上一篇 |
      | page.HasNextInType() | 是否有同一类型下一篇 |
 
-*** Draft
-    默认草稿标志为 =draft: true=, 也可以将所有草稿放入同一个 *drafts* 目录, 然后就可以在构建时增加筛选条件
-    - 排除草稿
-      #+begin_example
-      snow build -F 'not draft'
-      #+end_example
-      或者
-      #+begin_example
-      snow build --filter 'type != "drafts"'
-      #+end_example
-    - 包括草稿
-      #+begin_example
-      snow build -F 'not draft or draft = true'
-      #+end_example
-      默认筛选条件可以写入配置 =build_filter=
-
-*** Taxonomy
+*** 分类系统(Taxonomy)
 **** 配置
      #+begin_src yaml
      taxonomies:
@@ -242,7 +370,7 @@
        | term.List      | 文章列表 |
        | term.Children  | 子分类   |
 
-*** Archive
+*** 归档页(Archive)
     #+begin_src yaml
     taxonomies:
       date:2006/01:
@@ -253,7 +381,7 @@
     #+end_src
     归档页面类似分类系统，其它 *date:2006/01* 表示按年月归档, 并生成链接 */archives/2022/10/index.html*
 
-*** Pagination
+*** 分页(Pagination)
 **** 路径变量
      |--------------+-------------------|
      | 变量         | 描述              |
@@ -295,25 +423,22 @@
      | paginator.All       | 所有页         |
      | paginator.List      | 当前页文章列表 |
 
-*** Static
-    静态文件配置:
-    #+begin_src yaml
-    # 静态文件目录, 该目录区分主题的静态文件static
-    static_dirs:
-      - "static/"
-    # 静态文件扩展，不配置将会使用静态文件目录下的所有文件
-    static_exts:
-      - ".js"
-      - ".css"
-    # 静态文件路径，用于指定静态文件或静态目录的保存目录, 当有多条路径时，长度优先.
-    static_paths:
-      static/CNAME: "/"
-      static/css/main.css: "static/css/"
-      # 以@theme开头代表主题中的静态文件，即{theme.name}/static
-      "@theme/static": "static/"
-    #+end_src
-
-*** Formats
+*** 草稿(Draft)
+    默认草稿标志为 =draft: true=, 也可以将所有草稿放入同一个 *drafts* 目录, 然后就可以在构建时增加筛选条件
+    - 排除草稿
+      #+begin_example
+      snow build -F 'not draft'
+      #+end_example
+      或者
+      #+begin_example
+      snow build --filter 'type != "drafts"'
+      #+end_example
+    - 包括草稿
+      #+begin_example
+      snow build -F 'not draft or draft = true'
+      #+end_example
+      默认筛选条件可以写入配置 =build_filter=
+*** 输出格式(Atom,Rss,JSON)
     可以生成 *rss*，*atom* 或者其它任意格式(需要自定义模版)
 **** 配置
      #+begin_src yaml
@@ -346,7 +471,42 @@
      | term    | 仅生成taxonomy term 有效 |
      | pages   | 文章列表                 |
 
-*** theme
+*** 静态文件(Static)
+    静态文件分 *主题静态文件*和*配置指定的静态文件*
+
+**** 主题静态文件
+     #+begin_example
+     ├── themes
+     │   └── snow
+     │       └── static
+     │           └── main.css
+     #+end_example
+     主题目录下的所有文件默认会复制到 *output* 目录
+
+**** 指定的静态文件
+     该文件需要在配置指定
+     #+begin_src yaml
+     # 静态文件目录, 该目录区分主题的静态文件static
+     static_dirs:
+       - "static/"
+     # 静态文件扩展，不配置将会使用静态文件目录下的所有文件
+     static_exts:
+       - ".js"
+       - ".css"
+     # 静态文件路径，用于指定静态文件或静态目录的保存目录, 当有多条路径时，长度优先.
+     static_paths:
+       static/CNAME: "/"
+       static/css/main.css: "static/css/"
+       # 以@theme开头代表主题中的静态文件，即{theme.name}/static
+       "@theme/static": "static/"
+     #+end_src
+
+*** 多语言(Multilingual)
+** 模版(templates)
+   [[https://github.com/flosch/pongo2]]
+** 主题(theme)
+*** 安装
+*** 开发
 **** 主题目录结构
      其中 *templates* 和 *static* 名称不可修改
      #+begin_example
@@ -367,15 +527,17 @@
        override: "layouts"
      #+end_src
 
-*** hook
-    #+begin_src yaml
-    hooks:
-      - "i18n"
-      - "assets"
-      - "encrypt"
-      - "shortcode"
-    #+end_src
-**** i18n
+**** TODO 默认配置
+
+** 插件(hooks)
+   #+begin_src yaml
+   hooks:
+     - "i18n"
+     - "assets"
+     - "encrypt"
+     - "shortcode"
+   #+end_src
+*** i18n
      - 模版
        #+begin_src html
        {% i18n "tags" %}
@@ -412,13 +574,13 @@
              tr: "作者"
        #+end_src
 
-**** encrypt
+*** encrypt
      内容加密, 需要一个密码
      #+begin_src html
      {{ page.Content | encrypt:"123456" }}
      #+end_src
 
-**** shortcode
+*** shortcode
      用于快速插入已有模版, 示例:
      #+begin_example
      <shortcode _name="encrypt" password="1234567">
@@ -429,7 +591,7 @@
      #+end_example
 
      可以自定义 *shortcode* 到主题的 =templates/shortcodes= 目录下, 目前内置 *gist*, *encrypt*
-**** assets
+*** assets
      静态文件处理
      #+begin_src yaml
      params:
@@ -454,19 +616,20 @@
      {% endassets %}
      #+end_src
 
-*** 本地测试和正式发布
-    snow 提供了 *mode* 配置用于区分本地测试和正式发布
-    #+begin_src yaml :noindent
-    site:
-      url: "http://127.0.0.1:8000"
-      output_dir: "output"
 
-    mode.publish:
-      site:
-        url: "https://example.com"
-        output_dir: "xxx"
+** 本地测试和正式发布
+   snow 提供了 *mode* 配置用于区分本地测试和正式发布
+   #+begin_src yaml :noindent
+   site:
+     url: "http://127.0.0.1:8000"
+     output_dir: "output"
 
-    mode.develop:
-      include: "develop.yaml"
-    #+end_src
-    只要在构建时使用 =snow build --mode publish= 即可覆盖本地默认配置
+   mode.publish:
+     site:
+       url: "https://example.com"
+       output_dir: "xxx"
+
+   mode.develop:
+     include: "develop.yaml"
+   #+end_src
+   只要在构建时使用 =snow build --mode publish= 即可覆盖本地默认配置

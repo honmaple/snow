@@ -14,11 +14,11 @@ func Compare(value interface{}, other interface{}) int {
 	if value == other {
 		return 0
 	}
-	if value == nil {
-		return -1
-	}
 	if other == nil {
 		return 1
+	}
+	if value == nil {
+		return -1
 	}
 	switch v := value.(type) {
 	case []string:
