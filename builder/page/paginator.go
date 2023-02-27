@@ -12,7 +12,7 @@ type paginator struct {
 	Prev    *paginator
 	Total   int
 	PageNum int
-	List    Pages
+	List    []interface{}
 	URL     string
 	All     []*paginator
 }
@@ -41,7 +41,7 @@ func (p *paginator) HasNext() bool {
 	return p.Next != nil
 }
 
-func (pages Pages) Paginator(number int, path string, paginatePath string) []*paginator {
+func Paginator(list []interface{}, number int, path string, paginatePath string) []*paginator {
 	output := path
 	if number > 0 {
 		if paginatePath == "" {
@@ -57,9 +57,9 @@ func (pages Pages) Paginator(number int, path string, paginatePath string) []*pa
 
 	var maxpage int
 
-	length := len(pages)
+	length := len(list)
 	if number <= 0 {
-		number = len(pages)
+		number = len(list)
 		maxpage = 1
 	} else if length%number == 0 {
 		maxpage = length / number
@@ -91,7 +91,7 @@ func (pages Pages) Paginator(number int, path string, paginatePath string) []*pa
 		if end > length {
 			end = length
 		}
-		por.List = pages[num*number : end]
+		por.List = list[num*number : end]
 		pors[num] = por
 
 		if prev != nil {

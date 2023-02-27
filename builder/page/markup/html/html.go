@@ -14,7 +14,7 @@ type htmlReader struct {
 	conf config.Config
 }
 
-func (m *htmlReader) parse(meta page.Meta, n *html.Node) error {
+func parseMeta(meta page.Meta, n *html.Node) error {
 	if n.Type == html.ElementNode {
 		switch n.Data {
 		case "title":
@@ -31,7 +31,29 @@ func (m *htmlReader) parse(meta page.Meta, n *html.Node) error {
 				}
 			}
 			if key != "" {
-				meta.Set(m.conf, strings.ToLower(key), val)
+				meta.Set(strings.ToLower(key), strings.TrimSpace(val))
+			}
+		case "link":
+			href := ""
+			for _, a := range n.Attr {
+				if a.Key == "href" {
+					href = a.Val
+					break
+				}
+			}
+			if href != "" {
+				meta.Set("custom_css", "["+href+"]")
+			}
+		case "script":
+			src := ""
+			for _, a := range n.Attr {
+				if a.Key == "src" {
+					src = a.Val
+					break
+				}
+			}
+			if src != "" {
+				meta.Set("custom_js", "["+src+"]")
 			}
 		case "body":
 			var buf bytes.Buffer
@@ -46,23 +68,28 @@ func (m *htmlReader) parse(meta page.Meta, n *html.Node) error {
 		}
 	}
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
-		if err := m.parse(meta, child); err != nil {
+		if err := parseMeta(meta, child); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *htmlReader) Read(r io.Reader) (page.Meta, error) {
+func readMeta(r io.Reader) (page.Meta, error) {
 	doc, err := html.Parse(r)
 	if err != nil {
 		return nil, err
 	}
 	meta := make(page.Meta)
-	if err := s.parse(meta, doc); err != nil {
+	if err := parseMeta(meta, doc); err != nil {
 		return nil, err
 	}
+	meta.Done()
 	return meta, nil
+}
+
+func (s *htmlReader) Read(r io.Reader) (page.Meta, error) {
+	return readMeta(r)
 }
 
 func New(conf config.Config) page.Reader {

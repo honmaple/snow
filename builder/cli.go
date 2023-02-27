@@ -213,12 +213,6 @@ func Excute() {
 			{
 				Name:  "init",
 				Usage: "init a new site",
-				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:  "first-page",
-						Usage: "create first example page",
-					},
-				},
 				Action: initAction,
 			},
 			{

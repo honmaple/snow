@@ -10,7 +10,8 @@ var DateFormats = []string{"2006-01-02 15:04:05", "2006-01-02 15:04", "2006-01-0
 
 func ParseTime(value string) (time.Time, error) {
 	for _, f := range DateFormats {
-		if date, err := time.ParseInLocation(f, value, time.Local); err == nil {
+		// 需要和yaml时间解析保持一致
+		if date, err := time.Parse(f, value); err == nil {
 			return date, nil
 		}
 	}
@@ -47,10 +48,46 @@ func CheckInList(f []string, v string) bool {
 	return false
 }
 
+func dropQuote(str string) string {
+	str = strings.TrimSpace(str)
+	if len(str) < 2 || str[0] != '"' || str[len(str)-1] != '"' {
+		return str
+	}
+	if str[len(str)-2] == '\\' {
+		return str
+	}
+	return str[1 : len(str)-1]
+}
+
 func SplitTrim(str string, split string) []string {
 	result := make([]string, 0)
-	for _, s := range strings.Split(str, ",") {
-		result = append(result, strings.TrimSpace(s))
+
+	last, idx := 0, 0
+
+	l := len(split)
+	for idx < len(str) {
+		if str[idx] == '"' && (idx == 0 || str[idx-1] != '\\') {
+			tmp := idx + 1
+			for ; tmp < len(str); tmp++ {
+				if str[tmp] == '"' && str[tmp-1] != '\\' {
+					break
+				}
+			}
+			if tmp < len(str) {
+				idx = tmp + 1
+			}
+		}
+		if idx+l >= len(str) {
+			result = append(result, dropQuote(str[last:]))
+			break
+		}
+		if str[idx:idx+l] == split {
+			result = append(result, dropQuote(str[last:idx]))
+			idx = idx + l
+			last = idx
+		} else {
+			idx++
+		}
 	}
 	return result
 }

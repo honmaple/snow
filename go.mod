@@ -8,7 +8,7 @@ require (
 	github.com/flosch/pongo2/v6 v6.0.0
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/gosimple/slug v1.13.1
-	github.com/honmaple/org-golang v0.0.0-20230219093012-a3b54e60b454
+	github.com/honmaple/org-golang v0.0.0-20230226041214-f027d6764c3e
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/panjf2000/ants/v2 v2.7.1
 	github.com/russross/blackfriday/v2 v2.0.1

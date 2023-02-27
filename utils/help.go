@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"reflect"
 	"strings"
 	"time"
 )
@@ -57,4 +58,47 @@ func Compare(value interface{}, other interface{}) int {
 		return -1
 	}
 	return 0
+}
+
+func Merge(v0, v1 interface{}) interface{} {
+	val0 := reflect.ValueOf(v0)
+	val1 := reflect.ValueOf(v1)
+	// if val0.Kind() != val1.Kind() {
+	//	return v0
+	// }
+	switch val0.Kind() {
+	case reflect.Slice, reflect.Array:
+		switch val1.Kind() {
+		case reflect.Slice, reflect.Array:
+			m := make([]interface{}, 0)
+			for i := 0; i < val0.Len(); i++ {
+				m = append(m, val0.Index(i).Interface())
+			}
+			for i := 0; i < val1.Len(); i++ {
+				m = append(m, val1.Index(i).Interface())
+			}
+			return m
+		default:
+			return v1
+		}
+	case reflect.Map:
+		switch val1.Kind() {
+		case reflect.Map:
+			m := make(map[string]interface{})
+			for _, key := range val0.MapKeys() {
+				m[key.String()] = val0.MapIndex(key).Interface()
+			}
+			for _, key := range val1.MapKeys() {
+				if v, ok := m[key.String()]; ok {
+					m[key.String()] = Merge(v, val1.MapIndex(key).Interface())
+				} else {
+					m[key.String()] = val1.MapIndex(key).Interface()
+				}
+			}
+			return m
+		default:
+			return v1
+		}
+	}
+	return v1
 }

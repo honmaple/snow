@@ -14,27 +14,43 @@ import (
 )
 
 var (
-	ORGMODE_MORE = regexp.MustCompile(`^(?i:#\+more)\s*$`)
-	ORGMODE_META = regexp.MustCompile(`^#\+([^:]+):(\s+(.*)|$)`)
+	ORGMODE_MORE       = regexp.MustCompile(`^(?i:#\+more)\s*$`)
+	ORGMODE_KEYWORD    = regexp.MustCompile(`^#\+([^:]+):(\s+(.*)|$)`)
+	ORGMODE_PROPERTIES = regexp.MustCompile(`^(?i::PROPERTIES:)$`)
+	ORGMODE_META       = regexp.MustCompile(`^:([^:]+):(\s+(.*)|$)`)
 )
 
 type orgmode struct {
 	conf config.Config
 }
 
-func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
+func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.Meta, error) {
 	var (
-		content   bytes.Buffer
-		summary   bytes.Buffer
 		meta      = make(page.Meta)
 		scanner   = bufio.NewScanner(r)
 		isMeta    = true
+		isFormat  = true
 		isSummary = true
 	)
 	for scanner.Scan() {
 		line := scanner.Text()
+		if isFormat && ORGMODE_PROPERTIES.MatchString(line) {
+			for scanner.Scan() {
+				l := scanner.Text()
+				if strings.TrimSpace(l) == "" {
+					break
+				}
+				match := ORGMODE_META.FindStringSubmatch(l)
+				if match == nil || match[1] == "END" {
+					break
+				}
+				meta.Set(match[1], match[2])
+			}
+			isFormat = false
+			continue
+		}
 		if isMeta {
-			if match := ORGMODE_META.FindStringSubmatch(line); match != nil {
+			if match := ORGMODE_KEYWORD.FindStringSubmatch(line); match != nil {
 				if match[1] == "PROPERTY" {
 					s := strings.SplitN(match[3], " ", 2)
 					k := strings.ToLower(s[0])
@@ -42,9 +58,9 @@ func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
 					if len(s) > 1 {
 						v = strings.TrimSpace(s[1])
 					}
-					meta.Set(m.conf, k, v)
+					meta.Set(k, v)
 				} else {
-					meta.Set(m.conf, strings.ToLower(match[1]), strings.TrimSpace(match[3]))
+					meta.Set(strings.ToLower(match[1]), strings.TrimSpace(match[3]))
 				}
 				continue
 			}
@@ -56,6 +72,19 @@ func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
 		}
 		content.WriteString(line)
 		content.WriteString("\n")
+	}
+	meta.Done()
+	return meta, nil
+}
+
+func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
+	var (
+		content bytes.Buffer
+		summary bytes.Buffer
+	)
+	meta, err := readMeta(r, &content, &summary)
+	if err != nil {
+		return nil, err
 	}
 	buf := content.Bytes()
 	if summary.Len() == 0 {

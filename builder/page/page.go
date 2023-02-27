@@ -6,11 +6,11 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/honmaple/snow/builder/theme/template"
-	"github.com/honmaple/snow/config"
 	"github.com/honmaple/snow/utils"
 	"github.com/spf13/cast"
 )
@@ -31,7 +31,7 @@ func (m Meta) copy() Meta {
 	return nm
 }
 
-func (m Meta) Fix() {
+func (m Meta) Done() {
 	for k, v := range m {
 		switch value := v.(type) {
 		case []interface{}:
@@ -40,6 +40,13 @@ func (m Meta) Fix() {
 				newvalue[i] = v.(string)
 			}
 			m[k] = newvalue
+		case string:
+			switch k {
+			case "date", "modified":
+				if t, err := utils.ParseTime(value); err == nil {
+					m[k] = t
+				}
+			}
 		}
 	}
 }
@@ -68,25 +75,48 @@ func (m Meta) GetStringMap(k string) map[string]interface{} {
 	return cast.ToStringMap(m[k])
 }
 
-func (m Meta) Set(conf config.Config, k, v string) {
+func (m Meta) Set(k, v string) {
+	var realVal interface{}
+
 	k = strings.ToLower(k)
-	switch k {
-	case "date", "modified":
-		if t, err := utils.ParseTime(v); err == nil {
-			m[k] = t
-		}
-	default:
-		if a, ok := m[k]; ok {
-			switch b := a.(type) {
-			case string:
-				m[k] = b + "," + strings.TrimSpace(v)
-			case []string:
-				m[k] = append(b, strings.TrimSpace(v))
-			}
-		} else if conf.IsSet(fmt.Sprintf("taxonomies.%s", k)) {
-			m[k] = utils.SplitTrim(v, ",")
+	v = strings.TrimSpace(v)
+	if len(v) >= 2 && v[0] == '[' && v[len(v)-1] == ']' {
+		realVal = utils.SplitTrim(v[1:len(v)-1], ",")
+	} else if b, err := strconv.Atoi(v); err == nil {
+		realVal = b
+	} else if b, err := strconv.ParseBool(v); err == nil {
+		realVal = b
+	} else {
+		realVal = v
+	}
+
+	ss := utils.SplitTrim(k, ".")
+	if len(ss) == 1 {
+		oldv, ok := m[k]
+		if ok {
+			m[k] = utils.Merge(oldv, realVal)
 		} else {
-			m[k] = strings.TrimSpace(v)
+			m[k] = realVal
+		}
+		return
+	}
+	var result map[string]interface{}
+	for i := len(ss) - 1; i >= 0; i-- {
+		if i == len(ss)-1 {
+			result = map[string]interface{}{
+				ss[i]: realVal,
+			}
+		} else {
+			result = map[string]interface{}{
+				ss[i]: result,
+			}
+		}
+	}
+	for key, val := range result {
+		if oldv, ok := m[key]; ok {
+			m[key] = utils.Merge(oldv, val)
+		} else {
+			m[key] = val
 		}
 	}
 }
@@ -320,6 +350,14 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 		}
 	}
 	return terms
+}
+
+func (pages Pages) Paginator(number int, path string, paginatePath string) []*paginator {
+	list := make([]interface{}, len(pages))
+	for i, page := range pages {
+		list[i] = page
+	}
+	return Paginator(list, number, path, paginatePath)
 }
 
 func (b *Builder) readFile(file string) (Meta, error) {

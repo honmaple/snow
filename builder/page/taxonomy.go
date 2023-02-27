@@ -131,6 +131,14 @@ func (terms TaxonomyTerms) OrderBy(key string) TaxonomyTerms {
 	return terms
 }
 
+func (terms TaxonomyTerms) Paginator(number int, path string, paginatePath string) []*paginator {
+	list := make([]interface{}, len(terms))
+	for i, term := range terms {
+		list[i] = term
+	}
+	return Paginator(list, number, path, paginatePath)
+}
+
 func (b *Builder) loadTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
 	for _, term := range terms {
 		term.Meta = taxonomy.Meta.copy()

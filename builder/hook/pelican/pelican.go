@@ -23,6 +23,11 @@ func (self *pelican) AfterPageParse(p *page.Page) *page.Page {
 	if v, ok := p.Meta["tag"]; ok {
 		p.Meta["tags"] = utils.SplitTrim(v.(string), ",")
 	}
+	if v, ok := p.Meta["tags"]; ok {
+		if vv, ok := v.(string); ok {
+			p.Meta["tags"] = utils.SplitTrim(vv, ",")
+		}
+	}
 	if v, ok := p.Meta["author"]; ok {
 		p.Meta["authors"] = utils.SplitTrim(v.(string), ",")
 	}

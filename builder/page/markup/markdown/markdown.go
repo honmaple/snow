@@ -24,10 +24,8 @@ type markdown struct {
 	conf config.Config
 }
 
-func (m *markdown) Read(r io.Reader) (page.Meta, error) {
+func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.Meta, error) {
 	var (
-		summary   bytes.Buffer
-		content   bytes.Buffer
 		isMeta    = true
 		isFormat  = true
 		isSummery = true
@@ -53,7 +51,6 @@ func (m *markdown) Read(r io.Reader) (page.Meta, error) {
 				return nil, err
 			}
 			meta = page.Meta(mm)
-			meta.Fix()
 			isFormat = false
 			continue
 		}
@@ -61,7 +58,7 @@ func (m *markdown) Read(r io.Reader) (page.Meta, error) {
 
 		if isMeta {
 			if match := MARKDOWN_META.FindStringSubmatch(line); match != nil {
-				meta.Set(m.conf, strings.ToLower(match[1]), strings.TrimSpace(match[3]))
+				meta.Set(strings.ToLower(match[1]), strings.TrimSpace(match[3]))
 				continue
 			}
 		}
@@ -72,6 +69,19 @@ func (m *markdown) Read(r io.Reader) (page.Meta, error) {
 		}
 		content.WriteString(line)
 		content.WriteString("\n")
+	}
+	meta.Done()
+	return meta, nil
+}
+
+func (m *markdown) Read(r io.Reader) (page.Meta, error) {
+	var (
+		summary bytes.Buffer
+		content bytes.Buffer
+	)
+	meta, err := readMeta(r, &content, &summary)
+	if err != nil {
+		return nil, err
 	}
 	buf := content.Bytes()
 	if summary.Len() == 0 {
