@@ -69,6 +69,8 @@ func New(conf config.Config) (Theme, error) {
 	name := conf.GetString("theme.name")
 	if name == "" {
 		root, _ = fs.Sub(themeFS, "internal")
+	} else if name == "." {
+		root = os.DirFS(".")
 	} else {
 		path := filepath.Join("themes", name)
 		_, err := os.Stat(path)

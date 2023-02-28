@@ -1,10 +1,10 @@
-{% extends "common/layout.html" %}
+{% extends "_internal/common/layout.html" %}
 {% block content %}
   <ul class="page-list">
     {% for page in section.Pages %}
       <li>
         <h2><a href="{{ page.Path | absURL }}">{{ page.Title }}</a></h2>
-        {% include "post.info.html" %}
+        {% include "_internal/post.info.html" %}
         <hr />
         <div>
           {{ page.Content | safe }}

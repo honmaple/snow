@@ -3,6 +3,7 @@ package page
 import (
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/honmaple/snow/utils"
 )
@@ -47,10 +48,14 @@ func Paginator(list []interface{}, number int, path string, paginatePath string)
 		if paginatePath == "" {
 			paginatePath = "{name}{number}{extension}"
 		}
-		file := filepath.Base(path)
-		exts := filepath.Ext(file)
+		name, exts := "", ".html"
+		if !strings.HasSuffix(path, "/") {
+			file := filepath.Base(path)
+			exts = filepath.Ext(file)
+			name = file[:len(file)-len(exts)]
+		}
 		output = filepath.Join(filepath.Dir(path), utils.StringReplace(paginatePath, map[string]string{
-			"{name}":      file[:len(file)-len(exts)],
+			"{name}":      name,
 			"{extension}": exts,
 		}))
 	}
@@ -58,7 +63,10 @@ func Paginator(list []interface{}, number int, path string, paginatePath string)
 	var maxpage int
 
 	length := len(list)
-	if number <= 0 {
+	if length == 0 {
+		number = 0
+		maxpage = 1
+	} else if number <= 0 {
 		number = len(list)
 		maxpage = 1
 	} else if length%number == 0 {
@@ -77,15 +85,14 @@ func Paginator(list []interface{}, number int, path string, paginatePath string)
 			Prev:    prev,
 			All:     pors,
 		}
-		numstr := strconv.Itoa(num + 1)
-		vars := map[string]string{
-			"{number}":     numstr,
-			"{number:one}": numstr,
-		}
 		if num == 0 {
-			vars["{number}"] = ""
+			por.URL = path
+		} else {
+			vars := map[string]string{
+				"{number}": strconv.Itoa(num + 1),
+			}
+			por.URL = utils.StringReplace(output, vars)
 		}
-		por.URL = utils.StringReplace(output, vars)
 
 		end := (num + 1) * number
 		if end > length {

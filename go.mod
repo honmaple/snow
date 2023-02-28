@@ -11,6 +11,7 @@ require (
 	github.com/honmaple/org-golang v0.0.0-20230226041214-f027d6764c3e
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/panjf2000/ants/v2 v2.7.1
+	github.com/pelletier/go-toml/v2 v2.0.5
 	github.com/russross/blackfriday/v2 v2.0.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cast v1.5.0

@@ -9,6 +9,7 @@ import (
 
 	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/config"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/russross/blackfriday/v2"
 	"gopkg.in/yaml.v3"
 )
@@ -45,9 +46,17 @@ func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.M
 				b.WriteString(l)
 				b.WriteString("\n")
 			}
-			// 不要直接使用meta反序列化数据, 否则子元素map类型也会是page.Meta
-			mm := make(map[string]interface{})
-			if err := yaml.Unmarshal(b.Bytes(), &mm); err != nil {
+			var (
+				err error
+				// 不要直接使用meta反序列化数据, 否则子元素map类型也会是page.Meta
+				mm = make(map[string]interface{})
+			)
+			if line == "---" {
+				err = yaml.Unmarshal(b.Bytes(), &mm)
+			} else {
+				err = toml.Unmarshal(b.Bytes(), &mm)
+			}
+			if err != nil {
 				return nil, err
 			}
 			meta = page.Meta(mm)

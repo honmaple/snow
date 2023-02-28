@@ -1,4 +1,4 @@
-{% extends "common/layout.html" %}
+{% extends "_internal/common/layout.html" %}
 {% block title %}{{ taxonomy.Name }} · {{ block.Super }}{% endblock %}
 {% block content %}
   {% macro page_list(term) %}
@@ -7,7 +7,7 @@
       {% for page in term.List %}
         <li>
           <h2><a href="{{ page.Permalink }}">{{ page.Title }}</a></h2>
-          {% include "post.info.html" %}
+          {% include "_internal/post.info.html" %}
         </li>
       {% endfor %}
     </ul>

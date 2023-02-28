@@ -102,3 +102,16 @@ func Merge(v0, v1 interface{}) interface{} {
 	}
 	return v1
 }
+
+func DeepCopy(m map[string]interface{}) map[string]interface{} {
+	newm := make(map[string]interface{})
+	for k, v := range m {
+		mval, ok := v.(map[string]interface{})
+		if ok {
+			newm[k] = DeepCopy(mval)
+			continue
+		}
+		newm[k] = v
+	}
+	return newm
+}

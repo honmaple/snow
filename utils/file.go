@@ -2,52 +2,12 @@ package utils
 
 import (
 	"errors"
-	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 )
-
-func CopyFile(src, dst string) (written int64, err error) {
-	if stat, err := os.Stat(src); err != nil {
-		return 0, err
-	} else if !stat.Mode().IsRegular() {
-		return 0, fmt.Errorf("%s is not a regular file", src)
-	}
-
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return
-	}
-	defer srcFile.Close()
-	dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return
-	}
-	defer dstFile.Close()
-	return io.Copy(dstFile, srcFile)
-}
-
-func CopyDir(src, dst string) (written int64, err error) {
-	files, err := ioutil.ReadDir(src)
-	if err != nil {
-		return
-	}
-	for _, file := range files {
-		srcFile := filepath.Join(src, file.Name())
-		dstFile := filepath.Join(dst, file.Name())
-		if !file.IsDir() {
-			return CopyDir(srcFile, dstFile)
-		}
-		if written, err = CopyFile(srcFile, dstFile); err != nil {
-			return
-		}
-	}
-	return
-}
 
 func RemoveDir(path string) error {
 	files, err := ioutil.ReadDir(path)

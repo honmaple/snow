@@ -166,12 +166,6 @@ func (b *Builder) writeSection(section *Section) {
 					"current_index": por.PageNum,
 				})
 			}
-			if len(pors) == 0 {
-				b.write(tpl, section.Path, map[string]interface{}{
-					"section": section,
-					"pages":   section.Pages,
-				})
-			}
 		}
 	}
 	b.writeFormats(section.Meta, vars, map[string]interface{}{
@@ -223,13 +217,6 @@ func (b *Builder) writeTaxonomyTerm(term *TaxonomyTerm) {
 					"taxonomy":      term.Taxonomy,
 					"paginator":     por,
 					"current_index": por.PageNum,
-				})
-			}
-			if len(pors) == 0 {
-				b.write(tpl, term.Path, map[string]interface{}{
-					"term":     term,
-					"pages":    term.List,
-					"taxonomy": term.Taxonomy,
 				})
 			}
 		}

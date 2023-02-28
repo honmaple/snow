@@ -7,6 +7,13 @@ import (
 	"golang.org/x/net/html"
 )
 
+// blackfriday 使用 <br> 换行，忽略这些未关闭的tag
+var unClosedTag = map[string]bool{
+	"br":  true,
+	"hr":  true,
+	"img": true,
+}
+
 func truncate(text string, length int, ellipsis string) (string, int) {
 	count := 0
 	start := -1
@@ -62,7 +69,9 @@ LOOP:
 					tags = tags[:i]
 					break
 				}
-				b.WriteString("</" + tags[i].Data + ">")
+				if !unClosedTag[tags[i].Data] {
+					b.WriteString("</" + tags[i].Data + ">")
+				}
 			}
 		case html.TextToken:
 			text, c := truncate(token.String(), length-count, ellipsis)
@@ -76,6 +85,9 @@ LOOP:
 		b.WriteString(content)
 	}
 	for i := len(tags) - 1; i >= 0; i-- {
+		if unClosedTag[tags[i].Data] {
+			continue
+		}
 		b.WriteString("</" + tags[i].Data + ">")
 	}
 	return b.String()

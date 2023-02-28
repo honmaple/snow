@@ -24,11 +24,7 @@ func (m Meta) load(other map[string]interface{}) {
 }
 
 func (m Meta) copy() Meta {
-	nm := make(Meta)
-	for k, v := range m {
-		nm[k] = v
-	}
-	return nm
+	return utils.DeepCopy(m)
 }
 
 func (m Meta) Done() {
@@ -369,7 +365,14 @@ func (b *Builder) readFile(file string) (Meta, error) {
 	if err != nil {
 		return nil, err
 	}
-	return reader.Read(bytes.NewBuffer(buf))
+	meta, err := reader.Read(bytes.NewBuffer(buf))
+	if err != nil {
+		return nil, fmt.Errorf("Read file %s: %s", file, err.Error())
+	}
+	if len(meta) == 0 {
+		return nil, fmt.Errorf("Read file %s: no meta", file)
+	}
+	return meta, nil
 }
 
 func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
