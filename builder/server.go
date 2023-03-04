@@ -1,26 +1,107 @@
 package builder
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"io/ioutil"
 	"net/http"
-	"os"
+	"net/url"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/honmaple/snow/config"
 )
 
-func watchBuilder(conf config.Config, b Builder, ctx context.Context) (*fsnotify.Watcher, error) {
-	watcher, err := fsnotify.NewWatcher()
+type (
+	memoryFile struct {
+		reader  io.Reader
+		modTime time.Time
+	}
+	memoryServer struct {
+		conf       config.Config
+		cache      sync.Map
+		watcher    *fsnotify.Watcher
+		autoload   bool
+		watchFiles []string
+		watchExist map[string]bool
+		mu         sync.RWMutex
+	}
+)
+
+func (m *memoryServer) Close() error {
+	if m.watcher == nil {
+		return nil
+	}
+	return m.watcher.Close()
+}
+
+func (m *memoryServer) Watch(file string) error {
+	if m.watcher == nil || !m.autoload {
+		return nil
+	}
+	m.mu.RLock()
+	exist := m.watchExist[file]
+	m.mu.RUnlock()
+
+	if !exist {
+		m.mu.Lock()
+		m.watchFiles = append(m.watchFiles, file)
+		m.mu.Unlock()
+	}
+	return m.watcher.Add(file)
+}
+
+func (m *memoryServer) Write(file string, r io.Reader) error {
+	if !strings.HasPrefix(file, "/") {
+		file = "/" + file
+	}
+	m.cache.Store(file, &memoryFile{r, time.Now()})
+	return nil
+}
+
+func (m *memoryServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	if strings.HasSuffix(path, "/") {
+		path = filepath.Join(path, "index.html")
+	}
+	v, ok := m.cache.Load(path)
+	if !ok {
+		v, ok = m.cache.Load("/404.html")
+		if !ok {
+			http.Error(w, "404", 404)
+			return
+		}
+	}
+	file := v.(*memoryFile)
+
+	// TODO: large file handle
+	buf, err := ioutil.ReadAll(file.reader)
 	if err != nil {
-		return nil, err
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	copyBuf := bytes.NewReader(buf)
+	defer m.cache.Store(path, &memoryFile{copyBuf, file.modTime})
+
+	http.ServeContent(w, r, filepath.Base(path), file.modTime, copyBuf)
+}
+
+func (m *memoryServer) Build(ctx context.Context) error {
+	conf.SetWriter(m)
+
+	b, err := newBuilder(conf)
+	if err != nil {
+		return err
 	}
 
 	go func() {
 		for {
 			select {
-			case event, ok := <-watcher.Events:
+			case event, ok := <-m.watcher.Events:
 				if !ok {
 					return
 				}
@@ -30,7 +111,7 @@ func watchBuilder(conf config.Config, b Builder, ctx context.Context) (*fsnotify
 						conf.Log.Errorln("Build error", err.Error())
 					}
 				}
-			case err, ok := <-watcher.Errors:
+			case err, ok := <-m.watcher.Errors:
 				if !ok {
 					return
 				}
@@ -38,75 +119,45 @@ func watchBuilder(conf config.Config, b Builder, ctx context.Context) (*fsnotify
 			}
 		}
 	}()
-	dirs := b.Dirs()
-	for _, dir := range dirs {
-		if err := watcher.Add(dir); err != nil {
-			return nil, err
-		}
-	}
 	if err := b.Build(ctx); err != nil {
-		return nil, err
+		return err
 	}
-	conf.Log.Infoln("Watching", strings.Join(dirs, ", "))
-	return watcher, nil
-}
-
-type fileServer struct {
-	output string
-	server http.Handler
-}
-
-func (s *fileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	// 默认index.html会重定向到到./
-	if strings.HasSuffix(path, "/index.html") {
-		file, err := os.Open(filepath.Join(s.output, filepath.Clean(path)))
-		if err != nil {
-			http.Error(w, err.Error(), 404)
-			return
-		}
-		defer file.Close()
-
-		info, err := file.Stat()
-		if err != nil {
-			http.Error(w, err.Error(), 404)
-			return
-		}
-		http.ServeContent(w, r, info.Name(), info.ModTime(), file)
-		return
+	if len(m.watchFiles) > 0 {
+		conf.Log.Infoln("Watching", strings.Join(m.watchFiles, ", "))
 	}
-	s.server.ServeHTTP(w, r)
+	return nil
 }
 
 func Server(conf config.Config, listen string, autoload bool) error {
 	if listen == "" {
-		listen = conf.GetString("site.url")
+		listen = conf.Site.URL
 	}
-	if strings.HasPrefix(listen, "http://") {
-		listen = listen[7:]
-	} else if strings.HasPrefix(listen, "https://") {
-		listen = listen[8:]
-	}
-	b, err := newBuilder(conf)
+	u, err := url.Parse(listen)
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
-	if autoload {
-		watcher, err := watchBuilder(conf, b, ctx)
-		if err != nil {
-			return err
-		}
-		defer watcher.Close()
-	} else if err := b.Build(ctx); err != nil {
+
+	mem := newServer(conf, autoload)
+	defer mem.Close()
+
+	if err := mem.Build(context.Background()); err != nil {
 		return err
 	}
 	mux := http.NewServeMux()
-	mux.Handle("/", &fileServer{
-		output: conf.GetOutput(),
-		server: http.FileServer(http.Dir(conf.GetOutput())),
-	})
+	mux.Handle("/", mem)
 
 	conf.Log.Infoln("Listen", listen, "...")
-	return http.ListenAndServe(listen, mux)
+	return http.ListenAndServe(u.Host, mux)
+}
+
+func newServer(conf config.Config, autoload bool) *memoryServer {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		conf.Log.Error(err.Error())
+	}
+	return &memoryServer{
+		conf:     conf,
+		watcher:  watcher,
+		autoload: autoload,
+	}
 }

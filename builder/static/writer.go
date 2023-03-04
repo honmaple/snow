@@ -10,10 +10,10 @@ func (b *Builder) Write(files []*Static) error {
 			continue
 		}
 		src := static.File.Name()
-		dst := filepath.Join(b.conf.GetOutput(), static.URL)
+		dst := filepath.Join(b.conf.OutputDir, static.URL)
 		b.conf.Log.Debugln("Copying", src, "to", dst)
 
-		if err := b.conf.WriteOutput(static.URL, static.File); err != nil {
+		if err := b.conf.Write(static.URL, static.File); err != nil {
 			return err
 		}
 	}

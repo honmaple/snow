@@ -66,8 +66,7 @@ var (
 )
 
 func before(clx *cli.Context) error {
-	path := clx.String("conf")
-	return conf.Load(path)
+	return conf.Load(clx.String("config"))
 }
 
 func initAction(clx *cli.Context) error {
@@ -163,16 +162,20 @@ func commonAction(clx *cli.Context) error {
 	if clx.Bool("debug") {
 		conf.SetDebug()
 	}
-	if filter := clx.String("filter"); filter != "" {
-		conf.Set("build_filter", filter)
-	}
 	if err := conf.SetMode(clx.String("mode")); err != nil {
 		return err
 	}
-	conf.SetOutput(clx.String("output"))
+	if filter := clx.String("filter"); filter != "" {
+		conf.SetFilter(filter)
+	}
+	if output := clx.String("output"); output != "" {
+		conf.SetOutput(output)
+	}
+	conf.Init()
+
 	if clx.Bool("clean") {
-		conf.Log.Infoln("Removing the contents of", conf.GetOutput())
-		return utils.RemoveDir(conf.GetOutput())
+		conf.Log.Infoln("Removing the contents of", conf.OutputDir)
+		return utils.RemoveDir(conf.OutputDir)
 	}
 	return nil
 }
@@ -202,7 +205,7 @@ func Excute() {
 		Version: VERSION,
 		Flags: []cli.Flag{
 			&cli.PathFlag{
-				Name:    "conf",
+				Name:    "config",
 				Aliases: []string{"c"},
 				Value:   "config.yaml",
 				Usage:   "load configuration from `FILE`",
@@ -211,8 +214,8 @@ func Excute() {
 		Before: before,
 		Commands: []*cli.Command{
 			{
-				Name:  "init",
-				Usage: "init a new site",
+				Name:   "init",
+				Usage:  "init a new site",
 				Action: initAction,
 			},
 			{

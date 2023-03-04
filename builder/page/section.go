@@ -1,46 +1,14 @@
 package page
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/honmaple/snow/utils"
 )
-
-type sectionChan struct {
-	errs     chan error
-	pages    chan *Page
-	sections chan *Section
-	assets   chan string
-}
-
-func (ch *sectionChan) sendErr(err error) {
-	ch.errs <- err
-}
-
-func (ch *sectionChan) sendAsset(files ...string) {
-	for _, file := range files {
-		ch.assets <- file
-	}
-}
-
-func (ch *sectionChan) sendPage(pages ...*Page) {
-	for _, page := range pages {
-		ch.pages <- page
-	}
-}
-
-func (ch *sectionChan) sendSection(sections ...*Section) {
-	for _, section := range sections {
-		ch.sections <- section
-	}
-}
 
 type (
 	Section struct {
@@ -71,6 +39,7 @@ type (
 		Assets       []string
 		Parent       *Section
 		Children     Sections
+		Lang         string
 	}
 	Sections []*Section
 )
@@ -159,201 +128,150 @@ func (sec *Section) FirstName() string {
 	return sec.Parent.FirstName()
 }
 
-func (b *Builder) loadSection(parent *Section, path string) (*Section, error) {
-	names, err := utils.FileList(path)
-	if err != nil {
-		return nil, err
-	}
-	if len(names) == 0 {
-		return nil, errors.New("There are no pages")
-	}
-
-	section := b.newSection(parent, path)
-
-	ignoreFiles := make(map[string]bool)
-	for _, m := range section.Meta.GetSlice("ignore_files") {
-		if m == "*" {
-			return nil, nil
-		}
-		matches, _ := filepath.Glob(filepath.Join(path, m))
-		for _, match := range matches {
-			ignoreFiles[filepath.Base(match)] = true
-		}
-	}
-	// 子目录不要继承
-	delete(section.Meta, "ignore_files")
-
-	var (
-		ch = &sectionChan{
-			errs:     make(chan error),
-			pages:    make(chan *Page),
-			assets:   make(chan string),
-			sections: make(chan *Section),
-		}
-		wg = sync.WaitGroup{}
-	)
-
-	for _, name := range names {
-		if ignoreFiles[name] {
-			continue
-		}
-		wg.Add(1)
-		go func(name string) {
-			defer wg.Done()
-
-			file := filepath.Join(path, name)
-			info, err := os.Stat(file)
-			if err != nil {
-				ch.sendErr(err)
-				return
-			}
-			if info.IsDir() {
-				// 如果包括index.md, index.org等文件，整个目录为一个page，而不是section
-				matches, _ := filepath.Glob(filepath.Join(file, "index.*"))
-				matched := -1
-				for i, m := range matches {
-					if _, ok := b.readers[filepath.Ext(m)]; ok {
-						matched = i
-						break
-					}
-				}
-				if matched == -1 {
-					sec, err := b.loadSection(section, file)
-					if err != nil {
-						ch.sendErr(err)
-						return
-					}
-					ch.sendSection(sec)
-					return
-				}
-				file = matches[matched]
-			} else if _, ok := b.readers[filepath.Ext(file)]; !ok {
-				ch.sendAsset(file)
-				return
-			}
-
-			if strings.HasPrefix(name, "_index.") {
-				return
-			}
-
-			filemeta, err := b.readFile(file)
-			if err != nil {
-				ch.sendErr(err)
-				return
-			}
-			ch.sendPage(b.newPage(section, file, filemeta))
-		}(name)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		wg.Wait()
-		cancel()
-	}()
-LOOP:
-	for {
-		select {
-		case page := <-ch.pages:
-			// page分类: section page，hidden page, normal page
-			if page.isSection() {
-				// section: 自定义页面，该页面下的page列表是父section下的所有正常page
-				section.SectionPages = append(section.SectionPages, page)
-			} else if page.isHidden() {
-				// hidden: 不会出现在任意列表内，但会输出详情页
-				section.HiddenPages = append(section.HiddenPages, page)
-			} else if b.buildFilter(page) {
-				section.Pages = append(section.Pages, page)
-			}
-		case file := <-ch.assets:
-			section.Assets = append(section.Assets, file)
-		case child := <-ch.sections:
-			if child != nil && !child.isEmpty() {
-				section.Children = append(section.Children, child)
-			}
-		case err := <-ch.errs:
-			if err != nil {
-				return nil, err
-			}
-		case <-ctx.Done():
-			break LOOP
-		}
-	}
-	section.Pages = section.Pages.Filter(section.Meta.GetString("filter")).OrderBy(section.Meta.GetString("orderby"))
-
-	sort.SliceStable(section.Children, func(i, j int) bool {
-		ti := section.Children[i]
-		tj := section.Children[j]
+func (secs Sections) Sort() {
+	sort.SliceStable(secs, func(i, j int) bool {
+		ti := secs[i]
+		tj := secs[j]
 		if wi, wj := ti.Meta.GetInt("weight"), tj.Meta.GetInt("weight"); wi == wj {
 			return ti.Title > tj.Title
 		} else {
 			return wi > wj
 		}
 	})
-	return section, nil
 }
 
-func (b *Builder) loadSections() error {
-	root, err := b.loadSection(nil, b.Dirs()[0])
-	if err != nil {
-		return err
+func (b *Builder) findSection(file string, langs ...string) *Section {
+	lang := b.getLang(langs...)
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	m, ok := b.sections[lang]
+	if !ok {
+		return nil
 	}
-	b.pages = root.allPages()
-	b.sections = root.allSections()
-	b.hiddenPages = root.allHiddenPages()
-	b.sectionPages = root.allSectionPages()
+	return m[file]
+}
+
+func (b *Builder) findSectionIndex(prefix string, files map[string]bool) string {
+	for ext := range b.readers {
+		file := prefix + ext
+		if files[file] {
+			return file
+		}
+	}
+	return ""
+}
+
+func (b *Builder) insertSection(path string) *Section {
+	names, _ := utils.FileList(path)
+	namem := make(map[string]bool)
+	for _, name := range names {
+		namem[name] = true
+	}
+
+	b.mu.Lock()
+	b.ignoreFiles = b.ignoreFiles[:0]
+	b.mu.Unlock()
+
+	b.languageRange(func(lang string, isdefault bool) {
+		prefix := "_index"
+		if !isdefault {
+			prefix = prefix + "." + lang
+		}
+		filemeta := make(Meta)
+		if index := b.findSectionIndex(prefix, namem); index != "" {
+			filemeta, _ = b.readFile(filepath.Join(path, index))
+		}
+
+		section := &Section{
+			File: path,
+			Lang: lang,
+		}
+		section.Parent = b.findSection(filepath.Dir(section.File), lang)
+		// 根目录
+		if section.isRoot() {
+			section.Meta = make(Meta)
+			section.Meta.load(b.conf.GetStringMap("sections._default"))
+		} else {
+			section.Meta = section.Parent.Meta.clone()
+			section.Title = filepath.Base(section.File)
+		}
+		section.Meta.load(filemeta)
+
+		name := section.Name()
+		if !section.isRoot() {
+			section.Meta.load(b.conf.GetStringMap("sections." + name))
+		}
+
+		for k, v := range section.Meta {
+			switch strings.ToLower(k) {
+			case "title":
+				section.Title = v.(string)
+			case "content":
+				section.Content = v.(string)
+			}
+		}
+
+		slug := section.Meta.GetString("slug")
+		if slug == "" {
+			names := strings.Split(name, "/")
+			slugs := make([]string, len(names))
+			for i, name := range names {
+				slugs[i] = b.conf.GetSlug(name)
+			}
+			slug = strings.Join(slugs, "/")
+		}
+		section.Slug = slug
+		section.Path = b.conf.GetRelURL(utils.StringReplace(section.Meta.GetString("path"), section.vars()), lang)
+		section.Permalink = b.conf.GetURL(section.Path)
+
+		b.mu.Lock()
+		defer b.mu.Unlock()
+
+		if section.Parent != nil {
+			section.Parent.Children = append(section.Parent.Children, section)
+		}
+		ignoreFiles := filemeta.GetSlice("ignore_files")
+		for _, file := range ignoreFiles {
+			re, err := regexp.Compile(filepath.Join(path, file))
+			if err == nil {
+				b.ignoreFiles = append(b.ignoreFiles, re)
+			}
+		}
+		if _, ok := b.sections[lang]; !ok {
+			b.sections[lang] = make(map[string]*Section)
+		}
+		b.sections[lang][section.File] = section
+	})
 	return nil
 }
 
-func (b *Builder) newSection(parent *Section, path string) *Section {
-	section := &Section{
-		Parent: parent,
-	}
-	// 根目录
-	if parent == nil {
-		section.Meta = make(Meta)
-		section.Meta.load(b.conf.GetStringMap("sections._default"))
-	} else {
-		section.Meta = parent.Meta.copy()
-		section.Title = utils.FileBaseName(path)
-	}
-	// _index.md包括配置信息
-	matches, _ := filepath.Glob(filepath.Join(path, "_index.*"))
-	matched := -1
-	for i, m := range matches {
-		if _, ok := b.readers[filepath.Ext(m)]; ok {
-			matched = i
-			break
+func (b *Builder) writeSection(section *Section) {
+	var (
+		vars = section.vars()
+	)
+
+	if section.Meta.GetString("path") != "" {
+		lookups := []string{
+			utils.StringReplace(section.Meta.GetString("template"), vars),
+			"section.html",
+			"_internal/section.html",
+		}
+		if tpl, ok := b.theme.LookupTemplate(lookups...); ok {
+			for _, por := range section.Paginator() {
+				b.write(tpl, por.URL, map[string]interface{}{
+					"section":       section,
+					"paginator":     por,
+					"pages":         section.Pages,
+					"current_lang":  section.Lang,
+					"current_path":  por.URL,
+					"current_index": por.PageNum,
+				})
+			}
 		}
 	}
-	if matched > -1 {
-		filemeta, _ := b.readFile(matches[matched])
-		section.Meta.load(filemeta)
-	}
-
-	name := section.Name()
-	if name != "" {
-		section.Meta.load(b.conf.GetStringMap("sections." + name))
-	}
-
-	for k, v := range section.Meta {
-		switch strings.ToLower(k) {
-		case "title":
-			section.Title = v.(string)
-		case "content":
-			section.Content = v.(string)
-		}
-	}
-
-	slug := section.Meta.GetString("slug")
-	if slug == "" {
-		names := strings.Split(name, "/")
-		slugs := make([]string, len(names))
-		for i, name := range names {
-			slugs[i] = b.conf.GetSlug(name)
-		}
-		slug = strings.Join(slugs, "/")
-	}
-	section.Slug = slug
-	section.Path = b.conf.GetRelURL(utils.StringReplace(section.Meta.GetString("path"), section.vars()))
-	section.Permalink = b.conf.GetURL(section.Path)
-	return section
+	b.writeFormats(section.Meta, vars, map[string]interface{}{
+		"section":      section,
+		"pages":        section.Pages,
+		"current_lang": section.Lang,
+	})
 }

@@ -1,14 +1,16 @@
 package template
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
-	"os"
+
+	// "os"
 	"path/filepath"
 
 	"github.com/flosch/pongo2/v6"
 	"github.com/honmaple/snow/config"
-	"github.com/honmaple/snow/utils"
+	// "github.com/honmaple/snow/utils"
 )
 
 var (
@@ -53,9 +55,9 @@ type (
 	}
 	template struct {
 		conf   config.Config
-		output string
 		loader *loader
 		tplset *pongo2.TemplateSet
+		langs  map[string]interface{}
 	}
 )
 
@@ -63,26 +65,15 @@ func (t *writer) Name() string {
 	return t.n
 }
 
-func (t *writer) Write(file string, context map[string]interface{}) error {
+func (t *writer) Write(file string, ctx map[string]interface{}) error {
 	if file == "" {
 		return nil
 	}
 	if filepath.Clean(file) != file {
 		return fmt.Errorf("The path '%s' is not valid", file)
 	}
-	writefile := filepath.Join(t.t.output, file)
-	if dir := filepath.Dir(writefile); !utils.FileExists(dir) {
-		os.MkdirAll(dir, 0755)
-	}
-
-	f, err := os.OpenFile(writefile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
 	vars := make(map[string]interface{})
-	for k, v := range context {
+	for k, v := range ctx {
 		vars[k] = v
 	}
 	for k, v := range Globals {
@@ -95,12 +86,17 @@ func (t *writer) Write(file string, context map[string]interface{}) error {
 			vars[k] = v(vars)
 		}
 	}
-	t.t.conf.Log.Debugln("Writing", writefile)
-	return t.w.ExecuteWriter(vars, f)
+
+	var w bytes.Buffer
+	if err := t.w.ExecuteWriter(vars, &w); err != nil {
+		return err
+	}
+	// t.t.conf.Log.Debugln("Writing", writefile)
+	return t.t.conf.Write(file, &w)
 }
 
-func (t *writer) Execute(context map[string]interface{}) (string, error) {
-	return t.w.Execute(context)
+func (t *writer) Execute(ctx map[string]interface{}) (string, error) {
+	return t.w.Execute(ctx)
 }
 
 func (t *template) Lookup(name string) (Writer, error) {
@@ -116,18 +112,33 @@ func (t *template) Lookup(name string) (Writer, error) {
 	return &writer{n: name, t: t, w: tpl}, nil
 }
 
+func (t *template) newConfig(ctx map[string]interface{}) interface{} {
+	lang := ctx["current_lang"]
+	if lang != nil && lang != t.conf.Site.Language {
+		if v, ok := t.langs[lang.(string)]; ok {
+			return v
+		}
+	}
+	return t.langs[t.conf.Site.Language]
+}
+
 func New(conf config.Config, theme fs.FS) Interface {
 	t := &template{
 		conf:   conf,
-		output: conf.GetOutput(),
 		loader: newLoader(theme, conf.GetString("theme.override")),
 	}
 	t.tplset = pongo2.NewSet("app", t.loader)
 
+	t.langs = make(map[string]interface{})
+	for lang := range conf.Languages {
+		t.langs[lang] = t.conf.With(lang).AllSettings()
+	}
+	t.langs[conf.Site.Language] = conf.AllSettings()
+
 	Register("dict", dict)
 	Register("slice", slice)
-	Register("config", conf.AllSettings())
 
+	RegisterFunc("config", t.newConfig)
 	RegisterFunc("scratch", newScratch)
 	RegisterFunc("newScratch", newScratchFunc)
 

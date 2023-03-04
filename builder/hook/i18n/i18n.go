@@ -110,7 +110,7 @@ func getTrans(conf config.Config, theme theme.Theme) map[string]map[string]tran 
 func New(conf config.Config, theme theme.Theme) hook.Hook {
 	e := &i18n{
 		conf:  conf,
-		lang:  conf.GetString("site.language"),
+		lang:  conf.Site.Language,
 		trans: getTrans(conf, theme),
 	}
 	e.register()

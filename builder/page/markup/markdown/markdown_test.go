@@ -74,6 +74,23 @@ summary
 <!--more-->
 content
 `
+
+	text2 := `+++
+title =   "aaa"
+date =    "2023-02-24 20:35:51"
+tags =     ["snow","hello, world"]
+authors =  ["snow", "snow1"]
+formats.atom.path = "index.html"
+formats.atom.template = "index.json"
+["formats.js"]
+  atom = "index.xml"
++++
+
+summary
+<!--more-->
+content
+`
 	assertFunc(t, text)
 	assertFunc(t, text1)
+	assertFunc(t, text2)
 }

@@ -69,7 +69,13 @@ func (t *template) absURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Va
 	if !ok {
 		return nil, newError("absURL", errors.New("filter input argument must be of type 'string'"))
 	}
-	return pongo2.AsValue(t.conf.GetURL(v)), nil
+	path := ""
+	if param.Len() == 0 {
+		path = t.conf.GetRelURL(v, t.conf.Site.Language)
+	} else {
+		path = t.conf.GetRelURL(v, param.String())
+	}
+	return pongo2.AsValue(t.conf.GetURL(path)), nil
 }
 
 func (t *template) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
@@ -77,5 +83,8 @@ func (t *template) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Va
 	if !ok {
 		return nil, newError("relURL", errors.New("filter input argument must be of type 'string'"))
 	}
-	return pongo2.AsValue(t.conf.GetRelURL(v)), nil
+	if param.Len() == 0 {
+		return pongo2.AsValue(t.conf.GetRelURL(v, t.conf.Site.Language)), nil
+	}
+	return pongo2.AsValue(t.conf.GetRelURL(v, param.String())), nil
 }

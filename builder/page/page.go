@@ -1,9 +1,6 @@
 package page
 
 import (
-	"bytes"
-	"fmt"
-	"io/ioutil"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -23,7 +20,7 @@ func (m Meta) load(other map[string]interface{}) {
 	}
 }
 
-func (m Meta) copy() Meta {
+func (m Meta) clone() Meta {
 	return utils.DeepCopy(m)
 }
 
@@ -129,6 +126,7 @@ type (
 		Path      string
 		Permalink string
 		Aliases   []string
+		Assets    []string
 
 		Title   string
 		Summary string
@@ -167,7 +165,7 @@ func filterExpr(filter string) func(*Page) bool {
 		panic(err)
 	}
 	return func(page *Page) bool {
-		args := page.Meta.copy()
+		args := page.Meta.clone()
 		args["page"] = page
 		args["type"] = page.Type
 
@@ -314,6 +312,12 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 				return []string{v}
 			case []string:
 				return v
+			case []interface{}:
+				as := make([]string, len(v))
+				for i, vv := range v {
+					as[i] = vv.(string)
+				}
+				return as
 			default:
 				return nil
 			}
@@ -356,29 +360,30 @@ func (pages Pages) Paginator(number int, path string, paginatePath string) []*pa
 	return Paginator(list, number, path, paginatePath)
 }
 
-func (b *Builder) readFile(file string) (Meta, error) {
-	reader, ok := b.readers[filepath.Ext(file)]
+func (b *Builder) findPage(file string, lang string) *Page {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	m, ok := b.pages[lang]
 	if !ok {
-		return nil, fmt.Errorf("no reader for %s", file)
+		return nil
 	}
-	buf, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-	meta, err := reader.Read(bytes.NewBuffer(buf))
-	if err != nil {
-		return nil, fmt.Errorf("Read file %s: %s", file, err.Error())
-	}
-	if len(meta) == 0 {
-		return nil, fmt.Errorf("Read file %s: no meta", file)
-	}
-	return meta, nil
+	return m[file]
 }
 
-func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
-	meta := section.Meta.copy()
+func (b *Builder) insertPage(file string) *Page {
+	filemeta, err := b.readFile(file)
+	if err != nil {
+		return nil
+	}
+	lang := b.findLanguage(file, filemeta)
+	section := b.findSection(filepath.Dir(file), lang)
+
+	meta := section.Meta.clone()
 	meta["path"] = meta["page_path"]
 	meta["template"] = meta["page_template"]
+	meta["formats"] = meta["page_formats"]
+	delete(meta, "slug")
+	delete(meta, "title")
 	meta.load(filemeta)
 
 	now := time.Now()
@@ -387,6 +392,7 @@ func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
 		Type:    section.FirstName(),
 		Meta:    meta,
 		Date:    now,
+		Lang:    lang,
 		Section: section,
 	}
 	for k, v := range meta {
@@ -403,8 +409,6 @@ func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
 		switch strings.ToLower(k) {
 		case "type":
 			page.Type = v.(string)
-		case "lang":
-			page.Lang = v.(string)
 		case "title":
 			page.Title = v.(string)
 		case "date":
@@ -428,18 +432,6 @@ func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
 	if page.Title == "" {
 		page.Title = filename
 	}
-	if page.Lang == "" {
-		lang := filepath.Ext(filename)
-		if lang == "" {
-			page.Lang = b.conf.GetString("site.language")
-		} else {
-			langs := b.conf.GetStringMap("languages")
-			lang = lang[1:]
-			if _, ok := langs[lang]; ok {
-				page.Lang = lang
-			}
-		}
-	}
 	if page.Modified.IsZero() {
 		page.Modified = page.Date
 	}
@@ -449,7 +441,6 @@ func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
 			"{date:%m}":      page.Date.Format("01"),
 			"{date:%d}":      page.Date.Format("02"),
 			"{date:%H}":      page.Date.Format("15"),
-			"{lang}":         page.Lang,
 			"{filename}":     filename,
 			"{section}":      section.Name(),
 			"{section:slug}": section.Slug,
@@ -461,7 +452,77 @@ func (b *Builder) newPage(section *Section, file string, filemeta Meta) *Page {
 		}
 		page.Path = utils.StringReplace(meta.GetString("path"), vars)
 	}
-	page.Path = b.conf.GetRelURL(page.Path)
+	page.Path = b.conf.GetRelURL(page.Path, page.Lang)
 	page.Permalink = b.conf.GetURL(page.Path)
-	return b.hooks.AfterPageParse(page)
+
+	if !b.buildFilter(page) {
+		return nil
+	}
+
+	page = b.hooks.AfterPageParse(page)
+
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if meta.GetBool("hidden") {
+		if _, ok := b.hiddenPages[lang]; !ok {
+			b.hiddenPages[lang] = make(map[string]*Page)
+		}
+		b.hiddenPages[lang][file] = page
+		section.HiddenPages = append(section.HiddenPages, page)
+
+	} else if meta.GetBool("section") {
+		if _, ok := b.sectionPages[lang]; !ok {
+			b.sectionPages[lang] = make(map[string]*Page)
+		}
+		b.sectionPages[lang][file] = page
+		section.SectionPages = append(section.SectionPages, page)
+	} else {
+		if _, ok := b.pages[lang]; !ok {
+			b.pages[lang] = make(map[string]*Page)
+		}
+		b.pages[lang][file] = page
+		section.Pages = append(section.Pages, page)
+	}
+	return page
+}
+
+func (b *Builder) writePage(page *Page) {
+	if !page.isSection() {
+		ctx := map[string]interface{}{
+			"page":         page,
+			"current_url":  page.Permalink,
+			"current_path": page.Path,
+			"current_lang": page.Lang,
+		}
+		if tpl, ok := b.theme.LookupTemplate(page.Meta.GetString("template")); ok {
+			b.write(tpl, page.Path, ctx)
+		}
+		if tpl, ok := b.theme.LookupTemplate("aliase.html", "_internal/aliase.html"); ok {
+			for _, aliase := range page.Aliases {
+				b.write(tpl, aliase, ctx)
+			}
+		}
+		b.writeFormats(page.Meta, nil, ctx)
+		return
+	}
+
+	path := page.Meta.GetString("path")
+	if path == "" {
+		return
+	}
+
+	section := &Section{
+		File:    page.File,
+		Meta:    page.Meta,
+		Title:   page.Title,
+		Content: page.Content,
+		Pages:   page.Section.allPages(),
+		Lang:    page.Lang,
+	}
+	section.Slug = b.conf.GetSlug(section.Title)
+	section.Path = b.conf.GetRelURL(path, page.Lang)
+	section.Permalink = b.conf.GetURL(section.Path)
+	section.Pages = section.Pages.Filter(page.Meta.GetString("filter")).OrderBy(page.Meta.GetString("orderby"))
+
+	b.writeSection(section)
 }

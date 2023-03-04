@@ -7,7 +7,7 @@ type (
 		BeforePagesWrite(Pages) Pages
 		BeforeSectionsWrite(Sections) Sections
 		BeforeTaxonomiesWrite(Taxonomies) Taxonomies
-		BeforeWrite(map[string]interface{})
+		BeforeTemplateWrite(map[string]interface{}) map[string]interface{}
 	}
 	Hooks []Hook
 )
@@ -47,8 +47,9 @@ func (hooks Hooks) BeforeTaxonomiesWrite(taxonomies Taxonomies) Taxonomies {
 	return taxonomies
 }
 
-func (hooks Hooks) BeforeWrite(vars map[string]interface{}) {
+func (hooks Hooks) BeforeTemplateWrite(vars map[string]interface{}) map[string]interface{} {
 	for _, hook := range hooks {
-		hook.BeforeWrite(vars)
+		vars = hook.BeforeTemplateWrite(vars)
 	}
+	return vars
 }

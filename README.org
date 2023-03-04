@@ -502,6 +502,18 @@
      #+end_src
 
 *** 多语言(Multilingual)
+    需要配置 =languages=
+    #+begin_src yaml
+    languages.en:
+      translations: "i18n/en.yaml"
+    languages.fr:
+      translations: "i18n/fr.yaml"
+    #+end_src
+    页面格式:
+    - ={title}.en.md=
+    - ={title}.fr.md=
+    或者可以在文件头指定 =lang: en=
+
 ** 模版(templates)
    [[https://github.com/flosch/pongo2]]
 ** 主题(theme)

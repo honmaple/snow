@@ -102,7 +102,7 @@ func (b *Builder) loadStatics() Statics {
 		return nil
 	})
 
-	for _, dir := range b.Dirs() {
+	for _, dir := range b.conf.GetStringSlice("static_dirs") {
 		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() {
 				return err
@@ -114,10 +114,6 @@ func (b *Builder) loadStatics() Statics {
 		})
 	}
 	return files
-}
-
-func (b *Builder) Dirs() []string {
-	return b.conf.GetStringSlice("static_dirs")
 }
 
 func (b *Builder) Build(ctx context.Context) error {

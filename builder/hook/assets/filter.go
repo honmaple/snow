@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"io"
 	"io/ioutil"
-	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -84,10 +83,8 @@ func (self *assets) execute(opt option) (string, error) {
 		}
 		b.Write(w.Bytes())
 	}
-	self.conf.Log.Debugln("Writing", filepath.Join(self.conf.GetOutput(), opt.output))
-
 	// 边读边写
-	if err := self.conf.WriteOutput(opt.output, io.TeeReader(&b, h)); err != nil {
+	if err := self.conf.Write(opt.output, io.TeeReader(&b, h)); err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil

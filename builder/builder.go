@@ -14,19 +14,10 @@ import (
 
 type (
 	Builder interface {
-		Dirs() []string
 		Build(context.Context) error
 	}
 	Builders []Builder
 )
-
-func (bs Builders) Dirs() []string {
-	dirs := make([]string, 0)
-	for _, b := range bs {
-		dirs = append(dirs, b.Dirs()...)
-	}
-	return dirs
-}
 
 func (bs Builders) Build(ctx context.Context) error {
 	var wg sync.WaitGroup

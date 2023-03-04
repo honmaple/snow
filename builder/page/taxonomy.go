@@ -1,6 +1,7 @@
 package page
 
 import (
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -16,9 +17,10 @@ type (
 		// template:
 		// orderby:
 		Meta      Meta
+		Name      string
+		Lang      string
 		Path      string
 		Permalink string
-		Name      string
 		Terms     TaxonomyTerms
 	}
 	Taxonomies   []*Taxonomy
@@ -139,9 +141,70 @@ func (terms TaxonomyTerms) Paginator(number int, path string, paginatePath strin
 	return Paginator(list, number, path, paginatePath)
 }
 
-func (b *Builder) loadTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
+func (b *Builder) findTaxonomy(kind string, langs ...string) *Taxonomy {
+	lang := b.getLang(langs...)
+
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	m, ok := b.taxonomies[lang]
+	if !ok {
+		return nil
+	}
+	return m[kind]
+}
+
+func (b *Builder) findTaxonomyTerm(kind, name string, langs ...string) *TaxonomyTerm {
+	lang := b.getLang(langs...)
+
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	_, ok := b.taxonomyTerms[lang]
+	if !ok {
+		return nil
+	}
+	m, ok := b.taxonomyTerms[lang][kind]
+	if !ok {
+		return nil
+	}
+	return m[name]
+}
+
+func (b *Builder) insertTaxonomies(pages Pages, lang string) {
+	for name := range b.conf.GetStringMap("taxonomies") {
+		if name == "_default" {
+			continue
+		}
+		taxonomy := &Taxonomy{
+			Name: name,
+			Lang: lang,
+		}
+		taxonomy.Meta = make(Meta)
+		taxonomy.Meta.load(b.conf.GetStringMap("taxonomies._default"))
+		taxonomy.Meta.load(b.conf.GetStringMap("taxonomies." + name))
+
+		path := utils.StringReplace(taxonomy.Meta.GetString("path"), taxonomy.vars())
+		if lang := taxonomy.Meta.GetString("lang"); lang != "" {
+			path = filepath.Join(lang, path)
+		}
+		taxonomy.Path = b.conf.GetRelURL(utils.StringReplace(taxonomy.Meta.GetString("path"), taxonomy.vars()), lang)
+		taxonomy.Permalink = b.conf.GetURL(taxonomy.Path)
+		taxonomy.Terms = pages.GroupBy(name).OrderBy(taxonomy.Meta.GetString("orderby"))
+
+		b.insertTaxonomyTerms(taxonomy, taxonomy.Terms)
+
+		b.mu.Lock()
+		if _, ok := b.taxonomies[lang]; !ok {
+			b.taxonomies[lang] = make(map[string]*Taxonomy)
+		}
+		b.taxonomies[lang][name] = taxonomy
+		b.mu.Unlock()
+	}
+}
+
+func (b *Builder) insertTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
+	lang := taxonomy.Lang
 	for _, term := range terms {
-		term.Meta = taxonomy.Meta.copy()
+		term.Meta = taxonomy.Meta.clone()
 		term.Taxonomy = taxonomy
 
 		name := term.FullName()
@@ -151,43 +214,77 @@ func (b *Builder) loadTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
 			slugs[i] = b.conf.GetSlug(name)
 		}
 		term.Slug = strings.Join(slugs, "/")
-		term.Path = b.conf.GetRelURL(utils.StringReplace(term.Meta.GetString("term_path"), term.vars()))
+		term.Path = b.conf.GetRelURL(utils.StringReplace(term.Meta.GetString("term_path"), term.vars()), taxonomy.Lang)
 		term.Permalink = b.conf.GetURL(term.Path)
 		term.List = term.List.Filter(term.Meta.GetString("term_filter")).OrderBy(term.Meta.GetString("term_orderby"))
-		b.loadTaxonomyTerms(taxonomy, term.Children)
+
+		b.mu.Lock()
+		if _, ok := b.taxonomyTerms[lang]; !ok {
+			b.taxonomyTerms[lang] = make(map[string]map[string]*TaxonomyTerm)
+		}
+		if _, ok := b.taxonomyTerms[lang][taxonomy.Name]; !ok {
+			b.taxonomyTerms[lang][taxonomy.Name] = make(map[string]*TaxonomyTerm)
+		}
+		b.taxonomyTerms[lang][taxonomy.Name][name] = term
+		b.mu.Unlock()
+
+		b.insertTaxonomyTerms(taxonomy, term.Children)
 	}
 }
 
-func (b *Builder) loadTaxonomies() error {
-	for name := range b.conf.GetStringMap("taxonomies") {
-		if name == "_default" {
-			continue
+func (b *Builder) writeTaxonomy(taxonomy *Taxonomy) {
+	if taxonomy.Meta.GetString("path") != "" {
+		lookups := []string{
+			utils.StringReplace(taxonomy.Meta.GetString("template"), taxonomy.vars()),
+			fmt.Sprintf("%s/taxonomy.html", taxonomy.Name),
+			"taxonomy.html",
+			"_default/taxonomy.html",
+			"_internal/taxonomy.html",
 		}
-		taxonomy := b.newTaxonomy(name)
-
-		b.loadTaxonomyTerms(taxonomy, taxonomy.Terms)
-		b.taxonomies = append(b.taxonomies, taxonomy)
+		if tpl, ok := b.theme.LookupTemplate(lookups...); ok {
+			// example.com/tags/index.html
+			b.write(tpl, taxonomy.Path, map[string]interface{}{
+				"taxonomy":     taxonomy,
+				"terms":        taxonomy.Terms,
+				"current_lang": taxonomy.Lang,
+			})
+		}
 	}
-	sort.SliceStable(b.taxonomies, func(i, j int) bool {
-		ti := b.taxonomies[i]
-		tj := b.taxonomies[j]
-		if wi, wj := ti.Meta.GetInt("weight"), tj.Meta.GetInt("weight"); wi == wj {
-			return ti.Name > tj.Name
-		} else {
-			return wi > wj
+}
+
+func (b *Builder) writeTaxonomyTerm(term *TaxonomyTerm) {
+	var (
+		vars = term.vars()
+	)
+	if term.Meta.GetString("term_path") != "" {
+		lookups := []string{
+			utils.StringReplace(term.Meta.GetString("term_template"), vars),
+			fmt.Sprintf("%s/taxonomy.terms.html", term.Taxonomy.Name),
+			"taxonomy.terms.html",
+			"_default/taxonomy.terms.html",
+			"_internal/taxonomy.terms.html",
 		}
+		if tpl, ok := b.theme.LookupTemplate(lookups...); ok {
+			for _, por := range term.Paginator() {
+				b.write(tpl, por.URL, map[string]interface{}{
+					"term":          term,
+					"pages":         term.List,
+					"taxonomy":      term.Taxonomy,
+					"paginator":     por,
+					"current_lang":  term.Taxonomy.Lang,
+					"current_path":  por.URL,
+					"current_index": por.PageNum,
+				})
+			}
+		}
+	}
+	for _, child := range term.Children {
+		b.writeTaxonomyTerm(child)
+	}
+	b.writeFormats(term.Meta, vars, map[string]interface{}{
+		"term":         term,
+		"pages":        term.List,
+		"taxonomy":     term.Taxonomy,
+		"current_lang": term.Taxonomy.Lang,
 	})
-	return nil
-}
-
-func (b *Builder) newTaxonomy(name string) *Taxonomy {
-	taxonomy := &Taxonomy{Name: name}
-	taxonomy.Meta = make(Meta)
-	taxonomy.Meta.load(b.conf.GetStringMap("taxonomies._default"))
-	taxonomy.Meta.load(b.conf.GetStringMap("taxonomies." + name))
-
-	taxonomy.Path = b.conf.GetRelURL(utils.StringReplace(taxonomy.Meta.GetString("path"), taxonomy.vars()))
-	taxonomy.Permalink = b.conf.GetURL(taxonomy.Path)
-	taxonomy.Terms = b.pages.GroupBy(name).OrderBy(taxonomy.Meta.GetString("orderby"))
-	return taxonomy
 }
