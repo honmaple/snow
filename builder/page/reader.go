@@ -70,7 +70,7 @@ func (b *Builder) findLanguage(path string, filemeta Meta) string {
 	ext := filepath.Ext(path)
 	if ext != "" {
 		lang := filepath.Ext(path[:len(path)-len(ext)])
-		if lang != "" && b.conf.Languages[lang] {
+		if lang != "" && b.conf.Languages[lang[1:]] {
 			return lang[1:]
 		}
 	}

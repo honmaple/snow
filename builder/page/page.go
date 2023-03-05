@@ -177,10 +177,6 @@ func filterExpr(filter string) func(*Page) bool {
 	}
 }
 
-func (page *Page) isDraft() bool {
-	return page.Meta.GetBool("draft")
-}
-
 func (page *Page) isHidden() bool {
 	return page.Meta.GetBool("hidden")
 }
@@ -360,7 +356,9 @@ func (pages Pages) Paginator(number int, path string, paginatePath string) []*pa
 	return Paginator(list, number, path, paginatePath)
 }
 
-func (b *Builder) findPage(file string, lang string) *Page {
+func (b *Builder) findPage(file string, langs ...string) *Page {
+	lang := b.getLang(langs...)
+
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	m, ok := b.pages[lang]
@@ -463,14 +461,13 @@ func (b *Builder) insertPage(file string) *Page {
 
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if meta.GetBool("hidden") {
+	if page.isHidden() {
 		if _, ok := b.hiddenPages[lang]; !ok {
 			b.hiddenPages[lang] = make(map[string]*Page)
 		}
 		b.hiddenPages[lang][file] = page
 		section.HiddenPages = append(section.HiddenPages, page)
-
-	} else if meta.GetBool("section") {
+	} else if page.isSection() {
 		if _, ok := b.sectionPages[lang]; !ok {
 			b.sectionPages[lang] = make(map[string]*Page)
 		}
@@ -518,6 +515,7 @@ func (b *Builder) writePage(page *Page) {
 		Content: page.Content,
 		Pages:   page.Section.allPages(),
 		Lang:    page.Lang,
+		Parent:  page.Section,
 	}
 	section.Slug = b.conf.GetSlug(section.Title)
 	section.Path = b.conf.GetRelURL(path, page.Lang)

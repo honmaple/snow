@@ -46,7 +46,7 @@ func (conf *Config) With(lang string) *Config {
 		writer: conf.writer,
 	}
 	newConfig.MergeConfigMap(conf.AllSettings())
-	newConfig.Reset(conf.GetStringMap("languages." + lang))
+	newConfig.MergeConfigMap(conf.GetStringMap("languages." + lang))
 	return &newConfig
 }
 
@@ -152,7 +152,7 @@ func (conf *Config) GetRelURL(path string, lang string) string {
 		return path
 	}
 	if !strings.HasPrefix(path, "/") {
-		return "/" + path
+		path = "/" + path
 	}
 	if lang == conf.Site.Language {
 		return path

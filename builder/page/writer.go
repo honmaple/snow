@@ -235,7 +235,7 @@ func (b *Builder) Write() error {
 		b.list.taxonomies[lang] = taxonomies
 
 		for _, section := range m {
-			if section.isEmpty() {
+			if section.isRoot() || section.isEmpty() {
 				continue
 			}
 			tasks.Invoke(section)

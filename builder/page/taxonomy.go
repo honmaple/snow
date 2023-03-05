@@ -181,10 +181,8 @@ func (b *Builder) insertTaxonomies(pages Pages, lang string) {
 		taxonomy.Meta = make(Meta)
 		taxonomy.Meta.load(b.conf.GetStringMap("taxonomies._default"))
 		taxonomy.Meta.load(b.conf.GetStringMap("taxonomies." + name))
-
-		path := utils.StringReplace(taxonomy.Meta.GetString("path"), taxonomy.vars())
-		if lang := taxonomy.Meta.GetString("lang"); lang != "" {
-			path = filepath.Join(lang, path)
+		if lang != b.conf.Site.Language {
+			taxonomy.Meta.load(b.conf.GetStringMap("languages." + lang + ".taxonomies." + name))
 		}
 		taxonomy.Path = b.conf.GetRelURL(utils.StringReplace(taxonomy.Meta.GetString("path"), taxonomy.vars()), lang)
 		taxonomy.Permalink = b.conf.GetURL(taxonomy.Path)

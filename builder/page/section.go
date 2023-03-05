@@ -200,6 +200,9 @@ func (b *Builder) insertSection(path string) *Section {
 		name := section.Name()
 		if !section.isRoot() {
 			section.Meta.load(b.conf.GetStringMap("sections." + name))
+			if !isdefault {
+				section.Meta.load(b.conf.GetStringMap("languages." + lang + ".sections." + name))
+			}
 		}
 
 		for k, v := range section.Meta {
@@ -249,7 +252,6 @@ func (b *Builder) writeSection(section *Section) {
 	var (
 		vars = section.vars()
 	)
-
 	if section.Meta.GetString("path") != "" {
 		lookups := []string{
 			utils.StringReplace(section.Meta.GetString("template"), vars),

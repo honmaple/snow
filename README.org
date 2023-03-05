@@ -39,11 +39,17 @@
 
 *** 安装(Installation)
     #+begin_example
+    └──╼ git install https://github.com/honmaple/snow
+    #+end_example
+
+*** 编译(Build)
+    #+begin_example
     └──╼ git clone https://github.com/honmaple/snow --depth=1
     └──╼ cd snow
     └──╼ go mod tidy
     └──╼ go build .
     #+end_example
+
 *** 命令行(Cli usage)
     #+begin_example
       └──╼ ./snow --help
@@ -63,7 +69,7 @@
          help, h  Shows a list of commands or help for one command
 
       GLOBAL OPTIONS:
-         --conf FILE, -c FILE  load configuration from FILE (default: "config.yaml")
+         --config FILE, -c FILE  load configuration from FILE (default: "config.yaml")
          --help, -h            show help (default: false)
          --version, -v         print the version (default: false)
     #+end_example
@@ -163,7 +169,6 @@
 
     theme:
       name: "snow"
-      override: "layouts"
 
     # 按照主题需要进行配置
     params.extra:
@@ -188,11 +193,11 @@
      #+begin_src yaml
      sections:
        _default:
-         # 页面中文章的默认排序, 多字段使用逗号分隔
+         # 页面默认排序, 多字段使用逗号分隔
          orderby: "date desc"
-         # 文章筛选，主要用于分页前
+         # 自定义某个section下的页面筛选
          filter: ""
-         # 页面中文章默认分页, path必须使用{number}变量, 0表示不分页
+         # 页面默认分页, path必须使用{number}变量, 0表示不分页
          paginate: 10
          # 分页路径
          paginate_path: "{name}{number}{extension}"
@@ -202,9 +207,9 @@
          path: "{section}/index.html"
          # 使用的模版
          template: "section.html"
-         # 当前section下所有文章生成路径
+         # 当前section下所有页面生成路径
          page_path: "{section}/{slug}/index.html"
-         # 文章使用的模版
+         # 页面使用的模版
          page_template: "post.html"
          formats.atom:
            path: "{section:slug}/atom.xml"
@@ -213,7 +218,7 @@
        pages:
          path: ""
        pages/about:
-         # 自定义pages/about下的文章生成路径，同时继承pages.path不会生成所有页面
+         # 自定义pages/about下的页面生成路径，同时继承pages.path不会生成所有页面
          page_path: "{slug}/index.html"
      #+end_src
      *filter* 格式(下同):
@@ -238,7 +243,7 @@
      | section.Path      | section相对链接         |
      | section.Permalink | section绝对链接         |
      | section.Content   | section内容             |
-     | section.Pages     | 当前section下的文章列表 |
+     | section.Pages     | 当前section下的页面列表 |
      | section.Children  | 子section               |
      | section.Parent    | 父section               |
 
@@ -274,19 +279,19 @@
        #+end_src
 **** 配置
      #+begin_src yaml
-     # 文章目录所在, 其中该目录下应该包括一系列子目录，这些子目录的名称对应为 *文章的类型*, 比如 *content/drafts/* 目录下的文章类型为 *drafts*, 当然也可以直接在文章文件头添加 =type: drafts=
+     # 页面目录所在, 其中该目录下应该包括一系列子目录，这些子目录的名称对应为 *页面的类型*, 比如 *content/drafts/* 目录下的 页面类型为 *drafts*, 当然也可以直接在 页面文件头添加 =type: drafts=
      content_dir: "content"
      #+end_src
 **** 路径变量(*sections.xxx.page_path*)
      |------------+----------------------|
      | 变量       | 描述                 |
      |------------+----------------------|
-     | {date:%Y}  | 创建文章的年份       |
-     | {date:%m}  | 创建文章的月份       |
-     | {date:%d}  | 创建文章的日期       |
-     | {date:%H}  | 创建文章的小时       |
-     | {lang}     | 文章语言             |
-     | {slug}     | 文章标题或自定义slug |
+     | {date:%Y}  | 创建页面的年份       |
+     | {date:%m}  | 创建页面的月份       |
+     | {date:%d}  | 创建页面的日期       |
+     | {date:%H}  | 创建页面的小时       |
+     | {lang}     | 页面语言             |
+     | {slug}     | 页面标题或自定义slug |
      | {filename} | 文件名称(不带后缀名) |
 
 **** 模版变量(*sections.xxx.page_template*)
@@ -324,11 +329,11 @@
          template: "{taxonomy}/list.html"
          term_path: "{taxonomy}/{term:slug}/index.html"
          term_template: "{taxonomy}/single.html"
-         # 文章列表筛选
+         # 页面列表筛选
          term_filter: ""
-         # 文章列表排序
+         # 页面列表排序
          term_orderby: "date desc"
-         # 文章列表分页
+         # 页面列表分页
          term_paginate: 0
          term_paginate_path: ""
          term_paginate_filter: ""
@@ -367,19 +372,35 @@
        | term.Name      | 分类名称 |
        | term.Path      | 相对链接 |
        | term.Permalink | 绝对链接 |
-       | term.List      | 文章列表 |
+       | term.List      | 页面列表 |
        | term.Children  | 子分类   |
 
 *** 归档页(Archive)
-    #+begin_src yaml
-    taxonomies:
-      date:2006/01:
-        path: "archives/index.html"
-        template: "archives.html"
-        term_path: "archives/{term}/index.html"
-        term_template: "period_archives.html"
-    #+end_src
-    归档页面类似分类系统，其它 *date:2006/01* 表示按年月归档, 并生成链接 */archives/2022/10/index.html*
+    *snow* 中的分类系统是基于归档实现的，该功能类似 *SQL* 中的 =group by=, 所以如果要实现归档页可以有两种方式:
+    1. 添加 =taxonomies.{key}=, ={key}= 可以是页面元数据里的任意字段, 比如 =categories=, =tags=, 如果需要按照时间归档, 格式为 =date:2006/01=, 其中 =2006/01= 为Go时间格式，表示按年月归档, 并生成链接 */archives/2022/10/index.html*
+       #+begin_src yaml
+       taxonomies:
+         date:2006/01:
+           path: "archives/index.html"
+           template: "archives.html"
+           term_path: "archives/{term}/index.html"
+           term_template: "period_archives.html"
+       #+end_src
+    2. 在 ={content_dir}= 下添加一个 =archives.md= 的文件
+       #+begin_example
+       path: archives.html
+       template: archives.html
+       section: true
+       #+end_example
+       然后在模板 ={templates}/archives.html= 使用 =pages.GroupBy({key})=
+       #+begin_src html
+       {%- for subterm in pages.GroupBy("date:2006-01").OrderBy("name desc") %}
+         {%- set date = subterm.Name | split:"-" %}
+         {%- set year = date[0] %}
+         {%- set month = date[1] %}
+          ...
+       {%- endfor %}
+       #+end_src
 
 *** 分页(Pagination)
 **** 路径变量
@@ -407,39 +428,46 @@
        - 第二页: =section/page/2.html=
        - 第三页: =section/page/3.html=
 **** 模版变量
-     |---------------------+----------------|
-     | 变量                | 描述           |
-     |---------------------+----------------|
-     | paginator           |                |
-     | paginator.URL       | 分页链接       |
-     | paginator.PageNum   | 当前页         |
-     | paginator.Total     | 总页数         |
-     | paginator.HasPrev() | 是否有上一页   |
-     | paginator.Prev      | 上一页         |
-     | paginator.Prev.URL  | 上一页链接     |
-     | paginator.HasNext() | 是否有下一页   |
-     | paginator.Next      | 下一页         |
-     | paginator.Next.URL  | 下一页链接     |
-     | paginator.All       | 所有页         |
-     | paginator.List      | 当前页文章列表 |
+     |---------------------+----------------------|
+     | 变量                | 描述                 |
+     |---------------------+----------------------|
+     | paginator           |                      |
+     | paginator.URL       | 分页链接             |
+     | paginator.PageNum   | 当前页               |
+     | paginator.Total     | 总页数               |
+     | paginator.HasPrev() | 是否有上一页         |
+     | paginator.Prev      | 上一页               |
+     | paginator.Prev.URL  | 上一页链接           |
+     | paginator.HasNext() | 是否有下一页         |
+     | paginator.Next      | 下一页               |
+     | paginator.Next.URL  | 下一页链接           |
+     | paginator.All       | 所有页               |
+     | paginator.List      | 当前分页下的页面列表 |
 
 *** 草稿(Draft)
-    默认草稿标志为 =draft: true=, 也可以将所有草稿放入同一个 *drafts* 目录, 然后就可以在构建时增加筛选条件
-    - 排除草稿
-      #+begin_example
-      snow build -F 'not draft'
-      #+end_example
-      或者
-      #+begin_example
-      snow build --filter 'type != "drafts"'
-      #+end_example
-    - 包括草稿
-      #+begin_example
-      snow build -F 'not draft or draft = true'
-      #+end_example
-      默认筛选条件可以写入配置 =build_filter=
+    使用者可以自定义草稿标志，但推荐使用两种形式:
+    1. 添加元数据 =draft: true=, 构建时增加筛选条件
+       - *草稿*
+         #+begin_example
+         snow build --filter 'draft = true'
+         #+end_example
+       - *非草稿*
+         #+begin_example
+         snow build -F 'not draft'
+         #+end_example
+    2. 创建一个单独的 =drafts= 目录存放草稿
+       - *草稿*
+         #+begin_example
+         snow build -F 'type = "drafts"'
+         #+end_example
+       - *非草稿*
+         #+begin_example
+         snow build -F 'type != "drafts"'
+         #+end_example
+
+    注: 默认筛选条件可以写入配置 =build_filter=
 *** 输出格式(Atom,Rss,JSON)
-    可以生成 *rss*，*atom* 或者其它任意格式(需要自定义模版)
+    可以生成 *rss* ，*atom* 或者其它任意格式(需要自定义模版)
 **** 配置
      #+begin_src yaml
      # 设置rss格式的默认值
@@ -469,7 +497,7 @@
      |---------+--------------------------|
      | section | 仅生成section 有效       |
      | term    | 仅生成taxonomy term 有效 |
-     | pages   | 文章列表                 |
+     | pages   | 页面列表                 |
 
 *** 静态文件(Static)
     静态文件分 *主题静态文件*和*配置指定的静态文件*
@@ -606,17 +634,16 @@
 *** assets
      静态文件处理
      #+begin_src yaml
-     params:
-       assets:
-         css:
-           files:
-             - "@theme/static/scss/main.scss"
-             - "@theme/static/scss/entry.scss"
-           filters:
-             - libscss:
-                 path: ["@theme/static/scss/"]
-             - cssmin:
-           output: "static/lib.min.css"
+     params.assets:
+       css:
+         files:
+           - "@theme/static/scss/main.scss"
+           - "@theme/static/scss/entry.scss"
+         filters:
+           - libscss:
+               path: ["@theme/static/scss/"]
+           - cssmin:
+         output: "static/lib.min.css"
      #+end_src
      #+begin_src html
      {% assets files="css/style.scss" filters="libsass,cssmin" output="css/style.min.css" %}
