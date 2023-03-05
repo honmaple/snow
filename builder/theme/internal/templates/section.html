@@ -1,18 +1,22 @@
-{% extends "_internal/common/layout.html" %}
+{% extends "_internal/layout.html" %}
 {% block content %}
-  <ul class="page-list">
-    {% for page in section.Pages %}
+  <ul style="padding:0;">
+    {% for page in paginator.List %}
       <li>
-        <h2><a href="{{ page.Path | absURL }}">{{ page.Title }}</a></h2>
-        {% include "_internal/post.info.html" %}
+        <h2><a href="{{ page.Permalink }}">{{ page.Title }}</a></h2>
+        {% include "page.info.html" %}
         <hr />
         <div>
           {{ page.Content | safe }}
         </div>
       </li>
     {% endfor %}
-    {% if section.Pages | length == 0 %}
+    {% if paginator.List | length == 0 %}
       <li>No Posts.</li>
+    {% else %}
+      {% if paginator.Total > 1 %}
+        <li>{% include '_internal/partials/pagination.html' %}</li>
+      {% endif %}
     {% endif %}
   </ul>
 {% endblock %}

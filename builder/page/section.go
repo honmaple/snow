@@ -256,7 +256,7 @@ func (b *Builder) writeSection(section *Section) {
 		lookups := []string{
 			utils.StringReplace(section.Meta.GetString("template"), vars),
 			"section.html",
-			"_internal/section.html",
+			"_default/section.html",
 		}
 		if tpl, ok := b.theme.LookupTemplate(lookups...); ok {
 			for _, por := range section.Paginator() {

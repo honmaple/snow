@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ config.site.title }}{% if config.site.subtitle %} · {{ config.site.subtitle }}{% endif %}{%endblock%}</title>
+    {% block css %}
+      <style>
+       html, body {
+           height: 100%;
+           width: 100%;
+           margin: 0;
+           padding: 0;
+       }
+
+       .wrap{
+           min-height:100%;
+           max-width: 800px;
+           margin: 0 auto;
+           padding:0;
+       }
+
+       .main{
+           padding: 0 2rem;
+           padding-bottom:60px;
+           overflow:hidden;
+           border: 1px solid #333;
+           border-top: none;
+           border-bottom: none;
+       }
+
+       .footer {
+           margin:-40px auto 0 auto;
+           height:40px;
+           text-align: center;
+       }
+
+       .header {
+           display: flex;
+           justify-content: start;
+           align-items: baseline;
+       }
+
+       .menu {
+           display: flex;
+           align-items: center;
+           justify-content: space-around;
+           background-color: #000;
+           padding: 0.5rem 1rem;
+           border-radius: 4px;
+       }
+
+       .pager {
+           display: flex;
+           justify-content: space-between;
+           align-items: center;
+       }
+
+       .pagination {
+           display: flex;
+           align-items: center;
+           justify-content: center;
+       }
+
+       .pagination li {
+           padding-left: 0.5rem;
+           padding-right: 0.5rem;
+       }
+
+       ul {
+           list-style-type: none;
+       }
+
+       a {
+           text-decoration: none;
+       }
+
+       a:link, a:visited {
+           color: #C74451;
+       }
+      </style>
+    {% endblock %}
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="main">
+        <div class="header">
+          <h1>{{ config.site.title }}</h1>
+          {% if config.site.subtitle %}
+            <span style="margin-left: 2rem;">{{ config.site.subtitle }}</span>
+          {% endif %}
+        </div>
+        <div class="menu">
+          <div><a href="{{ config.site.url }}/posts/index.html">Index</a></div>
+          {% for taxonomy in taxonomies %}
+            <div><a href="{{ config.site.url }}/{{ taxonomy.Name }}/index.html">{{ taxonomy.Name }}</a></div>
+          {% endfor %}
+        </div>
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+    <div class="footer">
+      © {% now "2006" %} {% if config.site.author %}{{ config.site.author }}{% endif %}
+    </div>
+  </body>
+</html>

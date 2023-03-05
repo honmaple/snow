@@ -1,0 +1,20 @@
+{% extends "_internal/layout.html" %}
+{% block content %}
+  <div style="text-align: center;">
+    <h1>{{ page.Title }}</h1>
+    {% include "page.info.html" %}
+    <hr/>
+  </div>
+  <div class="content">
+    {{ page.Content | safe }}
+  </div>
+  <hr/>
+  <ul class="pager">
+    {% if page.Prev %}
+      <li>Prev:<a href="{{ page.Prev.Permalink }}">{{ page.Prev.Title }}</a></li>
+    {% endif %}
+    {% if page.Next %}
+      <li>Next:<a href="{{ page.Next.Permalink }}">{{ page.Next.Title }}</a></li>
+    {% endif %}
+  </ul>
+{% endblock %}

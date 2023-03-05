@@ -1,13 +1,12 @@
-{% extends "_internal/common/layout.html" %}
+{% extends "_internal/layout.html" %}
 {% block title %}{{ taxonomy.Name }} · {{ block.Super }}{% endblock %}
 {% block content %}
   {% macro page_list(term) %}
-    <h1><a href="{{ term.Permalink }}">{{ term.Name }}({{ term.List | length }})</a></h1>
-    <ul>
+    <h2><a href="{{ term.Permalink }}">{{ term.Name }}</a><span style="font-size: 0.8rem; color: #000;">({{ term.List | length }})</span></h2>
+    <ul style="list-style-type: circle; padding-left: 2rem;">
       {% for page in term.List %}
         <li>
-          <h2><a href="{{ page.Permalink }}">{{ page.Title }}</a></h2>
-          {% include "_internal/post.info.html" %}
+          <a href="{{ page.Permalink }}">{{ page.Title }}</a>
         </li>
       {% endfor %}
     </ul>

@@ -237,7 +237,6 @@ func (b *Builder) writeTaxonomy(taxonomy *Taxonomy) {
 			fmt.Sprintf("%s/taxonomy.html", taxonomy.Name),
 			"taxonomy.html",
 			"_default/taxonomy.html",
-			"_internal/taxonomy.html",
 		}
 		if tpl, ok := b.theme.LookupTemplate(lookups...); ok {
 			// example.com/tags/index.html
@@ -260,7 +259,6 @@ func (b *Builder) writeTaxonomyTerm(term *TaxonomyTerm) {
 			fmt.Sprintf("%s/taxonomy.terms.html", term.Taxonomy.Name),
 			"taxonomy.terms.html",
 			"_default/taxonomy.terms.html",
-			"_internal/taxonomy.terms.html",
 		}
 		if tpl, ok := b.theme.LookupTemplate(lookups...); ok {
 			for _, por := range term.Paginator() {

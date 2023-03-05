@@ -1,0 +1,27 @@
+<div>
+  {%- if page.Meta.Get("authors") %}
+    By
+    {%- for name in page.Meta.Get("authors") %}
+      <a href="{{ get_taxonomy_url("authors", name) }}">{{ name }}</a>
+    {%- endfor %}
+    </span>
+  {%- endif %}
+  {%- if page.Meta.Get("categories") %}
+    <span class="entry-info-sep">|</span>
+    <span>
+      In
+      {%- for name in page.Meta.Get("categories") %}
+        <a href="{{ get_taxonomy_url("categories", name) }}">{{ name }}</a>
+      {%- endfor %}
+    </span>
+  {%- endif %}
+  {%- if page.Meta.Get("tags") %}
+    <span class="entry-info-sep">|</span>
+    <span>
+      0f
+      {%- for name in page.Meta.Get("tags") %}
+        <a href="{{ get_taxonomy_url("tags", name) }}">{{ name }}</a>
+      {%- endfor %}
+    </span>
+  {%- endif %}
+</div>

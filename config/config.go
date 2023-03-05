@@ -235,15 +235,15 @@ var (
 		"sections._default.orderby":       "date desc",
 		"sections._default.paginate":      10,
 		"sections._default.paginate_path": "{name}{number}{extension}",
-		"sections._default.template":      "posts.html",
+		"sections._default.template":      "section.html",
 		"sections._default.page_path":     "{section:slug}/{slug}/index.html",
 		"sections._default.page_template": "page.html",
 	}
 	taxonomyConfig = map[string]interface{}{
 		"taxonomies._default.path":               "{taxonomy}/index.html",
-		"taxonomies._default.template":           "{taxonomy}/list.html",
+		"taxonomies._default.template":           "taxonomy.html",
 		"taxonomies._default.term_path":          "{taxonomy}/{term:slug}/index.html",
-		"taxonomies._default.term_template":      "{taxonomy}/single.html",
+		"taxonomies._default.term_template":      "taxonomy.terms.html",
 		"taxonomies._default.term_paginate_path": "{name}{number}{extension}",
 		"taxonomies._default.term_orderby":       "date desc",
 
@@ -257,8 +257,8 @@ var (
 		"content_truncate_ellipsis": "...",
 		"content_highlight_style":   "monokai",
 		"slugify":                   true,
-		"formats.rss.template":      "_internal/rss.xml",
-		"formats.atom.template":     "_internal/atom.xml",
+		"formats.rss.template":      "_internal/partials/rss.xml",
+		"formats.atom.template":     "_internal/partials/atom.xml",
 	}
 	// 默认需要修改的配置
 	siteConfig = map[string]interface{}{

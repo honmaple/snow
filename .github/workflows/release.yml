@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  release:
+    types: [prereleased]
+    paths:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/*.yml"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        build: [macos, linux]
+        include:
+          - build: macos
+            os: macos-latest
+            archive-name: darwin.tar.gz
+          - build: linux
+            os: ubuntu-18.04
+            archive-name: linux.tar.gz
+
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build
+        run: go build -v -o snow .
+        env:
+          CGO_ENABLED: 1
+
+      - name: Prepare Packaging
+        run: tar zcvf snow-${{ matrix.archive-name }}.tar.gz snow LICENSE
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: snow-${{ matrix.archive-name }}.tar.gz
+          path: snow-${{ matrix.archive-name }}.tar.gz
+
+      - name: Release version
+        uses: ncipollo/release-action@v1
+        if: github.event_name == 'release'
+        with:
+          allowUpdates: true
+          artifacts: snow-${{ matrix.archive-name }}.tar.gz
+          token: ${{ secrets.GITHUB_TOKEN }}
