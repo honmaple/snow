@@ -96,37 +96,46 @@ func (terms TaxonomyTerms) Find(name string) *TaxonomyTerm {
 }
 
 func (terms TaxonomyTerms) OrderBy(key string) TaxonomyTerms {
-	if key == "" {
-		return terms
-	}
-	var (
-		reverse = false
-		sortf   func(int, int) bool
-	)
-	if strings.HasSuffix(strings.ToUpper(key), " DESC") {
-		key = key[:len(key)-5]
-		reverse = true
-	}
-	switch key {
-	case "name":
-		sortf = func(i, j int) bool {
-			return terms[i].Name < terms[j].Name
+	sortfs := make([]func(int, int) int, 0)
+	for _, k := range strings.Split(key, ",") {
+		var (
+			sortf   func(int, int) int
+			reverse = false
+		)
+		if strings.HasSuffix(strings.ToUpper(key), " DESC") {
+			k = k[:len(k)-5]
+			reverse = true
 		}
-	case "count":
-		sortf = func(i, j int) bool {
-			return len(terms[i].List) < len(terms[j].List)
+		switch k {
+		case "name":
+			sortf = func(i, j int) int {
+				return strings.Compare(terms[i].Name, terms[j].Name)
+			}
+		case "count":
+			sortf = func(i, j int) int {
+				return utils.Compare(len(terms[i].List), len(terms[j].List))
+			}
+		}
+		if sortf != nil {
+			if reverse {
+				sortfs = append(sortfs, func(i, j int) int {
+					return 0 - sortf(i, j)
+				})
+			} else {
+				sortfs = append(sortfs, sortf)
+			}
 		}
 	}
-	if sortf == nil {
-		return terms
-	}
-	if reverse {
-		sort.SliceStable(terms, func(i, j int) bool {
-			return !sortf(i, j)
-		})
-	} else {
-		sort.SliceStable(terms, sortf)
-	}
+	sort.SliceStable(terms, func(i, j int) bool {
+		for _, f := range sortfs {
+			result := f(i, j)
+			if result != 0 {
+				return result < 0
+			}
+		}
+		// 增加一个默认排序, 避免时间相同时排序混乱
+		return strings.Compare(terms[i].Name, terms[j].Name) <= 0
+	})
 	for _, term := range terms {
 		term.Children.OrderBy(key)
 	}
@@ -139,34 +148,6 @@ func (terms TaxonomyTerms) Paginator(number int, path string, paginatePath strin
 		list[i] = term
 	}
 	return Paginator(list, number, path, paginatePath)
-}
-
-func (b *Builder) findTaxonomy(kind string, langs ...string) *Taxonomy {
-	lang := b.getLang(langs...)
-
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	m, ok := b.taxonomies[lang]
-	if !ok {
-		return nil
-	}
-	return m[kind]
-}
-
-func (b *Builder) findTaxonomyTerm(kind, name string, langs ...string) *TaxonomyTerm {
-	lang := b.getLang(langs...)
-
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	_, ok := b.taxonomyTerms[lang]
-	if !ok {
-		return nil
-	}
-	m, ok := b.taxonomyTerms[lang][kind]
-	if !ok {
-		return nil
-	}
-	return m[name]
 }
 
 func (b *Builder) insertTaxonomies(pages Pages, lang string) {
@@ -184,23 +165,31 @@ func (b *Builder) insertTaxonomies(pages Pages, lang string) {
 		if lang != b.conf.Site.Language {
 			taxonomy.Meta.load(b.conf.GetStringMap("languages." + lang + ".taxonomies." + name))
 		}
+		if taxonomy.Meta.GetBool("disabled") {
+			continue
+		}
 		taxonomy.Path = b.conf.GetRelURL(utils.StringReplace(taxonomy.Meta.GetString("path"), taxonomy.vars()), lang)
 		taxonomy.Permalink = b.conf.GetURL(taxonomy.Path)
 		taxonomy.Terms = pages.GroupBy(name).OrderBy(taxonomy.Meta.GetString("orderby"))
 
 		b.insertTaxonomyTerms(taxonomy, taxonomy.Terms)
 
-		b.mu.Lock()
-		if _, ok := b.taxonomies[lang]; !ok {
-			b.taxonomies[lang] = make(map[string]*Taxonomy)
-		}
-		b.taxonomies[lang][name] = taxonomy
-		b.mu.Unlock()
+		b.ctx.insertTaxonomy(taxonomy)
 	}
+	taxonomies := b.ctx.Taxonomies(lang)
+
+	sort.SliceStable(taxonomies, func(i, j int) bool {
+		ti := taxonomies[i]
+		tj := taxonomies[j]
+		if wi, wj := ti.Meta.GetInt("weight"), tj.Meta.GetInt("weight"); wi == wj {
+			return ti.Name > tj.Name
+		} else {
+			return wi > wj
+		}
+	})
 }
 
 func (b *Builder) insertTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
-	lang := taxonomy.Lang
 	for _, term := range terms {
 		term.Meta = taxonomy.Meta.clone()
 		term.Taxonomy = taxonomy
@@ -216,17 +205,9 @@ func (b *Builder) insertTaxonomyTerms(taxonomy *Taxonomy, terms TaxonomyTerms) {
 		term.Permalink = b.conf.GetURL(term.Path)
 		term.List = term.List.Filter(term.Meta.GetString("term_filter")).OrderBy(term.Meta.GetString("term_orderby"))
 
-		b.mu.Lock()
-		if _, ok := b.taxonomyTerms[lang]; !ok {
-			b.taxonomyTerms[lang] = make(map[string]map[string]*TaxonomyTerm)
-		}
-		if _, ok := b.taxonomyTerms[lang][taxonomy.Name]; !ok {
-			b.taxonomyTerms[lang][taxonomy.Name] = make(map[string]*TaxonomyTerm)
-		}
-		b.taxonomyTerms[lang][taxonomy.Name][name] = term
-		b.mu.Unlock()
-
 		b.insertTaxonomyTerms(taxonomy, term.Children)
+
+		b.ctx.insertTaxonomyTerm(term)
 	}
 }
 

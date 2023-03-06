@@ -132,10 +132,10 @@ type (
 		Summary string
 		Content string
 
-		Prev       *Page
-		Next       *Page
-		PrevInType *Page
-		NextInType *Page
+		Prev          *Page
+		Next          *Page
+		PrevInSection *Page
+		NextInSection *Page
 
 		Section *Section
 	}
@@ -195,14 +195,6 @@ func (page *Page) HasPrev() bool {
 
 func (page *Page) HasNext() bool {
 	return page.Next != nil
-}
-
-func (page *Page) HasPrevInType() bool {
-	return page.PrevInType != nil
-}
-
-func (page *Page) HasNextInType() bool {
-	return page.NextInType != nil
 }
 
 func (pages Pages) First() *Page {
@@ -356,25 +348,13 @@ func (pages Pages) Paginator(number int, path string, paginatePath string) []*pa
 	return Paginator(list, number, path, paginatePath)
 }
 
-func (b *Builder) findPage(file string, langs ...string) *Page {
-	lang := b.getLang(langs...)
-
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	m, ok := b.pages[lang]
-	if !ok {
-		return nil
-	}
-	return m[file]
-}
-
-func (b *Builder) insertPage(file string) *Page {
+func (b *Builder) insertPage(file string) {
 	filemeta, err := b.readFile(file)
 	if err != nil {
-		return nil
+		return
 	}
 	lang := b.findLanguage(file, filemeta)
-	section := b.findSection(filepath.Dir(file), lang)
+	section := b.ctx.findSection(filepath.Dir(file), lang)
 
 	meta := section.Meta.clone()
 	meta["path"] = meta["page_path"]
@@ -453,34 +433,7 @@ func (b *Builder) insertPage(file string) *Page {
 	page.Path = b.conf.GetRelURL(page.Path, page.Lang)
 	page.Permalink = b.conf.GetURL(page.Path)
 
-	if !b.buildFilter(page) {
-		return nil
-	}
-
-	page = b.hooks.AfterPageParse(page)
-
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if page.isHidden() {
-		if _, ok := b.hiddenPages[lang]; !ok {
-			b.hiddenPages[lang] = make(map[string]*Page)
-		}
-		b.hiddenPages[lang][file] = page
-		section.HiddenPages = append(section.HiddenPages, page)
-	} else if page.isSection() {
-		if _, ok := b.sectionPages[lang]; !ok {
-			b.sectionPages[lang] = make(map[string]*Page)
-		}
-		b.sectionPages[lang][file] = page
-		section.SectionPages = append(section.SectionPages, page)
-	} else {
-		if _, ok := b.pages[lang]; !ok {
-			b.pages[lang] = make(map[string]*Page)
-		}
-		b.pages[lang][file] = page
-		section.Pages = append(section.Pages, page)
-	}
-	return page
+	b.ctx.insertPage(b.hooks.AfterPageParse(page))
 }
 
 func (b *Builder) writePage(page *Page) {
@@ -513,14 +466,13 @@ func (b *Builder) writePage(page *Page) {
 		Meta:    page.Meta,
 		Title:   page.Title,
 		Content: page.Content,
-		Pages:   page.Section.allPages(),
 		Lang:    page.Lang,
 		Parent:  page.Section,
 	}
 	section.Slug = b.conf.GetSlug(section.Title)
 	section.Path = b.conf.GetRelURL(path, page.Lang)
 	section.Permalink = b.conf.GetURL(section.Path)
-	section.Pages = section.Pages.Filter(page.Meta.GetString("filter")).OrderBy(page.Meta.GetString("orderby"))
+	section.Pages = b.ctx.Pages(page.Lang).Filter(page.Meta.GetString("filter")).OrderBy(page.Meta.GetString("orderby"))
 
 	b.writeSection(section)
 }

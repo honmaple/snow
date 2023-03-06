@@ -17,30 +17,14 @@ import (
 )
 
 type (
-	writeList struct {
-		pages      map[string]Pages
-		taxonomies map[string]Taxonomies
-	}
-
 	Builder struct {
 		conf        config.Config
 		theme       theme.Theme
 		hooks       Hooks
 		readers     map[string]Reader
-		buildFilter func(*Page) bool
 
-		pages         map[string]map[string]*Page
-		hiddenPages   map[string]map[string]*Page
-		sectionPages  map[string]map[string]*Page
-		sections      map[string]map[string]*Section
-		taxonomies    map[string]map[string]*Taxonomy
-		taxonomyTerms map[string]map[string]map[string]*TaxonomyTerm
-
-		list *writeList
-
+		ctx         *Context
 		ignoreFiles []*regexp.Regexp
-
-		mu sync.RWMutex
 	}
 	Reader interface {
 		Read(io.Reader) (Meta, error)
@@ -78,8 +62,6 @@ func (b *Builder) findLanguage(path string, filemeta Meta) string {
 }
 
 func (b *Builder) ignoreFile(file string) bool {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
 	for _, re := range b.ignoreFiles {
 		if re.MatchString(file) {
 			return true
@@ -136,17 +118,17 @@ func (b *Builder) Build(ctx context.Context) error {
 			if isdefault {
 				showLang = ""
 			}
-			if count := len(b.pages[lang]); count > 0 {
+			if count := len(b.ctx.pages[lang]); count > 0 {
 				ps = append(ps, fmt.Sprintf("%d%s normal pages", count, showLang))
 			}
-			if count := len(b.hiddenPages[lang]); count > 0 {
+			if count := len(b.ctx.hiddenPages[lang]); count > 0 {
 				ps = append(ps, fmt.Sprintf("%d%s hidden pages", count, showLang))
 			}
-			if count := len(b.sectionPages[lang]); count > 0 {
+			if count := len(b.ctx.sectionPages[lang]); count > 0 {
 				ps = append(ps, fmt.Sprintf("%d%s section pages", count, showLang))
 			}
 
-			for _, section := range b.sections[lang] {
+			for _, section := range b.ctx.sections[lang] {
 				if section.isRoot() {
 					continue
 				}
@@ -155,7 +137,7 @@ func (b *Builder) Build(ctx context.Context) error {
 				}
 			}
 
-			for _, taxonomy := range b.taxonomies[lang] {
+			for _, taxonomy := range b.ctx.taxonomies[lang] {
 				if count := len(taxonomy.Terms); count > 0 {
 					ts = append(ts, fmt.Sprintf("%d%s %s", count, showLang, taxonomy.Name))
 				}
@@ -230,14 +212,7 @@ func NewBuilder(conf config.Config, theme theme.Theme, hooks Hooks) *Builder {
 		theme:       theme,
 		hooks:       hooks,
 		readers:     readers,
-		buildFilter: filterExpr(conf.GetString("build_filter")),
-
-		pages:         make(map[string]map[string]*Page),
-		hiddenPages:   make(map[string]map[string]*Page),
-		sectionPages:  make(map[string]map[string]*Page),
-		sections:      make(map[string]map[string]*Section),
-		taxonomies:    make(map[string]map[string]*Taxonomy),
-		taxonomyTerms: make(map[string]map[string]map[string]*TaxonomyTerm),
+		ctx:         newContext(conf),
 	}
 }
 

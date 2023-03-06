@@ -3,7 +3,6 @@ package page
 type (
 	Hook interface {
 		AfterPageParse(*Page) *Page
-		BeforePageWrite(*Page) *Page
 		BeforePagesWrite(Pages) Pages
 		BeforeSectionsWrite(Sections) Sections
 		BeforeTaxonomiesWrite(Taxonomies) Taxonomies
@@ -12,16 +11,29 @@ type (
 	Hooks []Hook
 )
 
+func setRelation(pages Pages, section bool) {
+	var prev *Page
+
+	for _, page := range pages {
+		if section {
+			page.PrevInSection = prev
+		} else {
+			page.Prev = prev
+		}
+		if prev != nil {
+			if section {
+				prev.NextInSection = page
+			} else {
+				prev.Next = page
+			}
+		}
+		prev = page
+	}
+}
+
 func (hooks Hooks) AfterPageParse(page *Page) *Page {
 	for _, hook := range hooks {
 		page = hook.AfterPageParse(page)
-	}
-	return page
-}
-
-func (hooks Hooks) BeforePageWrite(page *Page) *Page {
-	for _, hook := range hooks {
-		page = hook.BeforePageWrite(page)
 	}
 	return page
 }

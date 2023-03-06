@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/honmaple/snow/utils"
@@ -128,29 +127,6 @@ func (sec *Section) FirstName() string {
 	return sec.Parent.FirstName()
 }
 
-func (secs Sections) Sort() {
-	sort.SliceStable(secs, func(i, j int) bool {
-		ti := secs[i]
-		tj := secs[j]
-		if wi, wj := ti.Meta.GetInt("weight"), tj.Meta.GetInt("weight"); wi == wj {
-			return ti.Title > tj.Title
-		} else {
-			return wi > wj
-		}
-	})
-}
-
-func (b *Builder) findSection(file string, langs ...string) *Section {
-	lang := b.getLang(langs...)
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	m, ok := b.sections[lang]
-	if !ok {
-		return nil
-	}
-	return m[file]
-}
-
 func (b *Builder) findSectionIndex(prefix string, files map[string]bool) string {
 	for ext := range b.readers {
 		file := prefix + ext
@@ -168,9 +144,7 @@ func (b *Builder) insertSection(path string) *Section {
 		namem[name] = true
 	}
 
-	b.mu.Lock()
 	b.ignoreFiles = b.ignoreFiles[:0]
-	b.mu.Unlock()
 
 	b.languageRange(func(lang string, isdefault bool) {
 		prefix := "_index"
@@ -186,7 +160,7 @@ func (b *Builder) insertSection(path string) *Section {
 			File: path,
 			Lang: lang,
 		}
-		section.Parent = b.findSection(filepath.Dir(section.File), lang)
+		section.Parent = b.ctx.findSection(filepath.Dir(section.File), lang)
 		// 根目录
 		if section.isRoot() {
 			section.Meta = make(Meta)
@@ -227,12 +201,8 @@ func (b *Builder) insertSection(path string) *Section {
 		section.Path = b.conf.GetRelURL(utils.StringReplace(section.Meta.GetString("path"), section.vars()), lang)
 		section.Permalink = b.conf.GetURL(section.Path)
 
-		b.mu.Lock()
-		defer b.mu.Unlock()
+		b.ctx.insertSection(section)
 
-		if section.Parent != nil {
-			section.Parent.Children = append(section.Parent.Children, section)
-		}
 		ignoreFiles := filemeta.GetSlice("ignore_files")
 		for _, file := range ignoreFiles {
 			re, err := regexp.Compile(filepath.Join(path, file))
@@ -240,10 +210,6 @@ func (b *Builder) insertSection(path string) *Section {
 				b.ignoreFiles = append(b.ignoreFiles, re)
 			}
 		}
-		if _, ok := b.sections[lang]; !ok {
-			b.sections[lang] = make(map[string]*Section)
-		}
-		b.sections[lang][section.File] = section
 	})
 	return nil
 }

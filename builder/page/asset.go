@@ -6,8 +6,8 @@ import (
 
 func (b *Builder) insertAsset(file string) {
 	dir := filepath.Dir(file)
-	for lang := range b.sections {
-		section := b.findSection(dir, lang)
+	for lang := range b.ctx.sections {
+		section := b.ctx.findSection(dir, lang)
 		if section != nil {
 			section.Assets = append(section.Assets, file)
 		}
