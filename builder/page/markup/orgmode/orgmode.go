@@ -73,7 +73,6 @@ func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.M
 		content.WriteString(line)
 		content.WriteString("\n")
 	}
-	meta.Done()
 	return meta, nil
 }
 

@@ -47,45 +47,6 @@ func (sec *Section) vars() map[string]string {
 	return map[string]string{"{section}": sec.Name(), "{section:slug}": sec.Slug}
 }
 
-func (sec *Section) allPages() Pages {
-	pages := make(Pages, 0)
-
-	pages = append(pages, sec.Pages...)
-	for _, child := range sec.Children {
-		pages = append(pages, child.allPages()...)
-	}
-	return pages
-}
-
-func (sec *Section) allHiddenPages() Pages {
-	pages := make(Pages, 0)
-
-	pages = append(pages, sec.HiddenPages...)
-	for _, child := range sec.Children {
-		pages = append(pages, child.allHiddenPages()...)
-	}
-	return pages
-}
-
-func (sec *Section) allSectionPages() Pages {
-	pages := make(Pages, 0)
-
-	pages = append(pages, sec.SectionPages...)
-	for _, child := range sec.Children {
-		pages = append(pages, child.allSectionPages()...)
-	}
-	return pages
-}
-
-func (sec *Section) allSections() Sections {
-	sections := make(Sections, 0)
-	for _, child := range sec.Children {
-		sections = append(sections, child)
-		sections = append(sections, child.allSections()...)
-	}
-	return sections
-}
-
 func (sec *Section) isRoot() bool {
 	return sec.Parent == nil
 }

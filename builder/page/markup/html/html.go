@@ -84,7 +84,6 @@ func readMeta(r io.Reader) (page.Meta, error) {
 	if err := parseMeta(meta, doc); err != nil {
 		return nil, err
 	}
-	meta.Done()
 	return meta, nil
 }
 

@@ -24,26 +24,6 @@ func (m Meta) clone() Meta {
 	return utils.DeepCopy(m)
 }
 
-func (m Meta) Done() {
-	for k, v := range m {
-		switch value := v.(type) {
-		case []interface{}:
-			newvalue := make([]string, len(value))
-			for i, v := range value {
-				newvalue[i] = v.(string)
-			}
-			m[k] = newvalue
-		case string:
-			switch k {
-			case "date", "modified":
-				if t, err := utils.ParseTime(value); err == nil {
-					m[k] = t
-				}
-			}
-		}
-	}
-}
-
 func (m Meta) Get(k string) interface{} {
 	return m[k]
 }
@@ -215,7 +195,7 @@ func (pages Pages) Filter(filter string) Pages {
 	if filter == "" {
 		return pages
 	}
-	npages := make(Pages, 0)
+	npages := make(Pages, 0, len(pages))
 
 	expr := filterExpr(filter)
 	for _, page := range pages {
@@ -233,12 +213,11 @@ func (pages Pages) OrderBy(key string) Pages {
 			sortf   func(int, int) int
 			reverse bool
 		)
-		newk := k
 		if strings.HasSuffix(strings.ToUpper(k), " DESC") {
-			newk = newk[:len(k)-5]
+			k = k[:len(k)-5]
 			reverse = true
 		}
-		switch newk {
+		switch k {
 		case "title":
 			sortf = func(i, j int) int {
 				return strings.Compare(pages[i].Title, pages[j].Title)
@@ -256,6 +235,7 @@ func (pages Pages) OrderBy(key string) Pages {
 				return strings.Compare(pages[i].Type, pages[j].Type)
 			}
 		default:
+			newk := k
 			sortf = func(i, j int) int {
 				return utils.Compare(pages[i].Meta[newk], pages[j].Meta[newk])
 			}
@@ -300,12 +280,6 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 				return []string{v}
 			case []string:
 				return v
-			case []interface{}:
-				as := make([]string, len(v))
-				for i, vv := range v {
-					as[i] = vv.(string)
-				}
-				return as
 			default:
 				return nil
 			}
@@ -390,9 +364,17 @@ func (b *Builder) insertPage(file string) {
 		case "title":
 			page.Title = v.(string)
 		case "date":
-			page.Date = v.(time.Time)
+			if t, ok := v.(time.Time); ok {
+				page.Date = t
+			} else if t, err := utils.ParseTime(v.(string)); err == nil {
+				page.Date = t
+			}
 		case "modified":
-			page.Modified = v.(time.Time)
+			if t, ok := v.(time.Time); ok {
+				page.Modified = t
+			} else if t, err := utils.ParseTime(v.(string)); err == nil {
+				page.Modified = t
+			}
 		case "url", "save_as":
 			page.Path = v.(string)
 		case "aliases":
@@ -402,9 +384,10 @@ func (b *Builder) insertPage(file string) {
 		case "content":
 			page.Content = v.(string)
 		}
+		meta[k] = v
 	}
 	filename := utils.FileBaseName(file)
-	if filename == "index" && section.Parent != nil {
+	if filename == "index" && !section.isRoot() {
 		filename = filepath.Base(filepath.Dir(file))
 	}
 	if page.Title == "" {
