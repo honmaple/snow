@@ -430,7 +430,7 @@ func (b *Builder) writePage(page *Page) {
 		if tpl, ok := b.theme.LookupTemplate(page.Meta.GetString("template")); ok {
 			b.write(tpl, page.Path, ctx)
 		}
-		if tpl, ok := b.theme.LookupTemplate("aliase.html", "_internal/partials/aliase.html"); ok {
+		if tpl, ok := b.theme.LookupTemplate("alias.html", "_internal/partials/alias.html"); ok {
 			for _, aliase := range page.Aliases {
 				b.write(tpl, aliase, ctx)
 			}

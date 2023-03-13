@@ -654,7 +654,49 @@
      <link rel="stylesheet" href="{{ config.site.url }}/{{ asset_url }}">
      {% endassets %}
      #+end_src
+*** sofile
+    *sofile* 允许使用Go的 =Plugin= 系统支持自定义插件
+    - 创建一个 =sofile.go= 的文件
+      #+begin_src go
+      package main
 
+      import (
+          "fmt"
+
+          "github.com/honmaple/snow/builder/hook"
+          "github.com/honmaple/snow/builder/page"
+          "github.com/honmaple/snow/builder/theme"
+          "github.com/honmaple/snow/config"
+      )
+
+      type testHook struct {
+          hook.BaseHook
+      }
+
+      func (testHook) Name() string {
+          return "test"
+      }
+
+      func (testHook) AfterPageParse(page *page.Page) *page.Page {
+          fmt.Println(page.Title)
+          return page
+      }
+
+      func NewHook(conf config.Config, theme theme.Theme) hook.Hook {
+          return &testHook{}
+      }
+      #+end_src
+    - 编译为so文件
+      #+begin_example
+      go build -buildmode=plugin sofile.go
+      #+end_example
+    - 注册插件
+      #+begin_src yaml
+      hooks:
+        - "sofile"
+      params.sofiles:
+        - "sofile.so"
+      #+end_src
 
 ** 本地测试和正式发布
    snow 提供了 *mode* 配置用于区分本地测试和正式发布

@@ -225,10 +225,6 @@ func (conf *Config) Init() {
 	}
 }
 
-// func (conf *Config) GetOutput() string {
-//	return conf.GetString("output_dir")
-// }
-
 var (
 	sectionConfig = map[string]interface{}{
 		"sections._default.path":          "{section:slug}/index.html",
@@ -241,9 +237,7 @@ var (
 	}
 	taxonomyConfig = map[string]interface{}{
 		"taxonomies._default.path":               "{taxonomy}/index.html",
-		"taxonomies._default.template":           "taxonomy.html",
 		"taxonomies._default.term_path":          "{taxonomy}/{term:slug}/index.html",
-		"taxonomies._default.term_template":      "taxonomy.terms.html",
 		"taxonomies._default.term_paginate_path": "{name}{number}{extension}",
 		"taxonomies._default.term_orderby":       "date desc",
 

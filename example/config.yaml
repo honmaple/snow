@@ -1,72 +1,66 @@
 site:
   url: "http://127.0.0.1:8000"
-  title: "snow's blog"
+  title: "snow"
   language: "zh"
-  logo: "https://s.libforest.com/images/header/header-logo.png"
-  logo_name: "楓"
 
 mode.publish:
   site:
-    url: "https://example.com"
+    url: "https://honmaple.me"
+  languages.en:
+    site.url: "http://honmaple.me/en"
+
+# languages.en:
+#   site:
+#     url: "http://127.0.0.1:8000/en"
+#   output_dir: "output/en"
 
 sections:
   _default:
-    orderby: "date desc"
     path: ""
     templates: "posts.html"
     page_template: "page.html"
-    comment: true
   posts:
+    path: "posts/index.html"
     paginate_filter: ""
     page_path: "articles/{date:%Y}/{date:%m}/{slug}.html"
-    page_template: "post.html"
-  posts/org:
-    transparent: true
-  posts/markdown:
-    transparent: true
+    # page_template: "post.html"
   pages:
     path: ""
+    page_path: "pages/{slug}.html"
     hidden: true
+  drafts:
+    draft: true
 
 taxonomies:
-  _default:
-    feed_path: "{taxonomy}/{term:slug}/index.xml"
-    feed_template: ""
-  categories:
-    lang: "zh"
-    path: "categories/index.html"
-    template: "categories/list.html"
-    term_path: "categories/{term:slug}/index.html"
-    term_template: "categories/single.html"
   tags:
-    weight: -1
+    template: "tags/list.html"
+    term_template: "tags/single.html"
   authors:
-  date:2006/01:
-    path: "archives/index.html"
-    template: "archives.html"
-    term_path: "archives/{term:slug}/index.html"
-    term_template: "period_archives.html"
-    feed_path: ""
+    template: "tags/list.html"
+    term_template: "tags/single.html"
 
 output_dir: "output"
 content_dir: "content"
 
-# page_dirs:
-#   - "markdown"
-# page_paginate: 3
+build_filter: "not draft"
+build_ignore_files: "not draft"
 
 # static_exts:
 #   - ".js"
 #   - ".css"
-# static_dirs:
-# - "static/robots.txt"
-# - "static/favicon.ico"
-# - "static/CNAME"
-# - "static/css/"
+static_dirs:
+  - "static/favicon.ico"
+  - "static/CNAME"
+  - "static/README.md"
 static_paths:
-  # static: "/"
+  "static": "/"
   # "static/css/main.css": "static/css/"
   "@theme/static": "static/"
+
+theme:
+  name: "archie-snow"
+  # name: "snow"
+  # override: "layouts"
 
 hooks:
   - "pelican"
@@ -74,62 +68,20 @@ hooks:
   - "assets"
   - "encrypt"
   - "shortcode"
+  - "sofile"
 
-theme:
-  # name: "archie-snow"
-  name: "snow"
-  # override: "layouts"
+params.sofiles:
+  - "sofile.so"
 
-params:
-  extra:
-    links:
-      - name: "友链"
-        url: "/pages/friends.html"
-      - name: "联系"
-        url: "/pages/contact.html"
-      - name: "项目"
-        url: "/pages/project.html"
-      - name: "时间轴"
-        url: "/pages/timeline.html"
-    social:
-      - name: "Github"
-        icon: "github"
-        url: "https://github.com/honmaple/archie-snow"
-      - name: "Twitter"
-        icon: "twitter"
-        url: "https://github.com/honmaple/archie-snow"
-      - name: "Gitlab"
-        icon: "gitlab"
-        url: "https://github.com/honmaple/archie-snow"
-    menus:
-      - name: "文章归档"
-        url: "/archives/index.html"
-        submenu:
-          - name: "标签"
-            url: "/tags/index.html"
-          - name: "分类"
-            url: "/categories/index.html"
-          - name: "作者"
-            url: "/authors/index.html"
-      - name: "关于"
-        url: "/about"
-    mode: "toggle"
-    copyright: "honmaple"
-  assets:
-    css:
-      files:
-        - "@theme/static/scss/common.scss"
-        - "@theme/static/scss/reset.scss"
-        - "@theme/static/scss/main.scss"
-        - "@theme/static/scss/cover.scss"
-        - "@theme/static/scss/timeline.scss"
-        - "@theme/static/scss/honor.scss"
-        - "@theme/static/scss/entry.scss"
-        - "@theme/static/scss/entry-tree.scss"
-        - "@theme/static/css/pygment.css"
-      filters:
-        - libscss:
-            path: ["themes/snow/static/scss/"]
-        - cssmin:
-      output: "static/lib/css/style.min.css"
-      retain: true
+params.extra:
+  menus:
+    - name: "Home"
+      url: "/"
+    - name: "All Posts"
+      url: "/posts"
+    - name: "About"
+      url: "/pages/about.html"
+    - name: "Tags"
+      url: "/tags"
+  mode: "toggle"
+  copyright: "honmaple"

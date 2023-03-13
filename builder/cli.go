@@ -21,6 +21,7 @@ import (
 	_ "github.com/honmaple/snow/builder/hook/i18n"
 	_ "github.com/honmaple/snow/builder/hook/pelican"
 	_ "github.com/honmaple/snow/builder/hook/shortcode"
+	_ "github.com/honmaple/snow/builder/hook/sofile"
 )
 
 const (
