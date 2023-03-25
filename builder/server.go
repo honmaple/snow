@@ -18,7 +18,7 @@ import (
 
 type (
 	memoryFile struct {
-		reader  io.Reader
+		reader  io.ReadSeeker
 		modTime time.Time
 	}
 	memoryServer struct {
@@ -59,7 +59,12 @@ func (m *memoryServer) Write(file string, r io.Reader) error {
 	if !strings.HasPrefix(file, "/") {
 		file = "/" + file
 	}
-	m.cache.Store(file, &memoryFile{r, time.Now()})
+	// TODO: large file handle
+	buf, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	m.cache.Store(file, &memoryFile{bytes.NewReader(buf), time.Now()})
 	return nil
 }
 
@@ -78,16 +83,7 @@ func (m *memoryServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	file := v.(*memoryFile)
 
-	// TODO: large file handle
-	buf, err := ioutil.ReadAll(file.reader)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	copyBuf := bytes.NewReader(buf)
-	defer m.cache.Store(path, &memoryFile{copyBuf, file.modTime})
-
-	http.ServeContent(w, r, filepath.Base(path), file.modTime, copyBuf)
+	http.ServeContent(w, r, filepath.Base(path), file.modTime, file.reader)
 }
 
 func (m *memoryServer) Build(ctx context.Context) error {
