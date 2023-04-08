@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/honmaple/snow/utils"
@@ -11,22 +12,9 @@ import (
 
 type (
 	Section struct {
-		// slug:
-		// weight:
-		// aliases:
-		// transparent:
-		// filter:
-		// orderby:
-		// paginate:
-		// paginate_path: {name}{number}{extension}
-		// path:
-		// template:
-		// page_path:
-		// page_template:
-		// feed_path:
-		// feed_template:
-		File         string
 		Meta         Meta
+		Lang         string
+		File         string
 		Path         string
 		Permalink    string
 		Slug         string
@@ -38,13 +26,12 @@ type (
 		Assets       []string
 		Parent       *Section
 		Children     Sections
-		Lang         string
 	}
 	Sections []*Section
 )
 
 func (sec *Section) vars() map[string]string {
-	return map[string]string{"{section}": sec.Name(), "{section:slug}": sec.Slug}
+	return map[string]string{"{section}": sec.RealName(), "{section:slug}": sec.Slug}
 }
 
 func (sec *Section) isRoot() bool {
@@ -55,8 +42,8 @@ func (sec *Section) isEmpty() bool {
 	return len(sec.Children) == 0 && len(sec.Pages) == 0 && len(sec.HiddenPages) == 0 && len(sec.SectionPages) == 0
 }
 
-func (sec *Section) isPaginate() bool {
-	return sec.Meta.GetInt("paginate") > 0
+func (sec *Section) canWrite() bool {
+	return sec.Meta.GetString("path") != ""
 }
 
 func (sec *Section) Paginator() []*paginator {
@@ -74,18 +61,43 @@ func (sec *Section) Root() *Section {
 	return sec.Parent.Root()
 }
 
-func (sec *Section) Name() string {
+func (sec *Section) RealName() string {
 	if sec.Parent == nil || sec.Parent.Parent == nil {
 		return sec.Title
 	}
-	return fmt.Sprintf("%s/%s", sec.Parent.Name(), sec.Title)
+	return fmt.Sprintf("%s/%s", sec.Parent.RealName(), sec.Title)
 }
 
 func (sec *Section) FirstName() string {
-	if sec.Parent == nil || sec.Parent.Title == "" {
+	if sec.Parent == nil || sec.Parent.Parent == nil {
 		return sec.Title
 	}
 	return sec.Parent.FirstName()
+}
+
+func (secs Sections) setSort(key string) {
+	sort.SliceStable(secs, utils.Sort(key, func(k string, i int, j int) int {
+		switch k {
+		case "-":
+			return 0 - strings.Compare(secs[i].Title, secs[j].Title)
+		case "title":
+			return strings.Compare(secs[i].Title, secs[j].Title)
+		case "count":
+			return utils.Compare(len(secs[i].Pages), len(secs[j].Pages))
+		case "weight":
+			return utils.Compare(secs[i].Meta.GetInt("weight"), secs[j].Meta.GetInt("weight"))
+		default:
+			return 0
+		}
+	}))
+}
+
+func (secs Sections) OrderBy(key string) Sections {
+	newSecs := make(Sections, len(secs))
+	copy(newSecs, secs)
+
+	newSecs.setSort(key)
+	return newSecs
 }
 
 func (b *Builder) findSectionIndex(prefix string, files map[string]bool) string {
@@ -107,7 +119,7 @@ func (b *Builder) insertSection(path string) *Section {
 
 	b.ignoreFiles = b.ignoreFiles[:0]
 
-	b.languageRange(func(lang string, isdefault bool) {
+	b.langRange(func(lang string, isdefault bool) {
 		prefix := "_index"
 		if !isdefault {
 			prefix = prefix + "." + lang
@@ -118,10 +130,10 @@ func (b *Builder) insertSection(path string) *Section {
 		}
 
 		section := &Section{
-			File: path,
-			Lang: lang,
+			Lang:   lang,
+			File:   path,
+			Parent: b.ctx.findSection(filepath.Dir(path), lang),
 		}
-		section.Parent = b.ctx.findSection(filepath.Dir(section.File), lang)
 		// 根目录
 		if section.isRoot() {
 			section.Meta = make(Meta)
@@ -132,7 +144,7 @@ func (b *Builder) insertSection(path string) *Section {
 		}
 		section.Meta.load(filemeta)
 
-		name := section.Name()
+		name := section.RealName()
 		if !section.isRoot() {
 			section.Meta.load(b.conf.GetStringMap("sections." + name))
 			if !isdefault {
@@ -162,7 +174,16 @@ func (b *Builder) insertSection(path string) *Section {
 		section.Path = b.conf.GetRelURL(utils.StringReplace(section.Meta.GetString("path"), section.vars()), lang)
 		section.Permalink = b.conf.GetURL(section.Path)
 
-		b.ctx.insertSection(section)
+		b.ctx.withLock(func() {
+			if section.Parent != nil {
+				section.Parent.Children = append(section.Parent.Children, section)
+			}
+			if _, ok := b.ctx.sections[lang]; !ok {
+				b.ctx.sections[lang] = make(map[string]*Section)
+			}
+			b.ctx.sections[lang][section.File] = section
+			b.ctx.list[lang].sections = append(b.ctx.list[lang].sections, section)
+		})
 
 		ignoreFiles := filemeta.GetSlice("ignore_files")
 		for _, file := range ignoreFiles {
@@ -179,13 +200,13 @@ func (b *Builder) writeSection(section *Section) {
 	var (
 		vars = section.vars()
 	)
-	if section.Meta.GetString("path") != "" {
+	if section.canWrite() {
 		lookups := []string{
 			utils.StringReplace(section.Meta.GetString("template"), vars),
 			"section.html",
 			"_default/section.html",
 		}
-		if tpl, ok := b.theme.LookupTemplate(lookups...); ok {
+		if tpl := b.theme.LookupTemplate(lookups...); tpl != nil {
 			for _, por := range section.Paginator() {
 				b.write(tpl, por.URL, map[string]interface{}{
 					"section":       section,

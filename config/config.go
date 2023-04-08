@@ -228,15 +228,17 @@ func (conf *Config) Init() {
 var (
 	sectionConfig = map[string]interface{}{
 		"sections._default.path":          "{section:slug}/index.html",
-		"sections._default.orderby":       "date desc",
+		"sections._default.orderby":       "weight",
+		"sections._default.template":      "section.html",
 		"sections._default.paginate":      10,
 		"sections._default.paginate_path": "{name}{number}{extension}",
-		"sections._default.template":      "section.html",
 		"sections._default.page_path":     "{section:slug}/{slug}/index.html",
+		"sections._default.page_orderby":  "date desc",
 		"sections._default.page_template": "page.html",
 	}
 	taxonomyConfig = map[string]interface{}{
 		"taxonomies._default.path":               "{taxonomy}/index.html",
+		"taxonomies._default.orderby":            "name",
 		"taxonomies._default.term_path":          "{taxonomy}/{term:slug}/index.html",
 		"taxonomies._default.term_paginate_path": "{name}{number}{extension}",
 		"taxonomies._default.term_orderby":       "date desc",

@@ -16,7 +16,7 @@ type (
 	Theme interface {
 		Name() string
 		Open(string) (fs.File, error)
-		LookupTemplate(...string) (template.Writer, bool)
+		LookupTemplate(...string) template.Writer
 	}
 	theme struct {
 		name     string
@@ -42,14 +42,14 @@ func (t *theme) Open(file string) (fs.File, error) {
 	return t.root.Open(file)
 }
 
-func (t *theme) LookupTemplate(names ...string) (template.Writer, bool) {
+func (t *theme) LookupTemplate(names ...string) template.Writer {
 	for _, name := range names {
 		if name == "" {
 			continue
 		}
 		v, ok := t.cache.Load(name)
 		if ok {
-			return v.(template.Writer), true
+			return v.(template.Writer)
 		}
 		// 模版未找到不输出日志, 编译模版有问题才输出
 		w, err := t.template.Lookup(name)
@@ -57,9 +57,9 @@ func (t *theme) LookupTemplate(names ...string) (template.Writer, bool) {
 			continue
 		}
 		t.cache.Store(name, w)
-		return w, true
+		return w
 	}
-	return nil, false
+	return nil
 }
 
 func New(conf config.Config) (Theme, error) {

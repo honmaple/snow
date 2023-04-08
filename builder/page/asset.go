@@ -13,3 +13,6 @@ func (b *Builder) insertAsset(file string) {
 		}
 	}
 }
+
+func (b *Builder) writeAsset(file string) {
+}

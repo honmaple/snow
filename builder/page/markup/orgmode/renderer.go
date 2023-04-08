@@ -17,10 +17,10 @@ func (m *orgmode) highlightCodeBlock(source, lang string) string {
 	var w strings.Builder
 	var lexer chroma.Lexer
 
-	if lang != "" {
-		lexer = lexers.Get(lang)
-	} else {
+	if lang == "" || lang == "example" {
 		lexer = lexers.Analyse(source)
+	} else {
+		lexer = lexers.Get(lang)
 	}
 	if lexer == nil {
 		lexer = lexers.Fallback

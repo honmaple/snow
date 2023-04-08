@@ -1,7 +1,6 @@
 package page
 
 import (
-	"sort"
 	"strings"
 	"sync"
 
@@ -38,7 +37,7 @@ func (b *Builder) getSection(lang string) func(string, ...string) *Section {
 		if len(langs) == 0 {
 			langs = []string{lang}
 		}
-		return b.ctx.findSection(name, b.getLang(langs...))
+		return b.ctx.findSection(name, langs[0])
 	}
 }
 
@@ -47,7 +46,7 @@ func (b *Builder) getSectionURL(lang string) func(string, ...string) string {
 		if len(langs) == 0 {
 			langs = []string{lang}
 		}
-		section := b.ctx.findSection(name, b.getLang(langs...))
+		section := b.ctx.findSection(name, langs[0])
 		if section == nil {
 			return ""
 		}
@@ -60,7 +59,7 @@ func (b *Builder) getTaxonomy(lang string) func(string, ...string) *Taxonomy {
 		if len(langs) == 0 {
 			langs = []string{lang}
 		}
-		return b.ctx.findTaxonomy(kind, b.getLang(langs...))
+		return b.ctx.findTaxonomy(kind, langs[0])
 	}
 }
 
@@ -100,7 +99,7 @@ func (b *Builder) getTaxonomyTerm(lang string) func(string, string, ...string) *
 		if len(langs) == 0 {
 			langs = []string{lang}
 		}
-		return b.ctx.findTaxonomyTerm(kind, name, b.getLang(langs...))
+		return b.ctx.findTaxonomyTerm(kind, name, langs[0])
 	}
 }
 
@@ -109,7 +108,7 @@ func (b *Builder) getTaxonomyTermURL(lang string) func(string, string, ...string
 		if len(langs) == 0 {
 			langs = []string{lang}
 		}
-		term := b.ctx.findTaxonomyTerm(kind, name, b.getLang(langs...))
+		term := b.ctx.findTaxonomyTerm(kind, name, langs[0])
 		if term == nil {
 			return ""
 		}
@@ -182,7 +181,7 @@ func (b *Builder) writeFormats(meta Meta, pathvars map[string]string, vars map[s
 		if path == "" || template == "" {
 			continue
 		}
-		if tpl, ok := b.theme.LookupTemplate(template); ok {
+		if tpl := b.theme.LookupTemplate(template); tpl != nil {
 			b.write(tpl, b.conf.GetRelURL(path, lang), vars)
 		}
 	}
@@ -207,32 +206,8 @@ func (b *Builder) Write() error {
 	})
 	defer tasks.Release()
 
+	b.ctx.ensure()
 	for lang := range b.ctx.sections {
-		for _, section := range b.ctx.Sections(lang) {
-			section.Pages = section.Pages.OrderBy(section.Meta.GetString("orderby"))
-
-			setRelation(section.Pages, true)
-			setRelation(section.HiddenPages, true)
-			setRelation(section.SectionPages, true)
-			sort.SliceStable(section.Children, func(i, j int) bool {
-				ti := section.Children[i]
-				tj := section.Children[j]
-				if wi, wj := ti.Meta.GetInt("weight"), tj.Meta.GetInt("weight"); wi == wj {
-					return ti.Title > tj.Title
-				} else {
-					return wi > wj
-				}
-			})
-		}
-		b.ctx.Pages(lang).OrderBy("date desc")
-
-		setRelation(b.ctx.Pages(lang), false)
-		setRelation(b.ctx.HiddenPages(lang), false)
-		setRelation(b.ctx.SectionPages(lang), false)
-
-
-		b.insertTaxonomies(b.ctx.Pages(lang), lang)
-
 		for _, page := range b.hooks.BeforePagesWrite(b.ctx.Pages(lang)) {
 			tasks.Invoke(page)
 		}

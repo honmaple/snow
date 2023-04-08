@@ -26,9 +26,9 @@ func (self *shortcode) Name() string {
 }
 
 func (self *shortcode) template(path string) (func(map[string]interface{}) string, error) {
-	tpl, ok := self.theme.LookupTemplate(path)
-	if !ok {
-		return nil, errors.New("not found1")
+	tpl := self.theme.LookupTemplate(path)
+	if tpl == nil {
+		return nil, errors.New("not found")
 	}
 	return func(vars map[string]interface{}) string {
 		out, err := tpl.Execute(vars)

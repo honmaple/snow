@@ -11,6 +11,25 @@ func Bool(value interface{}) bool {
 
 }
 
+func Sort(key string, f func(string, int, int) int) func(int, int) bool {
+	ks := strings.Split(key, ",")
+	return func(i, j int) bool {
+		for _, k := range ks {
+			if strings.HasSuffix(strings.ToUpper(key), " DESC") {
+				k = k[:len(k)-5]
+				if result := f(k, i, j); result != 0 {
+					return result > 0
+				}
+				continue
+			}
+			if result := f(k, i, j); result != 0 {
+				return result < 0
+			}
+		}
+		return f("-", i, j) <= 0
+	}
+}
+
 func Compare(value interface{}, other interface{}) int {
 	if value == other {
 		return 0
@@ -53,9 +72,9 @@ func Compare(value interface{}, other interface{}) int {
 		return -1
 	case time.Time:
 		if v.Before(other.(time.Time)) {
-			return 1
+			return -1
 		}
-		return -1
+		return 1
 	}
 	return 0
 }

@@ -157,6 +157,10 @@ func filterExpr(filter string) func(*Page) bool {
 	}
 }
 
+func (page *Page) isNormal() bool {
+	return !page.isHidden() && !page.isSection()
+}
+
 func (page *Page) isHidden() bool {
 	return page.Meta.GetBool("hidden")
 }
@@ -175,6 +179,46 @@ func (page *Page) HasPrev() bool {
 
 func (page *Page) HasNext() bool {
 	return page.Next != nil
+}
+
+func (pages Pages) setRelation(section bool) {
+	var prev *Page
+
+	for _, page := range pages {
+		if section {
+			page.PrevInSection = prev
+		} else {
+			page.Prev = prev
+		}
+		if prev != nil {
+			if section {
+				prev.NextInSection = page
+			} else {
+				prev.Next = page
+			}
+		}
+		prev = page
+	}
+}
+
+func (pages Pages) setSort(key string) {
+	sort.SliceStable(pages, utils.Sort(key, func(k string, i int, j int) int {
+		switch k {
+		case "-":
+			// "-"表示默认排序, 避免时间相同时排序混乱
+			return 0 - strings.Compare(pages[i].Title, pages[j].Title)
+		case "title":
+			return strings.Compare(pages[i].Title, pages[j].Title)
+		case "date":
+			return utils.Compare(pages[i].Date, pages[j].Date)
+		case "modified":
+			return utils.Compare(pages[i].Modified, pages[j].Modified)
+		case "type":
+			return strings.Compare(pages[i].Type, pages[j].Type)
+		default:
+			return utils.Compare(pages[i].Meta[k], pages[j].Meta[k])
+		}
+	}))
 }
 
 func (pages Pages) First() *Page {
@@ -207,58 +251,11 @@ func (pages Pages) Filter(filter string) Pages {
 }
 
 func (pages Pages) OrderBy(key string) Pages {
-	sortfs := make([]func(int, int) int, 0)
-	for _, k := range strings.Split(key, ",") {
-		var (
-			sortf   func(int, int) int
-			reverse bool
-		)
-		if strings.HasSuffix(strings.ToUpper(k), " DESC") {
-			k = k[:len(k)-5]
-			reverse = true
-		}
-		switch k {
-		case "title":
-			sortf = func(i, j int) int {
-				return strings.Compare(pages[i].Title, pages[j].Title)
-			}
-		case "date":
-			sortf = func(i, j int) int {
-				return utils.Compare(pages[i].Date, pages[j].Date)
-			}
-		case "modified":
-			sortf = func(i, j int) int {
-				return utils.Compare(pages[i].Modified, pages[j].Modified)
-			}
-		case "type":
-			sortf = func(i, j int) int {
-				return strings.Compare(pages[i].Type, pages[j].Type)
-			}
-		default:
-			newk := k
-			sortf = func(i, j int) int {
-				return utils.Compare(pages[i].Meta[newk], pages[j].Meta[newk])
-			}
-		}
-		if reverse {
-			sortfs = append(sortfs, func(i, j int) int {
-				return 0 - sortf(i, j)
-			})
-		} else {
-			sortfs = append(sortfs, sortf)
-		}
-	}
-	sort.SliceStable(pages, func(i, j int) bool {
-		for _, f := range sortfs {
-			result := f(i, j)
-			if result != 0 {
-				return result > 0
-			}
-		}
-		// 增加一个默认排序, 避免时间相同时排序混乱
-		return strings.Compare(pages[i].Title, pages[j].Title) >= 0
-	})
-	return pages
+	newPs := make(Pages, len(pages))
+	copy(newPs, pages)
+
+	newPs.setSort(key)
+	return newPs
 }
 
 func (pages Pages) GroupBy(key string) TaxonomyTerms {
@@ -327,7 +324,7 @@ func (b *Builder) insertPage(file string) {
 	if err != nil {
 		return
 	}
-	lang := b.findLanguage(file, filemeta)
+	lang := b.findLang(file, filemeta)
 	section := b.ctx.findSection(filepath.Dir(file), lang)
 
 	meta := section.Meta.clone()
@@ -403,7 +400,7 @@ func (b *Builder) insertPage(file string) {
 			"{date:%d}":      page.Date.Format("02"),
 			"{date:%H}":      page.Date.Format("15"),
 			"{filename}":     filename,
-			"{section}":      section.Name(),
+			"{section}":      section.RealName(),
 			"{section:slug}": section.Slug,
 		}
 		if slug, ok := meta["slug"]; ok && slug != "" {
@@ -416,7 +413,31 @@ func (b *Builder) insertPage(file string) {
 	page.Path = b.conf.GetRelURL(page.Path, page.Lang)
 	page.Permalink = b.conf.GetURL(page.Path)
 
-	b.ctx.insertPage(b.hooks.AfterPageParse(page))
+	page = b.hooks.AfterPageParse(page)
+
+	if b.ctx.filter != nil && !b.ctx.filter(page) {
+		return
+	}
+
+	b.ctx.withLock(func() {
+		if page.isHidden() {
+			section.HiddenPages = append(section.HiddenPages, page)
+			b.ctx.list[lang].hiddenPages = append(b.ctx.list[lang].hiddenPages, page)
+		} else if page.isSection() {
+			section.SectionPages = append(section.SectionPages, page)
+			b.ctx.list[lang].sectionPages = append(b.ctx.list[lang].sectionPages, page)
+		} else {
+			section.Pages = append(section.Pages, page)
+			b.ctx.list[lang].pages = append(b.ctx.list[lang].pages, page)
+		}
+		if _, ok := b.ctx.pages[lang]; !ok {
+			b.ctx.pages[lang] = make(map[string]*Page)
+		}
+		b.ctx.pages[lang][page.File] = page
+	})
+	if page.isNormal() {
+		b.insertTaxonomies(page)
+	}
 }
 
 func (b *Builder) writePage(page *Page) {
@@ -427,10 +448,10 @@ func (b *Builder) writePage(page *Page) {
 			"current_path": page.Path,
 			"current_lang": page.Lang,
 		}
-		if tpl, ok := b.theme.LookupTemplate(page.Meta.GetString("template")); ok {
+		if tpl := b.theme.LookupTemplate(page.Meta.GetString("template")); tpl != nil {
 			b.write(tpl, page.Path, ctx)
 		}
-		if tpl, ok := b.theme.LookupTemplate("alias.html", "_internal/partials/alias.html"); ok {
+		if tpl := b.theme.LookupTemplate("alias.html", "_internal/partials/alias.html"); tpl != nil {
 			for _, aliase := range page.Aliases {
 				b.write(tpl, aliase, ctx)
 			}
@@ -445,14 +466,18 @@ func (b *Builder) writePage(page *Page) {
 	}
 
 	section := &Section{
+		Lang:    page.Lang,
 		File:    page.File,
 		Meta:    page.Meta,
 		Title:   page.Title,
 		Content: page.Content,
-		Lang:    page.Lang,
 		Parent:  page.Section,
 	}
-	section.Slug = b.conf.GetSlug(section.Title)
+	slug := section.Meta.GetString("slug")
+	if slug == "" {
+		slug = b.conf.GetSlug(section.Title)
+	}
+	section.Slug = slug
 	section.Path = b.conf.GetRelURL(path, page.Lang)
 	section.Permalink = b.conf.GetURL(section.Path)
 	section.Pages = b.ctx.Pages(page.Lang).Filter(page.Meta.GetString("filter")).OrderBy(page.Meta.GetString("orderby"))

@@ -18,10 +18,10 @@ import (
 
 type (
 	Builder struct {
-		conf        config.Config
-		theme       theme.Theme
-		hooks       Hooks
-		readers     map[string]Reader
+		conf    config.Config
+		theme   theme.Theme
+		hooks   Hooks
+		readers map[string]Reader
 
 		ctx         *Context
 		ignoreFiles []*regexp.Regexp
@@ -31,21 +31,14 @@ type (
 	}
 )
 
-func (b *Builder) getLang(langs ...string) string {
-	if len(langs) == 0 {
-		return b.conf.Site.Language
-	}
-	return langs[0]
-}
-
-func (b *Builder) languageRange(f func(lang string, isdefault bool)) {
+func (b *Builder) langRange(f func(lang string, isdefault bool)) {
 	for lang := range b.conf.Languages {
 		f(lang, false)
 	}
 	f(b.conf.Site.Language, true)
 }
 
-func (b *Builder) findLanguage(path string, filemeta Meta) string {
+func (b *Builder) findLang(path string, filemeta Meta) string {
 	if filemeta != nil {
 		if v := filemeta.GetString("lang"); v != "" && b.conf.Languages[v] {
 			return v
@@ -113,31 +106,31 @@ func (b *Builder) Build(ctx context.Context) error {
 		ps := make([]string, 0)
 		ls := make([]string, 0)
 		ts := make([]string, 0)
-		b.languageRange(func(lang string, isdefault bool) {
+		b.langRange(func(lang string, isdefault bool) {
 			showLang := " " + lang
 			if isdefault {
 				showLang = ""
 			}
-			if count := len(b.ctx.pages[lang]); count > 0 {
+			if count := len(b.ctx.Pages(lang)); count > 0 {
 				ps = append(ps, fmt.Sprintf("%d%s normal pages", count, showLang))
 			}
-			if count := len(b.ctx.hiddenPages[lang]); count > 0 {
+			if count := len(b.ctx.HiddenPages(lang)); count > 0 {
 				ps = append(ps, fmt.Sprintf("%d%s hidden pages", count, showLang))
 			}
-			if count := len(b.ctx.sectionPages[lang]); count > 0 {
+			if count := len(b.ctx.SectionPages(lang)); count > 0 {
 				ps = append(ps, fmt.Sprintf("%d%s section pages", count, showLang))
 			}
 
-			for _, section := range b.ctx.sections[lang] {
+			for _, section := range b.ctx.Sections(lang) {
 				if section.isRoot() {
 					continue
 				}
 				if count := len(section.Pages) + len(section.HiddenPages) + len(section.SectionPages); count > 0 {
-					ls = append(ls, fmt.Sprintf("%d%s %s", count, showLang, section.Name()))
+					ls = append(ls, fmt.Sprintf("%d%s %s", count, showLang, section.RealName()))
 				}
 			}
 
-			for _, taxonomy := range b.ctx.taxonomies[lang] {
+			for _, taxonomy := range b.ctx.Taxonomies(lang) {
 				if count := len(taxonomy.Terms); count > 0 {
 					ts = append(ts, fmt.Sprintf("%d%s %s", count, showLang, taxonomy.Name))
 				}
@@ -208,11 +201,11 @@ func NewBuilder(conf config.Config, theme theme.Theme, hooks Hooks) *Builder {
 		readers[ext] = c(conf)
 	}
 	return &Builder{
-		conf:        conf,
-		theme:       theme,
-		hooks:       hooks,
-		readers:     readers,
-		ctx:         newContext(conf),
+		conf:    conf,
+		theme:   theme,
+		hooks:   hooks,
+		readers: readers,
+		ctx:     newContext(conf),
 	}
 }
 

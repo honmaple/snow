@@ -8,21 +8,18 @@ import (
 
 type (
 	listContext struct {
-		pages        map[string]Pages
-		hiddenPages  map[string]Pages
-		sectionPages map[string]Pages
-		sections     map[string]Sections
-		taxonomies   map[string]Taxonomies
+		pages        Pages
+		hiddenPages  Pages
+		sectionPages Pages
+		sections     Sections
+		taxonomies   Taxonomies
 	}
 	Context struct {
-		mu        sync.RWMutex
-		list      *listContext
-		filter    func(*Page) bool
-		languages []string
+		mu     sync.RWMutex
+		filter func(*Page) bool
 
+		list          map[string]*listContext
 		pages         map[string]map[string]*Page
-		hiddenPages   map[string]map[string]*Page
-		sectionPages  map[string]map[string]*Page
 		sections      map[string]map[string]*Section
 		taxonomies    map[string]map[string]*Taxonomy
 		taxonomyTerms map[string]map[string]map[string]*TaxonomyTerm
@@ -32,31 +29,58 @@ type (
 func (ctx *Context) Pages(lang string) Pages {
 	ctx.mu.RLock()
 	defer ctx.mu.RUnlock()
-	return ctx.list.pages[lang]
+	m, ok := ctx.list[lang]
+	if !ok {
+		return nil
+	}
+	return m.pages
 }
 
 func (ctx *Context) HiddenPages(lang string) Pages {
 	ctx.mu.RLock()
 	defer ctx.mu.RUnlock()
-	return ctx.list.hiddenPages[lang]
+	m, ok := ctx.list[lang]
+	if !ok {
+		return nil
+	}
+	return m.hiddenPages
 }
 
 func (ctx *Context) SectionPages(lang string) Pages {
 	ctx.mu.RLock()
 	defer ctx.mu.RUnlock()
-	return ctx.list.sectionPages[lang]
+	m, ok := ctx.list[lang]
+	if !ok {
+		return nil
+	}
+	return m.sectionPages
 }
 
 func (ctx *Context) Sections(lang string) Sections {
 	ctx.mu.RLock()
 	defer ctx.mu.RUnlock()
-	return ctx.list.sections[lang]
+	m, ok := ctx.list[lang]
+	if !ok {
+		return nil
+	}
+	return m.sections
 }
 
 func (ctx *Context) Taxonomies(lang string) Taxonomies {
 	ctx.mu.RLock()
 	defer ctx.mu.RUnlock()
-	return ctx.list.taxonomies[lang]
+	m, ok := ctx.list[lang]
+	if !ok {
+		return nil
+	}
+	return m.taxonomies
+}
+
+func (ctx *Context) withLock(f func()) {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+
+	f()
 }
 
 func (ctx *Context) findPage(file string, lang string) *Page {
@@ -103,95 +127,58 @@ func (ctx *Context) findTaxonomyTerm(kind, name string, lang string) *TaxonomyTe
 	return m[name]
 }
 
-func (ctx *Context) insertPage(page *Page) {
-	if ctx.filter != nil && !ctx.filter(page) {
-		return
-	}
-
+func (ctx *Context) ensure() {
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
 
-	lang := page.Lang
-	if page.isHidden() {
-		if _, ok := ctx.hiddenPages[lang]; !ok {
-			ctx.hiddenPages[lang] = make(map[string]*Page)
+	for lang, sections := range ctx.sections {
+		for _, section := range sections {
+			key := section.Meta.GetString("page_orderby")
+
+			section.Pages.setSort(key)
+			section.HiddenPages.setSort(key)
+			section.SectionPages.setSort(key)
+
+			section.Pages.setRelation(true)
+			section.HiddenPages.setRelation(true)
+			section.SectionPages.setRelation(true)
+
+			section.Children.setSort(section.Meta.GetString("orderby"))
 		}
-		ctx.hiddenPages[lang][page.File] = page
-		ctx.list.hiddenPages[lang] = append(ctx.list.hiddenPages[lang], page)
-		page.Section.HiddenPages = append(page.Section.HiddenPages, page)
-	} else if page.isSection() {
-		if _, ok := ctx.sectionPages[lang]; !ok {
-			ctx.sectionPages[lang] = make(map[string]*Page)
+		for _, taxonomy := range ctx.taxonomies[lang] {
+			taxonomy.Terms.setSort(taxonomy.Meta.GetString("orderby"))
 		}
-		ctx.sectionPages[lang][page.File] = page
-		ctx.list.sectionPages[lang] = append(ctx.list.sectionPages[lang], page)
-		page.Section.SectionPages = append(page.Section.SectionPages, page)
-	} else {
-		if _, ok := ctx.pages[lang]; !ok {
-			ctx.pages[lang] = make(map[string]*Page)
+
+		for _, terms := range ctx.taxonomyTerms[lang] {
+			for _, term := range terms {
+				term.List.setSort(term.Meta.GetString("term_orderby"))
+			}
 		}
-		ctx.pages[lang][page.File] = page
-		ctx.list.pages[lang] = append(ctx.list.pages[lang], page)
-		page.Section.Pages = append(page.Section.Pages, page)
-	}
-}
+		list := ctx.list[lang]
+		list.pages.setSort("date desc")
+		list.hiddenPages.setSort("date desc")
+		list.sectionPages.setSort("date desc")
 
-func (ctx *Context) insertSection(section *Section) {
-	ctx.mu.Lock()
-	defer ctx.mu.Unlock()
+		list.pages.setRelation(false)
+		list.hiddenPages.setRelation(false)
+		list.sectionPages.setRelation(false)
 
-	if section.Parent != nil {
-		section.Parent.Children = append(section.Parent.Children, section)
+		list.taxonomies.setSort("weight")
 	}
-	lang := section.Lang
-	if _, ok := ctx.sections[lang]; !ok {
-		ctx.sections[lang] = make(map[string]*Section)
-	}
-	ctx.sections[lang][section.File] = section
-	ctx.list.sections[lang] = append(ctx.list.sections[lang], section)
-}
-
-func (ctx *Context) insertTaxonomy(taxonomy *Taxonomy) {
-	ctx.mu.Lock()
-	defer ctx.mu.Unlock()
-
-	lang := taxonomy.Lang
-	if _, ok := ctx.taxonomies[lang]; !ok {
-		ctx.taxonomies[lang] = make(map[string]*Taxonomy)
-	}
-	ctx.taxonomies[lang][taxonomy.Name] = taxonomy
-	ctx.list.taxonomies[lang] = append(ctx.list.taxonomies[lang], taxonomy)
-}
-
-func (ctx *Context) insertTaxonomyTerm(term *TaxonomyTerm) {
-	ctx.mu.Lock()
-	defer ctx.mu.Unlock()
-
-	lang := term.Taxonomy.Lang
-	if _, ok := ctx.taxonomyTerms[lang]; !ok {
-		ctx.taxonomyTerms[lang] = make(map[string]map[string]*TaxonomyTerm)
-	}
-	if _, ok := ctx.taxonomyTerms[lang][term.Taxonomy.Name]; !ok {
-		ctx.taxonomyTerms[lang][term.Taxonomy.Name] = make(map[string]*TaxonomyTerm)
-	}
-	ctx.taxonomyTerms[lang][term.Taxonomy.Name][term.FullName()] = term
 }
 
 func newContext(conf config.Config) *Context {
-	return &Context{
-		list: &listContext{
-			pages:        make(map[string]Pages),
-			hiddenPages:  make(map[string]Pages),
-			sectionPages: make(map[string]Pages),
-			sections:     make(map[string]Sections),
-			taxonomies:   make(map[string]Taxonomies),
-		},
+	ctx := &Context{
 		filter:        filterExpr(conf.GetString("build_filter")),
+		list:          make(map[string]*listContext),
 		pages:         make(map[string]map[string]*Page),
-		hiddenPages:   make(map[string]map[string]*Page),
-		sectionPages:  make(map[string]map[string]*Page),
 		sections:      make(map[string]map[string]*Section),
 		taxonomies:    make(map[string]map[string]*Taxonomy),
 		taxonomyTerms: make(map[string]map[string]map[string]*TaxonomyTerm),
 	}
+	for lang := range conf.Languages {
+		ctx.list[lang] = &listContext{}
+	}
+	ctx.list[conf.Site.Language] = &listContext{}
+	return ctx
 }
