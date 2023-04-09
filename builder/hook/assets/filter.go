@@ -72,6 +72,7 @@ func (self *assets) execute(opt option) (string, error) {
 			w = bytes.NewBuffer(nil)
 			r = bytes.NewBuffer(buf)
 		)
+		// filters为空时返回原数据
 		w.Write(r.Bytes())
 		for i, filter := range opt.filters {
 			w.Reset()
@@ -126,5 +127,7 @@ func (self *assets) jsmin(w io.Writer, r io.Reader, opt filterOption) error {
 	m := minify.New()
 	m.AddFunc("js", js.Minify)
 
+	// 多个js文件合并如果没有;会有问题
+	defer w.Write([]byte(";"))
 	return m.Minify("js", w, r)
 }

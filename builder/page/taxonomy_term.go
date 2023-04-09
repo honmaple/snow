@@ -1,7 +1,6 @@
 package page
 
 import (
-	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -34,12 +33,17 @@ type (
 	TaxonomyTerms []*TaxonomyTerm
 )
 
-func (term *TaxonomyTerm) vars() map[string]string {
-	return map[string]string{"{taxonomy}": term.Taxonomy.Name, "{term}": term.RealName(), "{term:slug}": term.Slug}
-}
-
 func (term *TaxonomyTerm) canWrite() bool {
 	return term.Meta.GetString("term_path") != ""
+}
+
+func (term *TaxonomyTerm) realPath(pathstr string) string {
+	return utils.StringReplace(pathstr,
+		map[string]string{
+			"{taxonomy}":  term.Taxonomy.Name,
+			"{term}":      term.RealName(),
+			"{term:slug}": term.Slug,
+		})
 }
 
 func (term *TaxonomyTerm) RealName() string {
@@ -138,7 +142,7 @@ func (b *Builder) insertTaxonomyTerms(taxonomy *Taxonomy, page *Page) {
 					slugs[i] = b.conf.GetSlug(name)
 				}
 				term.Slug = strings.Join(slugs, "/")
-				term.Path = b.conf.GetRelURL(utils.StringReplace(term.Meta.GetString("term_path"), term.vars()), taxonomy.Lang)
+				term.Path = b.conf.GetRelURL(term.realPath(term.Meta.GetString("term_path")), taxonomy.Lang)
 				term.Permalink = b.conf.GetURL(term.Path)
 
 				b.ctx.withLock(func() {
@@ -165,13 +169,10 @@ func (b *Builder) insertTaxonomyTerms(taxonomy *Taxonomy, page *Page) {
 }
 
 func (b *Builder) writeTaxonomyTerm(term *TaxonomyTerm) {
-	var (
-		vars = term.vars()
-	)
 	if term.canWrite() {
 		lookups := []string{
-			utils.StringReplace(term.Meta.GetString("term_template"), vars),
-			fmt.Sprintf("%s/taxonomy.terms.html", term.Taxonomy.Name),
+			term.realPath(term.Meta.GetString("term_template")),
+			term.realPath("{taxonomy}/taxonomy.terms.html"),
 			"taxonomy.terms.html",
 			"_default/taxonomy.terms.html",
 		}
@@ -192,7 +193,7 @@ func (b *Builder) writeTaxonomyTerm(term *TaxonomyTerm) {
 	for _, child := range term.Children {
 		b.writeTaxonomyTerm(child)
 	}
-	b.writeFormats(term.Meta, vars, map[string]interface{}{
+	b.writeFormats(term.Meta, term.realPath, map[string]interface{}{
 		"term":         term,
 		"pages":        term.List,
 		"taxonomy":     term.Taxonomy,

@@ -30,8 +30,16 @@ type (
 	Sections []*Section
 )
 
-func (sec *Section) vars() map[string]string {
-	return map[string]string{"{section}": sec.RealName(), "{section:slug}": sec.Slug}
+func (sec *Section) canWrite() bool {
+	return sec.Meta.GetString("path") != ""
+}
+
+func (sec *Section) realPath(pathstr string) string {
+	return utils.StringReplace(pathstr,
+		map[string]string{
+			"{section}":      sec.RealName(),
+			"{section:slug}": sec.Slug,
+		})
 }
 
 func (sec *Section) isRoot() bool {
@@ -40,10 +48,6 @@ func (sec *Section) isRoot() bool {
 
 func (sec *Section) isEmpty() bool {
 	return len(sec.Children) == 0 && len(sec.Pages) == 0 && len(sec.HiddenPages) == 0 && len(sec.SectionPages) == 0
-}
-
-func (sec *Section) canWrite() bool {
-	return sec.Meta.GetString("path") != ""
 }
 
 func (sec *Section) Paginator() []*paginator {
@@ -171,7 +175,7 @@ func (b *Builder) insertSection(path string) *Section {
 			slug = strings.Join(slugs, "/")
 		}
 		section.Slug = slug
-		section.Path = b.conf.GetRelURL(utils.StringReplace(section.Meta.GetString("path"), section.vars()), lang)
+		section.Path = b.conf.GetRelURL(section.realPath(section.Meta.GetString("path")), lang)
 		section.Permalink = b.conf.GetURL(section.Path)
 
 		b.ctx.withLock(func() {
@@ -197,12 +201,9 @@ func (b *Builder) insertSection(path string) *Section {
 }
 
 func (b *Builder) writeSection(section *Section) {
-	var (
-		vars = section.vars()
-	)
 	if section.canWrite() {
 		lookups := []string{
-			utils.StringReplace(section.Meta.GetString("template"), vars),
+			section.realPath(section.Meta.GetString("template")),
 			"section.html",
 			"_default/section.html",
 		}
@@ -219,7 +220,7 @@ func (b *Builder) writeSection(section *Section) {
 			}
 		}
 	}
-	b.writeFormats(section.Meta, vars, map[string]interface{}{
+	b.writeFormats(section.Meta, section.realPath, map[string]interface{}{
 		"section":      section,
 		"pages":        section.Pages,
 		"current_lang": section.Lang,

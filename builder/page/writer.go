@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/honmaple/snow/builder/theme/template"
-	"github.com/honmaple/snow/utils"
 	"github.com/panjf2000/ants/v2"
 	"github.com/spf13/viper"
 )
@@ -131,6 +130,7 @@ func (b *Builder) write(tpl template.Writer, path string, vars map[string]interf
 	}
 	rvars := map[string]interface{}{
 		"pages":                 b.ctx.Pages(lang),
+		"hidden_pages":          b.ctx.HiddenPages(lang),
 		"taxonomies":            b.ctx.Taxonomies(lang),
 		"get_section":           b.getSection(lang),
 		"get_section_url":       b.getSectionURL(lang),
@@ -153,7 +153,7 @@ func (b *Builder) write(tpl template.Writer, path string, vars map[string]interf
 }
 
 // write rss, atom, json
-func (b *Builder) writeFormats(meta Meta, pathvars map[string]string, vars map[string]interface{}) {
+func (b *Builder) writeFormats(meta Meta, realPath func(string) string, ctx map[string]interface{}) {
 	formats := meta.GetStringMap("formats")
 	if len(formats) == 0 {
 		return
@@ -170,19 +170,20 @@ func (b *Builder) writeFormats(meta Meta, pathvars map[string]string, vars map[s
 	}
 
 	lang := b.conf.Site.Language
-	if v, ok := vars["current_lang"]; ok && v != "" {
+	if v, ok := ctx["current_lang"]; ok && v != "" {
 		lang = v.(string)
 	}
 	for name := range formats {
-		var (
-			path     = utils.StringReplace(conf.GetString(name+".path"), pathvars)
-			template = utils.StringReplace(conf.GetString(name+".template"), pathvars)
-		)
+		path := conf.GetString(name + ".path")
+		template := conf.GetString(name + ".template")
+		if realPath != nil {
+			path, template = realPath(path), realPath(template)
+		}
 		if path == "" || template == "" {
 			continue
 		}
 		if tpl := b.theme.LookupTemplate(template); tpl != nil {
-			b.write(tpl, b.conf.GetRelURL(path, lang), vars)
+			b.write(tpl, b.conf.GetRelURL(path, lang), ctx)
 		}
 	}
 }

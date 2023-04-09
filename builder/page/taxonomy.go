@@ -1,7 +1,6 @@
 package page
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
@@ -25,12 +24,15 @@ type (
 	Taxonomies []*Taxonomy
 )
 
-func (t *Taxonomy) vars() map[string]string {
-	return map[string]string{"{taxonomy}": t.Name}
-}
-
 func (t *Taxonomy) canWrite() bool {
 	return t.Meta.GetString("path") != ""
+}
+
+func (t *Taxonomy) realPath(pathstr string) string {
+	return utils.StringReplace(pathstr,
+		map[string]string{
+			"{taxonomy}": t.Name,
+		})
 }
 
 func (ts Taxonomies) setSort(key string) {
@@ -79,7 +81,7 @@ func (b *Builder) insertTaxonomies(page *Page) {
 			if taxonomy.Meta.GetBool("disabled") {
 				continue
 			}
-			taxonomy.Path = b.conf.GetRelURL(utils.StringReplace(taxonomy.Meta.GetString("path"), taxonomy.vars()), lang)
+			taxonomy.Path = b.conf.GetRelURL(taxonomy.realPath(taxonomy.Meta.GetString("path")), lang)
 			taxonomy.Permalink = b.conf.GetURL(taxonomy.Path)
 
 			b.ctx.withLock(func() {
@@ -97,8 +99,8 @@ func (b *Builder) insertTaxonomies(page *Page) {
 func (b *Builder) writeTaxonomy(taxonomy *Taxonomy) {
 	if taxonomy.canWrite() {
 		lookups := []string{
-			utils.StringReplace(taxonomy.Meta.GetString("template"), taxonomy.vars()),
-			fmt.Sprintf("%s/taxonomy.html", taxonomy.Name),
+			taxonomy.realPath(taxonomy.Meta.GetString("template")),
+			taxonomy.realPath("{taxonomy}/taxonomy.html"),
 			"taxonomy.html",
 			"_default/taxonomy.html",
 		}

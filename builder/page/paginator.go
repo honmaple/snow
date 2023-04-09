@@ -88,10 +88,9 @@ func Paginator(list []interface{}, number int, path string, paginatePath string)
 		if num == 0 {
 			por.URL = path
 		} else {
-			vars := map[string]string{
+			por.URL = utils.StringReplace(output, map[string]string{
 				"{number}": strconv.Itoa(num + 1),
-			}
-			por.URL = utils.StringReplace(output, vars)
+			})
 		}
 
 		end := (num + 1) * number
