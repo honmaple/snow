@@ -3,11 +3,14 @@ package markdown
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"regexp"
 	"strings"
 
+	"github.com/flosch/pongo2/v6"
 	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/russross/blackfriday/v2"
@@ -23,6 +26,7 @@ var (
 
 type markdown struct {
 	conf config.Config
+	opts []blackfriday.Option
 }
 
 func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.Meta, error) {
@@ -102,7 +106,7 @@ func (m *markdown) Read(r io.Reader) (page.Meta, error) {
 }
 
 func (m *markdown) HTML(data []byte, summary bool) string {
-	d := blackfriday.Run(data, blackfriday.WithRenderer(NewChromaRenderer(m.conf.GetHighlightStyle())))
+	d := blackfriday.Run(data, m.opts...)
 	if summary {
 		return m.conf.GetSummary(string(d))
 	}
@@ -110,10 +114,28 @@ func (m *markdown) HTML(data []byte, summary bool) string {
 }
 
 func New(conf config.Config) page.Reader {
-	return &markdown{conf}
+	return &markdown{conf, []blackfriday.Option{
+		blackfriday.WithRenderer(NewChromaRenderer(conf.GetHighlightStyle())),
+	}}
+}
 
+func NewPongo2Filter(conf config.Config) pongo2.FilterFunction {
+	r := &markdown{conf, []blackfriday.Option{
+		blackfriday.WithRenderer(NewChromaRenderer(conf.GetHighlightStyle())),
+	}}
+	return func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+		v, ok := in.Interface().(string)
+		if !ok {
+			return nil, &pongo2.Error{
+				Sender:    "filter:markdown",
+				OrigError: errors.New("filter input argument must be of type 'string'"),
+			}
+		}
+		return pongo2.AsValue(r.HTML([]byte(v), false)), nil
+	}
 }
 
 func init() {
 	page.Register(".md", New)
+	template.RegisterConfigFilter("markdown", NewPongo2Filter)
 }

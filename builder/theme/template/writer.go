@@ -2,6 +2,7 @@ package template
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/fs"
 
@@ -16,6 +17,7 @@ import (
 var (
 	Globals        = make(map[string]interface{})
 	GlobalFuncs    = make(map[string]func(map[string]interface{}) interface{})
+	ConfigFuncs    = make(map[string]func(config.Config) pongo2.FilterFunction)
 	RegisterTag    = pongo2.RegisterTag
 	RegisterFilter = pongo2.RegisterFilter
 )
@@ -26,6 +28,20 @@ func Register(k string, v interface{}) {
 
 func RegisterFunc(k string, v func(map[string]interface{}) interface{}) {
 	GlobalFuncs[k] = v
+}
+
+func RegisterConfigFilter(k string, v func(config.Config) pongo2.FilterFunction) {
+	ConfigFuncs[k] = v
+}
+
+func RegisterStringFilter(k string, f func(string) interface{}) {
+	pongo2.RegisterFilter(k, func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+		v, ok := in.Interface().(string)
+		if !ok {
+			return nil, newError(k, errors.New("filter input argument must be of type 'string'"))
+		}
+		return pongo2.AsValue(f(v)), nil
+	})
 }
 
 func Expr(expr string) (*pongo2.Template, error) {
@@ -146,5 +162,9 @@ func New(conf config.Config, theme fs.FS) Interface {
 	RegisterFilter("relURL", t.relURL)
 	RegisterFilter("slient", t.slient)
 	RegisterFilter("jsonify", t.jsonify)
+
+	for k, f := range ConfigFuncs {
+		RegisterFilter(k, f(conf))
+	}
 	return t
 }

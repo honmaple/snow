@@ -3,13 +3,16 @@ package orgmode
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"regexp"
 	"strings"
 
+	"github.com/flosch/pongo2/v6"
 	"github.com/honmaple/org-golang"
 	"github.com/honmaple/org-golang/render"
 	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
 )
 
@@ -111,6 +114,21 @@ func New(conf config.Config) page.Reader {
 	return &orgmode{conf}
 }
 
+func NewPongo2Filter(conf config.Config) pongo2.FilterFunction {
+	r := &orgmode{conf}
+	return func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+		v, ok := in.Interface().(string)
+		if !ok {
+			return nil, &pongo2.Error{
+				Sender:    "filter:markdown",
+				OrigError: errors.New("filter input argument must be of type 'string'"),
+			}
+		}
+		return pongo2.AsValue(r.HTML([]byte(v), false, false)), nil
+	}
+}
+
 func init() {
 	page.Register(".org", New)
+	template.RegisterConfigFilter("org", NewPongo2Filter)
 }
