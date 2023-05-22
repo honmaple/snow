@@ -120,7 +120,7 @@ func NewPongo2Filter(conf config.Config) pongo2.FilterFunction {
 		v, ok := in.Interface().(string)
 		if !ok {
 			return nil, &pongo2.Error{
-				Sender:    "filter:markdown",
+				Sender:    "filter:org",
 				OrigError: errors.New("filter input argument must be of type 'string'"),
 			}
 		}
