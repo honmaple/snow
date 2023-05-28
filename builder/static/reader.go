@@ -2,11 +2,10 @@ package static
 
 import (
 	"context"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,100 +19,91 @@ type Builder struct {
 	hooks Hooks
 }
 
-func (b *Builder) genFile(file string, path string, isTheme bool) *Static {
-	if path == "" {
-		return nil
-	}
-	if strings.HasSuffix(path, "/") {
-		path = filepath.Join(path, filepath.Base(file))
-	}
-	var root fs.FS
-
-	if isTheme {
-		root = b.theme
-	} else {
-		root = os.DirFS(".")
-	}
-	return &Static{URL: path, File: &localFile{file: file, root: root, isTheme: isTheme}}
-}
-
-func (b *Builder) loader() func(string, bool) *Static {
+func (b *Builder) ignoreFile(path string) func(file string) bool {
 	exts := make(map[string]bool)
-	extsIsSet := b.conf.IsSet("static_exts")
-	if extsIsSet {
-		for _, ext := range b.conf.GetStringSlice("static_exts") {
-			exts[ext] = true
-		}
+	for _, ext := range b.conf.GetStringSlice("statics." + path + ".exts") {
+		exts[ext] = true
 	}
-
-	meta := b.conf.GetStringMapString("static_paths")
-	if _, ok := meta["@theme/static"]; !ok {
-		meta["@theme/static"] = "static/"
+	ignores := make([]*regexp.Regexp, 0)
+	for _, pattern := range b.conf.GetStringSlice("statics." + path + ".ignore_files") {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			b.conf.Log.Errorln(err.Error())
+			continue
+		}
+		ignores = append(ignores, re)
 	}
-	metaList := make([]string, 0)
-	for m := range meta {
-		metaList = append(metaList, m)
-	}
-	sort.SliceStable(metaList, func(i, j int) bool {
-		return len(metaList[i]) > len(metaList[j])
-	})
-
-	return func(file string, isTheme bool) *Static {
-		if extsIsSet && !exts[filepath.Ext(file)] {
-			return nil
+	return func(file string) bool {
+		if len(exts) > 0 && !exts[filepath.Ext(file)] {
+			return true
 		}
-		rawFile := file
-		if isTheme {
-			file = fmt.Sprintf("@theme/%s", file)
+		if strings.HasPrefix(file, "/") {
+			file = file[1:]
 		}
-		// viper 无法处理带.的key, 无法直接使用meta[file]
-		if k := fmt.Sprintf("static_paths.%s", file); b.conf.IsSet(k) {
-			return b.genFile(rawFile, b.conf.GetString(k), isTheme)
-		}
-		for _, m := range metaList {
-			if !strings.HasPrefix(file, m) {
-				continue
+		for _, re := range ignores {
+			if re.MatchString(file) {
+				return true
 			}
-			output := meta[m]
-			if output == "" {
-				return nil
-			}
-			if strings.HasSuffix(output, "/") {
-				output = filepath.Join(output, strings.TrimPrefix(file, m))
-			}
-			return b.genFile(rawFile, output, isTheme)
 		}
-		return b.genFile(rawFile, file, isTheme)
+		return false
 	}
 }
 
 func (b *Builder) loadStatics() Statics {
-	loader := b.loader()
+	staticFiles := make([]*Static, 0)
 
-	files := make([]*Static, 0)
-	// 默认添加主题的静态文件
-	fs.WalkDir(b.theme, "static", func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
+	for name := range b.conf.GetStringMap("statics") {
+		output := b.conf.GetString("statics." + name + ".path")
+		if output == "" {
+			continue
 		}
-		if file := loader(path, true); file != nil {
-			files = append(files, file)
-		}
-		return nil
-	})
 
-	for _, dir := range b.conf.GetStringSlice("static_dirs") {
-		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		isTheme := strings.HasPrefix(name, "@theme/")
+		isIgnored := b.ignoreFile(name)
+
+		walkFunc := func(file string, info fs.FileInfo, err error) error {
 			if err != nil || info.IsDir() {
 				return err
 			}
-			if file := loader(path, false); file != nil {
-				files = append(files, file)
+			var root fs.FS
+
+			if isTheme {
+				root = b.theme
+			} else {
+				root = os.DirFS(".")
 			}
+
+			staticFile := &Static{
+				File: &localFile{file: file, root: root, isTheme: isTheme},
+			}
+			staticName := strings.TrimPrefix(staticFile.File.Name(), name)
+
+			if isIgnored(staticName) {
+				return nil
+			}
+
+			if strings.HasSuffix(output, "/") {
+				staticFile.Path = filepath.Join(output, filepath.Base(name), staticName)
+			} else {
+				staticFile.Path = filepath.Join(output, staticName)
+			}
+			staticFiles = append(staticFiles, staticFile)
 			return nil
-		})
+		}
+
+		if isTheme {
+			fs.WalkDir(b.theme, name[7:], func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				info, err := d.Info()
+				return walkFunc(path, info, err)
+			})
+			continue
+		}
+		filepath.Walk(name, walkFunc)
 	}
-	return files
+	return staticFiles
 }
 
 func (b *Builder) Build(ctx context.Context) error {

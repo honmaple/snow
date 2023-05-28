@@ -28,7 +28,7 @@ type (
 
 var (
 	//go:embed internal
-	themeFS embed.FS
+	internalFS embed.FS
 )
 
 func (t *theme) Name() string {
@@ -37,7 +37,7 @@ func (t *theme) Name() string {
 
 func (t *theme) Open(file string) (fs.File, error) {
 	if strings.HasPrefix(file, "_internal") {
-		return themeFS.Open(file[1:])
+		return internalFS.Open(file[1:])
 	}
 	return t.root.Open(file)
 }
@@ -68,7 +68,7 @@ func New(conf config.Config) (Theme, error) {
 	)
 	name := conf.GetString("theme.name")
 	if name == "" {
-		root, _ = fs.Sub(themeFS, "internal")
+		root, _ = fs.Sub(internalFS, "internal")
 	} else if name == "." {
 		root = os.DirFS(".")
 	} else {

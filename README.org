@@ -500,7 +500,7 @@
      | pages   | 页面列表                 |
 
 *** 静态文件(Static)
-    静态文件分 *主题静态文件*和*配置指定的静态文件*
+    静态文件分 *主题静态文件* 和 *配置指定的静态文件*
 
 **** 主题静态文件
      #+begin_example
@@ -509,24 +509,33 @@
      │       └── static
      │           └── main.css
      #+end_example
-     主题目录下的所有文件默认会复制到 *output* 目录
+     主题目录下的所有文件默认会复制到 *output* 目录, 除非设置 =statics.@theme/static.path= 为空
 
 **** 指定的静态文件
      该文件需要在配置指定
      #+begin_src yaml
-     # 静态文件目录, 该目录区分主题的静态文件static
-     static_dirs:
-       - "static/"
-     # 静态文件扩展，不配置将会使用静态文件目录下的所有文件
-     static_exts:
-       - ".js"
-       - ".css"
-     # 静态文件路径，用于指定静态文件或静态目录的保存目录, 当有多条路径时，长度优先.
-     static_paths:
-       static/CNAME: "/"
-       static/css/main.css: "static/css/"
-       # 以@theme开头代表主题中的静态文件，即{theme.name}/static
-       "@theme/static": "static/"
+     statics:
+       # 根目录下static目录下的文件将会拷贝到{output_dir}/static
+       static:
+         # 拷贝的路径, 为空时表示不写入, 如果以"/"结尾, 表示拷贝到该目录
+         # static  -> {output_dir}/static
+         # static/ -> {output_dir}/static/static
+         path: "/"
+         # 指定扩展，不配置将会使用目录下的所有文件
+         exts:
+           - ".js"
+           - ".css"
+         # 如果指定的静态文件是一个目录，可以设置忽略文件, 比如忽略static目录下的images子目录
+         ignore_files:
+           - "^images/"
+       # 以@theme/开头表示主题目录, 以@theme/_internal/开头表示内置的主题目录
+       @theme/static:
+         path: "static"
+       @theme/_internal/static:
+         path: "static"
+       # 同样可以指定任意静态文件或目录
+       content/pages/css:
+         path: "static/css"
      #+end_src
 
 *** 多语言(Multilingual)

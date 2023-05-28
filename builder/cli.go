@@ -163,8 +163,8 @@ func commonAction(clx *cli.Context) error {
 	if clx.Bool("debug") {
 		conf.SetDebug()
 	}
-	if err := conf.SetMode(clx.String("mode")); err != nil {
-		return err
+	if mode := clx.String("mode"); mode != "" {
+		conf.SetMode(mode)
 	}
 	if filter := clx.String("filter"); filter != "" {
 		conf.SetFilter(filter)

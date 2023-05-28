@@ -62,13 +62,12 @@ func (conf *Config) SetOutput(output string) {
 	conf.Set("output_dir", output)
 }
 
-func (conf *Config) SetMode(mode string) error {
-	if mode == "" {
-		return nil
-	}
+func (conf *Config) SetMode(mode string) {
+	conf.Set("build_mode", mode)
+
 	key := fmt.Sprintf("mode.%s", mode)
 	if !conf.IsSet(key) {
-		return fmt.Errorf("mode %s not found", key)
+		conf.Log.Fatal("mode %s not found", key)
 	}
 	var c *Config
 	if file := conf.GetString(fmt.Sprintf("%s.include", key)); file != "" {
@@ -76,7 +75,7 @@ func (conf *Config) SetMode(mode string) error {
 			Viper: viper.New(),
 		}
 		if err := c.Load(file); err != nil {
-			return err
+			conf.Log.Fatal(err.Error())
 		}
 	} else {
 		c = &Config{
@@ -92,7 +91,6 @@ func (conf *Config) SetMode(mode string) error {
 			conf.Set(k, conf.Get(k))
 		}
 	}
-	return nil
 }
 
 func (conf *Config) SetWriter(w Writer) {
@@ -205,6 +203,7 @@ func (conf *Config) Load(path string) error {
 	}
 	conf.Reset(siteConfig)
 	conf.Reset(otherConfig)
+	conf.Reset(staticConfig)
 	conf.Reset(sectionConfig)
 	conf.Reset(taxonomyConfig)
 	return nil
@@ -246,6 +245,11 @@ var (
 		"taxonomies.categories.weight": 1,
 		"taxonomies.tags.weight":       2,
 		"taxonomies.authors.weight":    3,
+	}
+	staticConfig = map[string]interface{}{
+		"statics.@theme/_internal/static.path": "static",
+		"statics.@theme/static.path":           "static",
+		"statics.static.path":                  "static",
 	}
 	// 默认不需要修改的配置
 	otherConfig = map[string]interface{}{

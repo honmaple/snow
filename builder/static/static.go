@@ -5,20 +5,22 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+	"sync"
 )
 
 type (
 	Static struct {
-		URL  string
 		File interface {
 			io.Reader
 			Name() string
 		}
+		Path string
 	}
 	Statics []*Static
 )
 
 type localFile struct {
+	mu      sync.RWMutex
 	root    fs.FS
 	file    string
 	buff    io.Reader
@@ -33,7 +35,14 @@ func (l *localFile) Name() string {
 }
 
 func (l *localFile) Read(p []byte) (int, error) {
-	if l.buff == nil {
+	l.mu.RLock()
+	buff := l.buff
+	l.mu.RUnlock()
+
+	if buff == nil {
+		l.mu.Lock()
+		defer l.mu.Unlock()
+
 		f, err := l.root.Open(l.file)
 		if err != nil {
 			return 0, err
@@ -45,8 +54,9 @@ func (l *localFile) Read(p []byte) (int, error) {
 			return 0, err
 		}
 		l.buff = &b
+		return l.buff.Read(p)
 	}
-	return l.buff.Read(p)
+	return buff.Read(p)
 }
 
 func (statics Statics) Lookup(files []string) Statics {

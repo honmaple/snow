@@ -45,20 +45,12 @@ content_dir: "content"
 build_filter: "not draft"
 build_ignore_files: "not draft"
 
-# static_exts:
-#   - ".js"
-#   - ".css"
-static_dirs:
-  - "static/favicon.ico"
-  - "static/CNAME"
-  - "static/README.md"
-static_paths:
-  "static": "/"
-  # "static/css/main.css": "static/css/"
-  "@theme/static": "static/"
+statics:
+  static:
+    path: "assets"
 
 theme:
-  name: "archie-snow"
+  # name: "archie-snow"
   # name: "snow"
   # override: "layouts"
 
