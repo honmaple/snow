@@ -52,14 +52,20 @@ func (b *Builder) ignoreFile(path string) func(file string) bool {
 func (b *Builder) loadStatics() Statics {
 	staticFiles := make([]*Static, 0)
 
-	for name := range b.conf.GetStringMap("statics") {
+	// 因为viper不能识别文件名中的".", 所以这里通过获取".path"的前缀来获取文件名
+	names := make([]string, 0)
+	for _, name := range b.conf.Sub("statics").AllKeys() {
+		if strings.HasSuffix(name, ".path") {
+			names = append(names, name[:len(name)-5])
+		}
+	}
+	for _, name := range names {
 		output := b.conf.GetString("statics." + name + ".path")
 		if output == "" {
 			continue
 		}
-
 		isTheme := strings.HasPrefix(name, "@theme/")
-		isIgnored := b.ignoreFile(name)
+		isIgnore := b.ignoreFile(name)
 
 		walkFunc := func(file string, info fs.FileInfo, err error) error {
 			if err != nil || info.IsDir() {
@@ -78,10 +84,9 @@ func (b *Builder) loadStatics() Statics {
 			}
 			staticName := strings.TrimPrefix(staticFile.File.Name(), name)
 
-			if isIgnored(staticName) {
+			if isIgnore(staticName) {
 				return nil
 			}
-
 			if strings.HasSuffix(output, "/") {
 				staticFile.Path = filepath.Join(output, filepath.Base(name), staticName)
 			} else {
@@ -92,12 +97,12 @@ func (b *Builder) loadStatics() Statics {
 		}
 
 		if isTheme {
-			fs.WalkDir(b.theme, name[7:], func(path string, d fs.DirEntry, err error) error {
-				if err != nil {
+			fs.WalkDir(b.theme, name[7:], func(file string, d fs.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
 					return err
 				}
 				info, err := d.Info()
-				return walkFunc(path, info, err)
+				return walkFunc(file, info, err)
 			})
 			continue
 		}

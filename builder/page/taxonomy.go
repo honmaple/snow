@@ -65,7 +65,6 @@ func (b *Builder) insertTaxonomies(page *Page) {
 		if kind == "_default" {
 			continue
 		}
-
 		taxonomy := b.ctx.findTaxonomy(kind, lang)
 		if taxonomy == nil {
 			taxonomy = &Taxonomy{
@@ -88,8 +87,10 @@ func (b *Builder) insertTaxonomies(page *Page) {
 				if _, ok := b.ctx.taxonomies[lang]; !ok {
 					b.ctx.taxonomies[lang] = make(map[string]*Taxonomy)
 				}
-				b.ctx.taxonomies[lang][taxonomy.Name] = taxonomy
-				b.ctx.list[lang].taxonomies = append(b.ctx.list[lang].taxonomies, taxonomy)
+				if _, ok := b.ctx.taxonomies[lang][taxonomy.Name]; !ok {
+					b.ctx.taxonomies[lang][taxonomy.Name] = taxonomy
+					b.ctx.list[lang].taxonomies = append(b.ctx.list[lang].taxonomies, taxonomy)
+				}
 			})
 		}
 		b.insertTaxonomyTerms(taxonomy, page)

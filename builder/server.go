@@ -49,10 +49,11 @@ func (m *memoryServer) Watch(file string) error {
 
 	if !exist {
 		m.mu.Lock()
+		defer m.mu.Unlock()
 		m.watchFiles = append(m.watchFiles, file)
-		m.mu.Unlock()
+		return m.watcher.Add(file)
 	}
-	return m.watcher.Add(file)
+	return nil
 }
 
 func (m *memoryServer) Write(file string, r io.Reader) error {

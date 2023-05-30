@@ -156,6 +156,11 @@ func (b *Builder) Build(ctx context.Context) error {
 	defer tasks.Release()
 
 	rootDir := b.conf.GetString("content_dir")
+	if rootDir == "" {
+		rootDir = "content"
+	}
+	b.conf.Watch(rootDir)
+
 	walkDir := func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -164,7 +169,6 @@ func (b *Builder) Build(ctx context.Context) error {
 			return nil
 		}
 		if info.IsDir() {
-			b.conf.Watch(path)
 			// is not root
 			if path != rootDir {
 				files := b.findFiles(path, "index.*")

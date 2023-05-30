@@ -64,13 +64,15 @@ func (t *theme) LookupTemplate(names ...string) template.Writer {
 
 func New(conf config.Config) (Theme, error) {
 	var (
-		root fs.FS
+		root  fs.FS
+		watch []string
 	)
 	name := conf.GetString("theme.name")
 	if name == "" {
 		root, _ = fs.Sub(internalFS, "internal")
 	} else if name == "." {
 		root = os.DirFS(".")
+		watch = append(watch, filepath.Join(".", "static"), filepath.Join(".", "templates"))
 	} else {
 		path := filepath.Join("themes", name)
 		_, err := os.Stat(path)
@@ -78,7 +80,13 @@ func New(conf config.Config) (Theme, error) {
 			return nil, err
 		}
 		root = os.DirFS(path)
+		watch = append(watch, filepath.Join(path, "static"), filepath.Join(path, "templates"))
 	}
+
+	for _, path := range watch {
+		conf.Watch(path)
+	}
+
 	t := &theme{
 		name: name,
 		root: root,
