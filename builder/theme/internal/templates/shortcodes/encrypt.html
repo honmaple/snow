@@ -1,82 +1,17 @@
-{% block content %}
+{%- block content %}
   <div class="encrypt-container">
     <div class="encrypt-form">
       <input class="encrypt-password" type="password" name="请输入密码" />
-      <input type="button" value="解密" onclick="decrypt(this)" />
+      <input class="encrypt-button" type="button" value="解密" onclick="decrypt(this)" />
     </div>
     <div class="encrypt-content" style="display:none;">{{ body | encrypt:password }}</div>
     {%- if description %}<div>{{ description }}</div>{%- endif %}
   </div>
-{% endblock %}
+{%- endblock %}
 
-{% if not times %}
-  {% block cryptojs %}
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  {% endblock %}
-  {% block js %}
-    <script>
-       const  _do_decrypt = function(encrypted, password) {
-         let key = CryptoJS.enc.Utf8.parse(password);
-         let iv = CryptoJS.enc.Utf8.parse(password.substr(0, 16));
-
-         return CryptoJS.AES.decrypt(encrypted, key, {
-           iv: iv,
-           mode: CryptoJS.mode.CBC,
-           padding: CryptoJS.pad.Pkcs7
-         }).toString(CryptoJS.enc.Utf8);
-       }
-
-       const decrypt = function(element) {
-         let parent = element.parentNode.parentNode;
-         let encrypted = parent.querySelector(
-           ".encrypt-content").innerText;
-         let password = parent.querySelector(
-           ".encrypt-password").value;
-
-         password = CryptoJS.MD5(password).toString()
-
-         let decrypted = "";
-         try {
-           decrypted = _do_decrypt(encrypted, password);
-         } catch (err) {
-           console.error(err);
-           alert("Failed to decrypt.");
-           return;
-         }
-         if (decrypted == "") {
-           alert("Failed to decrypt.");
-         }else {
-           parent.innerHTML = decrypted;
-
-           let index = -1;
-           let elements = document.querySelectorAll(".encrypt-container");
-           for (index = 0; index < elements.length; ++index) {
-             if (elements[index].isSameNode(parent)) {
-               break;
-             }
-           }
-           let storage = sessionStorage;
-           let key = location.pathname + ".password." + index;
-           storage.setItem(key, password);
-         }
-       }
-
-       window.onload = () => {
-         let elements = document.querySelectorAll(".encrypt-container");
-         elements.forEach(function (value, index) {
-           let key = location.pathname + ".password." + index;
-           let password = sessionStorage.getItem(key);
-
-           if (password) {
-             console.log("Found password for part " + index);
-
-             let parent = elements[index];
-             let encrypted = parent.querySelector(".encrypt-content").innerText;
-             let decrypted = _do_decrypt(encrypted, password);
-             elements[index].innerHTML = decrypted;
-           }
-         });
-       };
-    </script>
-  {% endblock %}
-{% endif %}
+{%- if _counter == 0 %}
+  {%- block js %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="{{ config.site.url }}/static/js/encrypt.js"></script>
+  {%- endblock %}
+{%- endif %}

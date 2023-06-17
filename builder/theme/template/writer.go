@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"io/fs"
 
-	// "os"
 	"path/filepath"
 
 	"github.com/flosch/pongo2/v6"
 	"github.com/honmaple/snow/config"
-	// "github.com/honmaple/snow/utils"
 )
 
 var (
@@ -112,7 +110,21 @@ func (t *writer) Write(file string, ctx map[string]interface{}) error {
 }
 
 func (t *writer) Execute(ctx map[string]interface{}) (string, error) {
-	return t.w.Execute(ctx)
+	vars := make(map[string]interface{})
+	for k, v := range ctx {
+		vars[k] = v
+	}
+	for k, v := range Globals {
+		if _, ok := vars[k]; !ok {
+			vars[k] = v
+		}
+	}
+	for k, v := range GlobalFuncs {
+		if _, ok := vars[k]; !ok {
+			vars[k] = v(vars)
+		}
+	}
+	return t.w.Execute(vars)
 }
 
 func (t *template) Lookup(name string) (Writer, error) {

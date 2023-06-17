@@ -15,6 +15,7 @@ import (
 type (
 	Theme interface {
 		Name() string
+		Path(string) string
 		Open(string) (fs.File, error)
 		LookupTemplate(...string) template.Writer
 	}
@@ -33,6 +34,20 @@ var (
 
 func (t *theme) Name() string {
 	return t.name
+}
+
+func (t *theme) Path(file string) string {
+	if strings.HasPrefix(file, "@theme/") {
+		switch t.name {
+		case "":
+			return file[7:]
+		case ".":
+			return filepath.Join(".", file[7:])
+		default:
+			return filepath.Join("themes", t.name, file[7:])
+		}
+	}
+	return file
 }
 
 func (t *theme) Open(file string) (fs.File, error) {
@@ -85,6 +100,16 @@ func New(conf config.Config) (Theme, error) {
 
 	for _, path := range watch {
 		conf.Watch(path)
+	}
+
+	// merge theme config
+	if tc := conf.GetString("theme.config"); tc != "" && name != "" {
+		file, err := root.Open(tc)
+		if err == nil {
+			conf.ResetByFile(tc, file)
+
+			file.Close()
+		}
 	}
 
 	t := &theme{

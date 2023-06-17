@@ -169,15 +169,23 @@ func (conf *Config) GetURL(path string) string {
 }
 
 func (conf *Config) Reset(m map[string]interface{}) {
-	keys := conf.AllKeys()
 	for k, v := range m {
 		if conf.IsSet(k) {
 			continue
 		}
 		conf.Set(k, v)
 	}
-	for _, k := range keys {
+	for _, k := range conf.AllKeys() {
 		conf.Set(k, conf.Get(k))
+	}
+}
+
+func (conf *Config) ResetByFile(file string, r io.Reader) {
+	v := viper.New()
+	v.SetConfigFile(file)
+
+	if err := v.ReadConfig(r); err == nil {
+		conf.Reset(v.AllSettings())
 	}
 }
 
@@ -267,6 +275,7 @@ var (
 		"site.subtitle":  "snow is a static site generator.",
 		"site.author":    "snow",
 		"site.language":  "en",
+		"theme.config":   "theme.yaml",
 		"theme.override": "layouts",
 		"output_dir":     "output",
 		"content_dir":    "content",

@@ -106,7 +106,9 @@ func (self *assets) filter(name string, w io.Writer, r io.Reader, opt filterOpti
 func (self *assets) libscss(w io.Writer, r io.Reader, opt filterOption) error {
 	paths := make([]string, 0)
 	if opt != nil {
-		paths = cast.ToStringSlice(opt["path"])
+		for _, path := range cast.ToStringSlice(opt["path"]) {
+			paths = append(paths, self.theme.Path(path))
+		}
 	}
 
 	comp, err := libsass.New(w, r, libsass.IncludePaths(paths))

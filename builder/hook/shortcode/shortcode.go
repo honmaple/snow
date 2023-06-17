@@ -2,7 +2,7 @@ package shortcode
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
 	"io/fs"
 	"strings"
 
@@ -28,7 +28,7 @@ func (self *shortcode) Name() string {
 func (self *shortcode) template(path string) (func(map[string]interface{}) string, error) {
 	tpl := self.theme.LookupTemplate(path)
 	if tpl == nil {
-		return nil, errors.New("not found")
+		return nil, fmt.Errorf("Lookup %s but not found", path)
 	}
 	return func(vars map[string]interface{}) string {
 		out, err := tpl.Execute(vars)
@@ -40,7 +40,7 @@ func (self *shortcode) template(path string) (func(map[string]interface{}) strin
 	}, nil
 }
 
-func (self *shortcode) renderNext(page *page.Page, w *bytes.Buffer, z *html.Tokenizer, startToken *html.Token, times map[string]int) bool {
+func (self *shortcode) renderNext(page *page.Page, w *bytes.Buffer, z *html.Tokenizer, startToken *html.Token, counter map[string]int) bool {
 	for {
 		next := z.Next()
 		if next == html.ErrorToken {
@@ -75,13 +75,13 @@ func (self *shortcode) renderNext(page *page.Page, w *bytes.Buffer, z *html.Toke
 				vars["page"] = page
 				vars["attr"] = attrs
 				vars["body"] = ""
-				vars["times"] = times[name]
-				times[name]++
+				vars["_counter"] = counter[name]
+				counter[name]++
 
 				if next == html.StartTagToken {
 					var buf bytes.Buffer
 
-					if !self.renderNext(page, &buf, z, &token, times) {
+					if !self.renderNext(page, &buf, z, &token, counter) {
 						self.conf.Log.Warnf("%s: closing delimiter '</%s>' is missing", page.File, token.Data)
 					}
 					vars["body"] = buf.String()
@@ -101,11 +101,11 @@ func (self *shortcode) renderNext(page *page.Page, w *bytes.Buffer, z *html.Toke
 
 func (self *shortcode) shortcode(page *page.Page, content string) string {
 	var (
-		w     bytes.Buffer
-		z     = html.NewTokenizer(strings.NewReader(content))
-		times = make(map[string]int)
+		w       bytes.Buffer
+		z       = html.NewTokenizer(strings.NewReader(content))
+		counter = make(map[string]int)
 	)
-	self.renderNext(page, &w, z, nil, times)
+	self.renderNext(page, &w, z, nil, counter)
 	return w.String()
 }
 

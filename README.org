@@ -39,7 +39,7 @@
 
 *** 安装(Installation)
     #+begin_example
-    └──╼ git install https://github.com/honmaple/snow
+    └──╼ go install https://github.com/honmaple/snow
     #+end_example
 
 *** 编译(Build)
@@ -560,6 +560,7 @@
      其中 *templates* 和 *static* 名称不可修改
      #+begin_example
        simple/
+       ├── theme.yaml
        ├── templates
        │   ├── post.html
        │   ├── index.html
@@ -572,11 +573,11 @@
      theme:
        # 主题名称, 未设置将使用默认主题
        name: "test-theme"
+       # 默认的主题配置，该配置会自动合并，除非设置为空
+       config: "theme.yaml"
        # 主题模版覆盖, 增加同名的文件到 *override* 配置的目录, snow将会优先使用该文件
        override: "layouts"
      #+end_src
-
-**** TODO 默认配置
 
 ** 插件(hooks)
    #+begin_src yaml
@@ -640,6 +641,12 @@
      #+end_example
 
      可以自定义 *shortcode* 到主题的 =templates/shortcodes= 目录下, 目前内置 *gist*, *encrypt*
+
+     - 如果使用的外部 =js，css= 文件可以加载内置的 =shortcode.js= 实现全局只加载一次，具体可以参考 [[https://github.com/honmaple/snow/blob/master/builder/theme/internal/templates/shortcodes/encrypt.html][shortcodes/encrypt.html]]
+     - 如果想要在单个页面只加载一次，请使用
+       #+begin_example
+       _counter == 0
+       #+end_example
 *** assets
      静态文件处理
      #+begin_src yaml
