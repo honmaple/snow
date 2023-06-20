@@ -145,23 +145,7 @@ func (b *Builder) insertTaxonomyTerms(taxonomy *Taxonomy, page *Page) {
 				term.Path = b.conf.GetRelURL(term.realPath(term.Meta.GetString("term_path")), taxonomy.Lang)
 				term.Permalink = b.conf.GetURL(term.Path)
 
-				b.ctx.withLock(func() {
-					if _, ok := b.ctx.taxonomyTerms[lang]; !ok {
-						b.ctx.taxonomyTerms[lang] = make(map[string]map[string]*TaxonomyTerm)
-					}
-					if _, ok := b.ctx.taxonomyTerms[lang][term.Taxonomy.Name]; !ok {
-						b.ctx.taxonomyTerms[lang][term.Taxonomy.Name] = make(map[string]*TaxonomyTerm)
-					}
-					termName := term.RealName()
-					if _, ok := b.ctx.taxonomyTerms[lang][term.Taxonomy.Name][termName]; !ok {
-						if parent == nil {
-							taxonomy.Terms = append(taxonomy.Terms, term)
-						} else {
-							parent.Children = append(parent.Children, term)
-						}
-						b.ctx.taxonomyTerms[lang][term.Taxonomy.Name][termName] = term
-					}
-				})
+				b.ctx.insertTaxonomyTerm(term)
 			}
 			b.ctx.withLock(func() {
 				term.List = append(term.List, page)

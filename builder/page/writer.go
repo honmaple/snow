@@ -208,7 +208,7 @@ func (b *Builder) Write() error {
 	defer tasks.Release()
 
 	b.ctx.ensure()
-	for lang := range b.ctx.sections {
+	for lang := range b.ctx.langs {
 		for _, page := range b.hooks.BeforePagesWrite(b.ctx.Pages(lang)) {
 			tasks.Invoke(page)
 		}

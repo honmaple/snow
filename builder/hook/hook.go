@@ -32,14 +32,14 @@ var (
 	_hooks = make(map[string]hookCreator)
 )
 
-func (hooks Hooks) PageHooks() (result []page.Hook) {
+func (hooks Hooks) PageHooks() (result page.Hooks) {
 	for _, hook := range hooks {
 		result = append(result, hook)
 	}
 	return
 }
 
-func (hooks Hooks) StaticHooks() (result []static.Hook) {
+func (hooks Hooks) StaticHooks() (result static.Hooks) {
 	for _, hook := range hooks {
 		result = append(result, hook)
 	}

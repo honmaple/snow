@@ -3,7 +3,6 @@ package page
 import (
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -104,100 +103,70 @@ func (secs Sections) OrderBy(key string) Sections {
 	return newSecs
 }
 
-func (b *Builder) findSectionIndex(prefix string, files map[string]bool) string {
-	for ext := range b.readers {
-		file := prefix + ext
-		if files[file] {
-			return file
-		}
+func (b *Builder) findSectionIndex(path string, lang string) string {
+	prefix := "_index"
+	if !b.conf.IsDefaultLanguage(lang) {
+		prefix = prefix + "." + lang
+	}
+	if files := b.findFiles(path, prefix+".*"); len(files) > 0 {
+		return files[0]
 	}
 	return ""
 }
 
-func (b *Builder) insertSection(path string) *Section {
-	names, _ := utils.FileList(path)
-	namem := make(map[string]bool)
-	for _, name := range names {
-		namem[name] = true
+func (b *Builder) insertSection(path string, lang string) *Section {
+	filemeta := make(Meta)
+	if index := b.findSectionIndex(path, lang); index != "" {
+		filemeta, _ = b.readFile(index)
 	}
 
-	b.ignoreFiles = b.ignoreFiles[:0]
+	section := &Section{
+		Lang:   lang,
+		File:   path,
+		Parent: b.ctx.findSection(filepath.Dir(path), lang),
+	}
+	// 根目录
+	if section.isRoot() {
+		section.Meta = make(Meta)
+		section.Meta.load(b.conf.GetStringMap("sections._default"))
+	} else {
+		section.Meta = section.Parent.Meta.clone()
+		section.Title = filepath.Base(section.File)
+	}
+	section.Meta.load(filemeta)
 
-	b.langRange(func(lang string, isdefault bool) {
-		prefix := "_index"
-		if !isdefault {
-			prefix = prefix + "." + lang
+	name := section.RealName()
+	if !section.isRoot() {
+		section.Meta.load(b.conf.GetStringMap("sections." + name))
+		if !b.conf.IsDefaultLanguage(lang) {
+			section.Meta.load(b.conf.GetStringMap("languages." + lang + ".sections." + name))
 		}
-		filemeta := make(Meta)
-		if index := b.findSectionIndex(prefix, namem); index != "" {
-			filemeta, _ = b.readFile(filepath.Join(path, index))
-		}
+	}
 
-		section := &Section{
-			Lang:   lang,
-			File:   path,
-			Parent: b.ctx.findSection(filepath.Dir(path), lang),
+	for k, v := range section.Meta {
+		switch strings.ToLower(k) {
+		case "title":
+			section.Title = v.(string)
+		case "content":
+			section.Content = v.(string)
 		}
-		// 根目录
-		if section.isRoot() {
-			section.Meta = make(Meta)
-			section.Meta.load(b.conf.GetStringMap("sections._default"))
-		} else {
-			section.Meta = section.Parent.Meta.clone()
-			section.Title = filepath.Base(section.File)
-		}
-		section.Meta.load(filemeta)
+	}
 
-		name := section.RealName()
-		if !section.isRoot() {
-			section.Meta.load(b.conf.GetStringMap("sections." + name))
-			if !isdefault {
-				section.Meta.load(b.conf.GetStringMap("languages." + lang + ".sections." + name))
-			}
+	slug := section.Meta.GetString("slug")
+	if slug == "" {
+		names := strings.Split(name, "/")
+		slugs := make([]string, len(names))
+		for i, name := range names {
+			slugs[i] = b.conf.GetSlug(name)
 		}
+		slug = strings.Join(slugs, "/")
+	}
+	section.Slug = slug
+	section.Path = b.conf.GetRelURL(section.realPath(section.Meta.GetString("path")), lang)
+	section.Permalink = b.conf.GetURL(section.Path)
 
-		for k, v := range section.Meta {
-			switch strings.ToLower(k) {
-			case "title":
-				section.Title = v.(string)
-			case "content":
-				section.Content = v.(string)
-			}
-		}
-
-		slug := section.Meta.GetString("slug")
-		if slug == "" {
-			names := strings.Split(name, "/")
-			slugs := make([]string, len(names))
-			for i, name := range names {
-				slugs[i] = b.conf.GetSlug(name)
-			}
-			slug = strings.Join(slugs, "/")
-		}
-		section.Slug = slug
-		section.Path = b.conf.GetRelURL(section.realPath(section.Meta.GetString("path")), lang)
-		section.Permalink = b.conf.GetURL(section.Path)
-
-		b.ctx.withLock(func() {
-			if section.Parent != nil {
-				section.Parent.Children = append(section.Parent.Children, section)
-			}
-			if _, ok := b.ctx.sections[lang]; !ok {
-				b.ctx.sections[lang] = make(map[string]*Section)
-			}
-			b.ctx.sections[lang][section.File] = section
-			b.ctx.list[lang].sections = append(b.ctx.list[lang].sections, section)
-		})
-
-		ignoreFiles := filemeta.GetSlice("ignore_files")
-		for _, file := range ignoreFiles {
-			re, err := regexp.Compile(filepath.Join(path, file))
-			if err == nil {
-				b.ignoreFiles = append(b.ignoreFiles, re)
-			}
-		}
-	})
-	return nil
+	b.ctx.insertSection(section)
+	return section
 }
 
 func (b *Builder) writeSection(section *Section) {

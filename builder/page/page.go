@@ -319,10 +319,10 @@ func (pages Pages) Paginator(number int, path string, paginatePath string) []*pa
 	return Paginator(list, number, path, paginatePath)
 }
 
-func (b *Builder) insertPage(file string) {
+func (b *Builder) insertPage(file string) *Page {
 	filemeta, err := b.readFile(file)
 	if err != nil {
-		return
+		return nil
 	}
 	lang := b.findLang(file, filemeta)
 	section := b.ctx.findSection(filepath.Dir(file), lang)
@@ -416,28 +416,14 @@ func (b *Builder) insertPage(file string) {
 	page = b.hooks.AfterPageParse(page)
 
 	if b.ctx.filter != nil && !b.ctx.filter(page) {
-		return
+		return nil
 	}
 
-	b.ctx.withLock(func() {
-		if page.isHidden() {
-			section.HiddenPages = append(section.HiddenPages, page)
-			b.ctx.list[lang].hiddenPages = append(b.ctx.list[lang].hiddenPages, page)
-		} else if page.isSection() {
-			section.SectionPages = append(section.SectionPages, page)
-			b.ctx.list[lang].sectionPages = append(b.ctx.list[lang].sectionPages, page)
-		} else {
-			section.Pages = append(section.Pages, page)
-			b.ctx.list[lang].pages = append(b.ctx.list[lang].pages, page)
-		}
-		if _, ok := b.ctx.pages[lang]; !ok {
-			b.ctx.pages[lang] = make(map[string]*Page)
-		}
-		b.ctx.pages[lang][page.File] = page
-	})
+	b.ctx.insertPage(page)
 	if page.isNormal() {
 		b.insertTaxonomies(page)
 	}
+	return page
 }
 
 func (b *Builder) writePage(page *Page) {

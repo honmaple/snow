@@ -50,6 +50,10 @@ func (conf *Config) With(lang string) *Config {
 	return &newConfig
 }
 
+func (conf *Config) IsDefaultLanguage(lang string) bool {
+	return conf.Site.Language == lang
+}
+
 func (conf *Config) SetDebug() {
 	conf.Log.SetLevel(logrus.DebugLevel)
 }
@@ -185,7 +189,12 @@ func (conf *Config) ResetByFile(file string, r io.Reader) {
 	v.SetConfigFile(file)
 
 	if err := v.ReadConfig(r); err == nil {
-		conf.Reset(v.AllSettings())
+		for _, k := range v.AllKeys() {
+			if conf.IsSet(k) {
+				continue
+			}
+			conf.Set(k, v.Get(k))
+		}
 	}
 }
 

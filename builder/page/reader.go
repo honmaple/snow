@@ -18,20 +18,18 @@ import (
 
 type (
 	Builder struct {
+		ctx     *LanguagesContext
 		conf    config.Config
 		theme   theme.Theme
 		hooks   Hooks
 		readers map[string]Reader
-
-		ctx         *Context
-		ignoreFiles []*regexp.Regexp
 	}
 	Reader interface {
 		Read(io.Reader) (Meta, error)
 	}
 )
 
-func (b *Builder) langRange(f func(lang string, isdefault bool)) {
+func (b *Builder) rangeLang(f func(lang string, isdefault bool)) {
 	for lang := range b.conf.Languages {
 		f(lang, false)
 	}
@@ -52,15 +50,6 @@ func (b *Builder) findLang(path string, filemeta Meta) string {
 		}
 	}
 	return b.conf.Site.Language
-}
-
-func (b *Builder) ignoreFile(file string) bool {
-	for _, re := range b.ignoreFiles {
-		if re.MatchString(file) {
-			return true
-		}
-	}
-	return false
 }
 
 func (b *Builder) readFile(file string) (Meta, error) {
@@ -106,7 +95,7 @@ func (b *Builder) Build(ctx context.Context) error {
 		ps := make([]string, 0)
 		ls := make([]string, 0)
 		ts := make([]string, 0)
-		b.langRange(func(lang string, isdefault bool) {
+		b.rangeLang(func(lang string, isdefault bool) {
 			showLang := " " + lang
 			if isdefault {
 				showLang = ""
@@ -161,12 +150,17 @@ func (b *Builder) Build(ctx context.Context) error {
 	}
 	b.conf.Watch(rootDir)
 
+	ignoreFiles := make(map[string]bool)
+	ignoreRegex := make([]*regexp.Regexp, 0)
+
 	walkDir := func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if b.ignoreFile(path) {
-			return nil
+		for _, re := range ignoreRegex {
+			if re.MatchString(path) {
+				return nil
+			}
 		}
 		if info.IsDir() {
 			// is not root
@@ -179,7 +173,23 @@ func (b *Builder) Build(ctx context.Context) error {
 					return fs.SkipDir
 				}
 			}
-			b.insertSection(path)
+			ignoreFiles = make(map[string]bool)
+			ignoreRegex = ignoreRegex[:0]
+
+			b.rangeLang(func(lang string, isdefault bool) {
+				section := b.insertSection(path, lang)
+				for _, file := range section.Meta.GetSlice("ignore_files") {
+					if ignoreFiles[file] {
+						continue
+					}
+					ignoreFiles[file] = true
+
+					re, err := regexp.Compile(filepath.Join(path, file))
+					if err == nil {
+						ignoreRegex = append(ignoreRegex, re)
+					}
+				}
+			})
 			return nil
 		}
 		if _, ok := b.readers[filepath.Ext(path)]; !ok {

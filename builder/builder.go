@@ -43,14 +43,13 @@ func Build(conf config.Config) error {
 }
 
 func newBuilder(conf config.Config) (Builder, error) {
-	t, err := theme.New(conf)
+	th, err := theme.New(conf)
 	if err != nil {
 		return nil, err
 	}
-
-	hooks := hook.New(conf, t)
+	hs := hook.New(conf, th)
 	return Builders{
-		page.NewBuilder(conf, t, hooks.PageHooks()),
-		static.NewBuilder(conf, t, hooks.StaticHooks()),
+		page.NewBuilder(conf, th, hs.PageHooks()),
+		static.NewBuilder(conf, th, hs.StaticHooks()),
 	}, nil
 }

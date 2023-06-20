@@ -74,7 +74,7 @@ func (b *Builder) insertTaxonomies(page *Page) {
 			taxonomy.Meta = make(Meta)
 			taxonomy.Meta.load(b.conf.GetStringMap("taxonomies._default"))
 			taxonomy.Meta.load(b.conf.GetStringMap("taxonomies." + kind))
-			if lang != b.conf.Site.Language {
+			if !b.conf.IsDefaultLanguage(lang) {
 				taxonomy.Meta.load(b.conf.GetStringMap("languages." + lang + ".taxonomies." + kind))
 			}
 			if taxonomy.Meta.GetBool("disabled") {
@@ -83,15 +83,7 @@ func (b *Builder) insertTaxonomies(page *Page) {
 			taxonomy.Path = b.conf.GetRelURL(taxonomy.realPath(taxonomy.Meta.GetString("path")), lang)
 			taxonomy.Permalink = b.conf.GetURL(taxonomy.Path)
 
-			b.ctx.withLock(func() {
-				if _, ok := b.ctx.taxonomies[lang]; !ok {
-					b.ctx.taxonomies[lang] = make(map[string]*Taxonomy)
-				}
-				if _, ok := b.ctx.taxonomies[lang][taxonomy.Name]; !ok {
-					b.ctx.taxonomies[lang][taxonomy.Name] = taxonomy
-					b.ctx.list[lang].taxonomies = append(b.ctx.list[lang].taxonomies, taxonomy)
-				}
-			})
+			b.ctx.insertTaxonomy(taxonomy)
 		}
 		b.insertTaxonomyTerms(taxonomy, page)
 	}
