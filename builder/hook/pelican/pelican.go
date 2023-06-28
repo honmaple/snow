@@ -19,7 +19,7 @@ func (self *pelican) Name() string {
 	return "pelican"
 }
 
-func (self *pelican) AfterPageParse(p *page.Page) *page.Page {
+func (self *pelican) Page(p *page.Page) *page.Page {
 	if v, ok := p.Meta["tag"]; ok {
 		p.Meta["tags"] = utils.SplitTrim(v.(string), ",")
 	}

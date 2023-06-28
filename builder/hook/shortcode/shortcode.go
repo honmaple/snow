@@ -109,7 +109,7 @@ func (self *shortcode) shortcode(page *page.Page, content string) string {
 	return w.String()
 }
 
-func (self *shortcode) AfterPageParse(page *page.Page) *page.Page {
+func (self *shortcode) Page(page *page.Page) *page.Page {
 	if len(self.tpls) == 0 {
 		return page
 	}
@@ -118,7 +118,7 @@ func (self *shortcode) AfterPageParse(page *page.Page) *page.Page {
 	return page
 }
 
-func newShortcode(conf config.Config, theme theme.Theme) hook.Hook {
+func New(conf config.Config, theme theme.Theme) hook.Hook {
 	h := &shortcode{conf: conf, theme: theme}
 	h.tpls = make(map[string]func(map[string]interface{}) string)
 
@@ -140,5 +140,5 @@ func newShortcode(conf config.Config, theme theme.Theme) hook.Hook {
 }
 
 func init() {
-	hook.Register("shortcode", newShortcode)
+	hook.Register("shortcode", New)
 }

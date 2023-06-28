@@ -22,13 +22,13 @@ type (
 		modTime time.Time
 	}
 	memoryServer struct {
+		mu         sync.RWMutex
 		conf       config.Config
 		cache      sync.Map
 		watcher    *fsnotify.Watcher
 		autoload   bool
 		watchFiles []string
 		watchExist map[string]bool
-		mu         sync.RWMutex
 	}
 )
 

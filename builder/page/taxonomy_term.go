@@ -28,6 +28,7 @@ type (
 		Parent   *TaxonomyTerm
 		Children TaxonomyTerms
 
+		Formats  Formats
 		Taxonomy *Taxonomy
 	}
 	TaxonomyTerms []*TaxonomyTerm
@@ -109,7 +110,6 @@ func (terms TaxonomyTerms) Paginator(number int, path string, paginatePath strin
 }
 
 func (b *Builder) insertTaxonomyTerms(taxonomy *Taxonomy, page *Page) {
-	lang := page.Lang
 	kind := taxonomy.Name
 
 	var values []string
@@ -128,7 +128,7 @@ func (b *Builder) insertTaxonomyTerms(taxonomy *Taxonomy, page *Page) {
 	for _, value := range values {
 		var parent *TaxonomyTerm
 		for _, subname := range utils.SplitPrefix(value, "/") {
-			term := b.ctx.findTaxonomyTerm(kind, subname, lang)
+			term := b.ctx.findTaxonomyTerm(kind, subname)
 			if term == nil {
 				term = &TaxonomyTerm{
 					Meta:     taxonomy.Meta.clone(),
@@ -142,11 +142,14 @@ func (b *Builder) insertTaxonomyTerms(taxonomy *Taxonomy, page *Page) {
 					slugs[i] = b.conf.GetSlug(name)
 				}
 				term.Slug = strings.Join(slugs, "/")
-				term.Path = b.conf.GetRelURL(term.realPath(term.Meta.GetString("term_path")), taxonomy.Lang)
+				term.Path = b.conf.GetRelURL(term.realPath(term.Meta.GetString("term_path")))
 				term.Permalink = b.conf.GetURL(term.Path)
+				term.Formats = b.formats(term.Meta, term.realPath)
 
 				b.ctx.insertTaxonomyTerm(term)
 			}
+			term = b.ctx.findTaxonomyTerm(kind, subname)
+
 			b.ctx.withLock(func() {
 				term.List = append(term.List, page)
 			})
@@ -180,10 +183,14 @@ func (b *Builder) writeTaxonomyTerm(term *TaxonomyTerm) {
 	for _, child := range term.Children {
 		b.writeTaxonomyTerm(child)
 	}
-	b.writeFormats(term.Meta, term.realPath, map[string]interface{}{
-		"term":         term,
-		"pages":        term.List,
-		"taxonomy":     term.Taxonomy,
-		"current_lang": term.Taxonomy.Lang,
-	})
+	for _, format := range term.Formats {
+		if tpl := b.theme.LookupTemplate(format.Template); tpl != nil {
+			b.write(tpl, format.Path, map[string]interface{}{
+				"term":         term,
+				"pages":        term.List,
+				"taxonomy":     term.Taxonomy,
+				"current_lang": term.Taxonomy.Lang,
+			})
+		}
+	}
 }

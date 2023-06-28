@@ -2,46 +2,73 @@ package page
 
 type (
 	Hook interface {
-		AfterPageParse(*Page) *Page
-		BeforePagesWrite(Pages) Pages
-		BeforeSectionsWrite(Sections) Sections
-		BeforeTaxonomiesWrite(Taxonomies) Taxonomies
-		BeforeTemplateWrite(map[string]interface{}) map[string]interface{}
+		Page(*Page) *Page
+		Section(*Section) *Section
+
+		Pages(Pages) Pages
+		Sections(Sections) Sections
+		Taxonomies(Taxonomies) Taxonomies
+		TaxonomyTerms(TaxonomyTerms) TaxonomyTerms
 	}
 	Hooks []Hook
 )
 
-func (hooks Hooks) AfterPageParse(page *Page) *Page {
+func (hooks Hooks) Page(page *Page) *Page {
 	for _, hook := range hooks {
-		page = hook.AfterPageParse(page)
+		page = hook.Page(page)
+		if page == nil {
+			return nil
+		}
 	}
 	return page
 }
 
-func (hooks Hooks) BeforePagesWrite(pages Pages) Pages {
+func (hooks Hooks) Section(section *Section) *Section {
 	for _, hook := range hooks {
-		pages = hook.BeforePagesWrite(pages)
+		section = hook.Section(section)
+		if section == nil {
+			return nil
+		}
+	}
+	return section
+}
+
+func (hooks Hooks) Pages(pages Pages) Pages {
+	for _, hook := range hooks {
+		pages = hook.Pages(pages)
+		if len(pages) == 0 {
+			return nil
+		}
 	}
 	return pages
 }
 
-func (hooks Hooks) BeforeSectionsWrite(sections Sections) Sections {
+func (hooks Hooks) Sections(sections Sections) Sections {
 	for _, hook := range hooks {
-		sections = hook.BeforeSectionsWrite(sections)
+		sections = hook.Sections(sections)
+		if len(sections) == 0 {
+			return nil
+		}
 	}
 	return sections
 }
 
-func (hooks Hooks) BeforeTaxonomiesWrite(taxonomies Taxonomies) Taxonomies {
+func (hooks Hooks) Taxonomies(taxonomies Taxonomies) Taxonomies {
 	for _, hook := range hooks {
-		taxonomies = hook.BeforeTaxonomiesWrite(taxonomies)
+		taxonomies = hook.Taxonomies(taxonomies)
+		if len(taxonomies) == 0 {
+			return nil
+		}
 	}
 	return taxonomies
 }
 
-func (hooks Hooks) BeforeTemplateWrite(vars map[string]interface{}) map[string]interface{} {
+func (hooks Hooks) TaxonomyTerms(terms TaxonomyTerms) TaxonomyTerms {
 	for _, hook := range hooks {
-		vars = hook.BeforeTemplateWrite(vars)
+		terms = hook.TaxonomyTerms(terms)
+		if len(terms) == 0 {
+			return nil
+		}
 	}
-	return vars
+	return terms
 }

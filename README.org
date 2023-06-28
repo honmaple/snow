@@ -543,8 +543,14 @@
     #+begin_src yaml
     languages.en:
       translations: "i18n/en.yaml"
+      taxonomies:
+        special_tags:
+          path: "{taxonomy}/index.html"
     languages.fr:
       translations: "i18n/fr.yaml"
+      ignores:
+        # 忽略所有的静态文件，与主站点共用一个静态目录
+        - statics
     #+end_src
     页面格式:
     - ={title}.en.md=

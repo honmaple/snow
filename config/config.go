@@ -28,10 +28,12 @@ type Config struct {
 
 	writer Writer
 
-	Site       Site
-	OutputDir  string
-	ContentDir string
-	Languages  map[string]bool
+	Site            Site
+	OutputDir       string
+	ContentDir      string
+	DefaultLanguage string
+
+	Languages map[string]Config
 }
 
 type Writer interface {
@@ -39,19 +41,20 @@ type Writer interface {
 	Watch(string) error
 }
 
-func (conf *Config) With(lang string) *Config {
-	newConfig := Config{
-		Log:    conf.Log,
-		Viper:  viper.New(),
-		writer: conf.writer,
+func (conf *Config) With(lang string) Config {
+	langc, ok := conf.Languages[lang]
+	if !ok {
+		return *conf
 	}
-	newConfig.MergeConfigMap(conf.AllSettings())
-	newConfig.MergeConfigMap(conf.GetStringMap("languages." + lang))
-	return &newConfig
+	return langc
+}
+
+func (conf *Config) IsValidLanguage(lang string) bool {
+	return conf.DefaultLanguage == lang || conf.IsSet("languages."+lang)
 }
 
 func (conf *Config) IsDefaultLanguage(lang string) bool {
-	return conf.Site.Language == lang
+	return conf.DefaultLanguage == lang
 }
 
 func (conf *Config) SetDebug() {
@@ -71,7 +74,7 @@ func (conf *Config) SetMode(mode string) {
 
 	key := fmt.Sprintf("mode.%s", mode)
 	if !conf.IsSet(key) {
-		conf.Log.Fatal("mode %s not found", key)
+		conf.Log.Fatalf("The mode %s not found", mode)
 	}
 	var c *Config
 	if file := conf.GetString(fmt.Sprintf("%s.include", key)); file != "" {
@@ -149,17 +152,17 @@ func (conf *Config) GetSlug(name string) string {
 	return name
 }
 
-func (conf *Config) GetRelURL(path string, lang string) string {
+func (conf *Config) GetRelURL(path string) string {
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		return path
 	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	if lang == conf.Site.Language {
+	if conf.IsDefaultLanguage(conf.Site.Language) {
 		return path
 	}
-	return "/" + lang + path
+	return "/" + conf.Site.Language + path
 }
 
 func (conf *Config) GetURL(path string) string {
@@ -235,10 +238,39 @@ func (conf *Config) Init() {
 	}
 	conf.OutputDir = conf.GetString("output_dir")
 	conf.ContentDir = conf.GetString("content_dir")
-	conf.Languages = make(map[string]bool)
+	conf.DefaultLanguage = conf.GetString("site.language")
+
+	conf.Languages = make(map[string]Config)
 	for lang := range conf.GetStringMap("languages") {
-		conf.Languages[lang] = true
+		if lang == conf.DefaultLanguage {
+			continue
+		}
+		langc := Config{
+			Log:    conf.Log,
+			Viper:  viper.New(),
+			writer: conf.writer,
+		}
+		langc.MergeConfigMap(conf.AllSettings())
+		for _, ignore := range conf.GetStringSlice("languages." + lang + ".ignores") {
+			langc.Set(ignore, make(map[string]interface{}))
+		}
+		langc.MergeConfigMap(conf.GetStringMap("languages." + lang))
+
+		langc.Site = Site{
+			URL:      langc.GetString("site.url"),
+			Title:    langc.GetString("site.title"),
+			SubTitle: langc.GetString("site.subtitle"),
+			Language: lang,
+		}
+		langc.OutputDir = langc.GetString("output_dir")
+		langc.ContentDir = langc.GetString("content_dir")
+
+		langc.Languages = conf.Languages
+		langc.DefaultLanguage = conf.DefaultLanguage
+
+		conf.Languages[lang] = langc
 	}
+	conf.Languages[conf.DefaultLanguage] = *conf
 }
 
 var (

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/flosch/pongo2/v6"
+	"github.com/honmaple/snow/config"
 )
 
 const (
@@ -50,11 +51,11 @@ func slice(args ...interface{}) []interface{} {
 }
 
 // call function and return nothing
-func (t *template) slient(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func slient(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	return pongo2.AsValue(""), nil
 }
 
-func (t *template) jsonify(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func jsonify(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	v := in.Interface()
 
 	buf, err := json.Marshal(v)
@@ -64,27 +65,36 @@ func (t *template) jsonify(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value
 	return pongo2.AsValue(string(buf)), nil
 }
 
-func (t *template) absURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
-	v, ok := in.Interface().(string)
-	if !ok {
-		return nil, newError("absURL", errors.New("filter input argument must be of type 'string'"))
+func absURL(conf config.Config) pongo2.FilterFunction {
+	return func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+		v, ok := in.Interface().(string)
+		if !ok {
+			return nil, newError("absURL", errors.New("filter input argument must be of type 'string'"))
+		}
+		return pongo2.AsValue(conf.GetURL(v)), nil
 	}
-	path := ""
-	if param.Len() == 0 {
-		path = t.conf.GetRelURL(v, t.conf.Site.Language)
-	} else {
-		path = t.conf.GetRelURL(v, param.String())
-	}
-	return pongo2.AsValue(t.conf.GetURL(path)), nil
 }
 
-func (t *template) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
-	v, ok := in.Interface().(string)
-	if !ok {
-		return nil, newError("relURL", errors.New("filter input argument must be of type 'string'"))
+func relURL(conf config.Config) pongo2.FilterFunction {
+	return func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo2.Error) {
+		v, ok := in.Interface().(string)
+		if !ok {
+			return nil, newError("relURL", errors.New("filter input argument must be of type 'string'"))
+		}
+		return pongo2.AsValue(conf.GetRelURL(v)), nil
 	}
-	if param.Len() == 0 {
-		return pongo2.AsValue(t.conf.GetRelURL(v, t.conf.Site.Language)), nil
+}
+
+func newConfig(conf config.Config) func(map[string]interface{}) interface{} {
+	langs := make(map[string]interface{})
+	for lang, c := range conf.Languages {
+		langs[lang] = c.AllSettings()
 	}
-	return pongo2.AsValue(t.conf.GetRelURL(v, param.String())), nil
+	return func(ctx map[string]interface{}) interface{} {
+		lang := ctx["current_lang"]
+		if lang == nil {
+			return langs[conf.Site.Language]
+		}
+		return langs[lang.(string)]
+	}
 }

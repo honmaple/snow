@@ -23,6 +23,7 @@ type (
 		HiddenPages  Pages
 		SectionPages Pages
 		Assets       []string
+		Formats      Formats
 		Parent       *Section
 		Children     Sections
 	}
@@ -46,7 +47,12 @@ func (sec *Section) isRoot() bool {
 }
 
 func (sec *Section) isEmpty() bool {
-	return len(sec.Children) == 0 && len(sec.Pages) == 0 && len(sec.HiddenPages) == 0 && len(sec.SectionPages) == 0
+	for _, child := range sec.Children {
+		if !child.isEmpty() {
+			return false
+		}
+	}
+	return len(sec.Pages) == 0 && len(sec.HiddenPages) == 0 && len(sec.SectionPages) == 0
 }
 
 func (sec *Section) Paginator() []*paginator {
@@ -103,27 +109,33 @@ func (secs Sections) OrderBy(key string) Sections {
 	return newSecs
 }
 
-func (b *Builder) findSectionIndex(path string, lang string) string {
-	prefix := "_index"
-	if !b.conf.IsDefaultLanguage(lang) {
-		prefix = prefix + "." + lang
-	}
-	if files := b.findFiles(path, prefix+".*"); len(files) > 0 {
-		return files[0]
-	}
-	return ""
-}
+func (b *Builder) insertSection(path string) *Section {
+	lang := b.conf.Site.Language
 
-func (b *Builder) insertSection(path string, lang string) *Section {
 	filemeta := make(Meta)
-	if index := b.findSectionIndex(path, lang); index != "" {
-		filemeta, _ = b.readFile(index)
+	for ext := range b.readers {
+		meta, err := b.readFile(filepath.Join(path, "_index"+ext))
+		if err == nil {
+			filemeta.load(meta)
+			break
+		}
+	}
+	for ext := range b.readers {
+		meta, err := b.readFile(filepath.Join(path, "_index."+lang+ext))
+		if err == nil {
+			filemeta.load(meta)
+			break
+		}
+	}
+
+	if l := filemeta.GetString("lang"); l != "" && l != b.conf.Site.Language {
+		return nil
 	}
 
 	section := &Section{
 		Lang:   lang,
 		File:   path,
-		Parent: b.ctx.findSection(filepath.Dir(path), lang),
+		Parent: b.ctx.findSection(filepath.Dir(path)),
 	}
 	// 根目录
 	if section.isRoot() {
@@ -138,9 +150,6 @@ func (b *Builder) insertSection(path string, lang string) *Section {
 	name := section.RealName()
 	if !section.isRoot() {
 		section.Meta.load(b.conf.GetStringMap("sections." + name))
-		if !b.conf.IsDefaultLanguage(lang) {
-			section.Meta.load(b.conf.GetStringMap("languages." + lang + ".sections." + name))
-		}
 	}
 
 	for k, v := range section.Meta {
@@ -162,8 +171,14 @@ func (b *Builder) insertSection(path string, lang string) *Section {
 		slug = strings.Join(slugs, "/")
 	}
 	section.Slug = slug
-	section.Path = b.conf.GetRelURL(section.realPath(section.Meta.GetString("path")), lang)
+	section.Path = b.conf.GetRelURL(section.realPath(section.Meta.GetString("path")))
 	section.Permalink = b.conf.GetURL(section.Path)
+	section.Formats = b.formats(section.Meta, section.realPath)
+
+	section = b.hooks.Section(section)
+	if section == nil {
+		return nil
+	}
 
 	b.ctx.insertSection(section)
 	return section
@@ -189,9 +204,13 @@ func (b *Builder) writeSection(section *Section) {
 			}
 		}
 	}
-	b.writeFormats(section.Meta, section.realPath, map[string]interface{}{
-		"section":      section,
-		"pages":        section.Pages,
-		"current_lang": section.Lang,
-	})
+	for _, format := range section.Formats {
+		if tpl := b.theme.LookupTemplate(format.Template); tpl != nil {
+			b.write(tpl, format.Path, map[string]interface{}{
+				"section":      section,
+				"pages":        section.Pages,
+				"current_lang": section.Lang,
+			})
+		}
+	}
 }

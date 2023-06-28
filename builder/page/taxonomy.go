@@ -59,33 +59,32 @@ func (ts Taxonomies) OrderBy(key string) Taxonomies {
 }
 
 func (b *Builder) insertTaxonomies(page *Page) {
-	lang := page.Lang
+	if !page.isNormal() {
+		return
+	}
 
 	for kind := range b.conf.GetStringMap("taxonomies") {
 		if kind == "_default" {
 			continue
 		}
-		taxonomy := b.ctx.findTaxonomy(kind, lang)
+		taxonomy := b.ctx.findTaxonomy(kind)
 		if taxonomy == nil {
 			taxonomy = &Taxonomy{
-				Lang: lang,
+				Lang: page.Lang,
 				Name: kind,
 			}
 			taxonomy.Meta = make(Meta)
 			taxonomy.Meta.load(b.conf.GetStringMap("taxonomies._default"))
 			taxonomy.Meta.load(b.conf.GetStringMap("taxonomies." + kind))
-			if !b.conf.IsDefaultLanguage(lang) {
-				taxonomy.Meta.load(b.conf.GetStringMap("languages." + lang + ".taxonomies." + kind))
-			}
 			if taxonomy.Meta.GetBool("disabled") {
 				continue
 			}
-			taxonomy.Path = b.conf.GetRelURL(taxonomy.realPath(taxonomy.Meta.GetString("path")), lang)
+			taxonomy.Path = b.conf.GetRelURL(taxonomy.realPath(taxonomy.Meta.GetString("path")))
 			taxonomy.Permalink = b.conf.GetURL(taxonomy.Path)
 
 			b.ctx.insertTaxonomy(taxonomy)
 		}
-		b.insertTaxonomyTerms(taxonomy, page)
+		b.insertTaxonomyTerms(b.ctx.findTaxonomy(kind), page)
 	}
 }
 

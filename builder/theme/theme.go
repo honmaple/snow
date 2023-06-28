@@ -51,6 +51,9 @@ func (t *theme) Path(file string) string {
 }
 
 func (t *theme) Open(file string) (fs.File, error) {
+	if strings.HasPrefix(file, "@theme/") {
+		file = file[7:]
+	}
 	if strings.HasPrefix(file, "_internal") {
 		return internalFS.Open(file[1:])
 	}

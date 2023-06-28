@@ -43,13 +43,17 @@ func Build(conf config.Config) error {
 }
 
 func newBuilder(conf config.Config) (Builder, error) {
+	// pongo2模版不支持单个实例注册filter或者tag，所以不支持多语言多主题
 	th, err := theme.New(conf)
 	if err != nil {
 		return nil, err
 	}
 	hs := hook.New(conf, th)
-	return Builders{
-		page.NewBuilder(conf, th, hs.PageHooks()),
-		static.NewBuilder(conf, th, hs.StaticHooks()),
-	}, nil
+
+	bs := make(Builders, 0)
+	for _, langc := range conf.Languages {
+		bs = append(bs, page.NewBuilder(langc, th, hs.PageHooks()))
+		bs = append(bs, static.NewBuilder(langc, th, hs.StaticHooks()))
+	}
+	return bs, nil
 }

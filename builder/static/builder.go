@@ -14,6 +14,7 @@ import (
 )
 
 type Builder struct {
+	ctx   *Context
 	conf  config.Config
 	theme theme.Theme
 	hooks Hooks
@@ -49,8 +50,17 @@ func (b *Builder) ignoreFile(path string) func(file string) bool {
 	}
 }
 
-func (b *Builder) loadStatics() Statics {
-	staticFiles := make([]*Static, 0)
+func (b *Builder) Build(ctx context.Context) error {
+	now := time.Now()
+	defer func() {
+		if count := len(b.ctx.Statics()); count > 0 {
+			lang := ""
+			if !b.conf.IsDefaultLanguage(b.conf.Site.Language) {
+				lang = "[" + b.conf.Site.Language + "]"
+			}
+			b.conf.Log.Infoln("Done:", lang+"Static Processed", count, "static files", "in", time.Now().Sub(now))
+		}
+	}()
 
 	// 因为viper不能识别文件名中的".", 所以这里通过获取".path"的前缀来获取文件名
 	names := make([]string, 0)
@@ -71,28 +81,33 @@ func (b *Builder) loadStatics() Statics {
 			if err != nil || info.IsDir() {
 				return err
 			}
-			var root fs.FS
 
+			staticFile := &Static{Name: file}
 			if isTheme {
-				root = b.theme
+				staticFile.Root = b.theme
+				staticFile.Name = filepath.Join("@theme", staticFile.Name)
 			} else {
-				root = os.DirFS(".")
+				staticFile.Root = os.DirFS(".")
 			}
 
-			staticFile := &Static{
-				File: &localFile{file: file, root: root, isTheme: isTheme},
-			}
-			staticName := strings.TrimPrefix(staticFile.File.Name(), name)
-
+			staticName := strings.TrimPrefix(staticFile.Name, name)
 			if isIgnore(staticName) {
 				return nil
 			}
+
 			if strings.HasSuffix(output, "/") {
 				staticFile.Path = filepath.Join(output, filepath.Base(name), staticName)
 			} else {
 				staticFile.Path = filepath.Join(output, staticName)
 			}
-			staticFiles = append(staticFiles, staticFile)
+			staticFile.Path = b.conf.GetRelURL(staticFile.Path)
+			staticFile.Permalink = b.conf.GetURL(staticFile.Path)
+
+			staticFile = b.hooks.Static(staticFile)
+			if staticFile == nil {
+				return nil
+			}
+			b.ctx.insertStatic(staticFile)
 			return nil
 		}
 
@@ -108,18 +123,25 @@ func (b *Builder) loadStatics() Statics {
 		}
 		filepath.Walk(name, walkFunc)
 	}
-	return staticFiles
+	return b.Write()
 }
 
-func (b *Builder) Build(ctx context.Context) error {
-	now := time.Now()
+func (b *Builder) Write() error {
+	for _, static := range b.hooks.Statics(b.ctx.Statics()) {
+		// src := static.File.Name()
+		// dst := filepath.Join(b.conf.OutputDir, static.Path)
+		// b.conf.Log.Debugln("Copying", src, "to", dst)
+		file, err := static.Open()
+		if err != nil {
+			continue
+		}
+		defer file.Close()
 
-	files := b.loadStatics()
-	defer func() {
-		b.conf.Log.Infoln("Done: Static Processed", len(files), "static files", "in", time.Now().Sub(now))
-	}()
-	files = b.hooks.BeforeStaticsWrite(files)
-	return b.Write(files)
+		if err := b.conf.Write(static.Path, file); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func NewBuilder(conf config.Config, theme theme.Theme, hooks Hooks) *Builder {
@@ -127,5 +149,6 @@ func NewBuilder(conf config.Config, theme theme.Theme, hooks Hooks) *Builder {
 		conf:  conf,
 		theme: theme,
 		hooks: hooks,
+		ctx:   newContext(conf),
 	}
 }

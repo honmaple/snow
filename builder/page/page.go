@@ -103,6 +103,7 @@ type (
 		Date     time.Time
 		Modified time.Time
 
+		Slug      string
 		Path      string
 		Permalink string
 		Aliases   []string
@@ -117,12 +118,13 @@ type (
 		PrevInSection *Page
 		NextInSection *Page
 
+		Formats Formats
 		Section *Section
 	}
 	Pages []*Page
 )
 
-func filterExpr(filter string) func(*Page) bool {
+func FilterExpr(filter string) func(*Page) bool {
 	if filter == "" {
 		return func(*Page) bool {
 			return true
@@ -155,6 +157,24 @@ func filterExpr(filter string) func(*Page) bool {
 		}
 		return false
 	}
+}
+
+func (page *Page) realPath(pathstr string) string {
+	filename := utils.FileBaseName(page.File)
+	if filename == "index" && !page.Section.isRoot() {
+		filename = filepath.Base(filepath.Dir(page.File))
+	}
+	vars := map[string]string{
+		"{date:%Y}":      page.Date.Format("2006"),
+		"{date:%m}":      page.Date.Format("01"),
+		"{date:%d}":      page.Date.Format("02"),
+		"{date:%H}":      page.Date.Format("15"),
+		"{slug}":         page.Slug,
+		"{filename}":     filename,
+		"{section}":      page.Section.RealName(),
+		"{section:slug}": page.Section.Slug,
+	}
+	return utils.StringReplace(pathstr, vars)
 }
 
 func (page *Page) isNormal() bool {
@@ -241,7 +261,7 @@ func (pages Pages) Filter(filter string) Pages {
 	}
 	npages := make(Pages, 0, len(pages))
 
-	expr := filterExpr(filter)
+	expr := FilterExpr(filter)
 	for _, page := range pages {
 		if expr(page) {
 			npages = append(npages, page)
@@ -285,11 +305,9 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 	for _, page := range pages {
 		for _, name := range groupf(page) {
 			// 不要忽略大小写
-			// name = strings.ToLower(name)
 			var parent *TaxonomyTerm
 
 			for _, subname := range utils.SplitPrefix(name, "/") {
-				// for _, subname := range names {
 				term, ok := termm[subname]
 				if !ok {
 					term = &TaxonomyTerm{Name: subname[strings.LastIndex(subname, "/")+1:], Parent: parent}
@@ -320,12 +338,15 @@ func (pages Pages) Paginator(number int, path string, paginatePath string) []*pa
 }
 
 func (b *Builder) insertPage(file string) *Page {
+	section := b.ctx.findSection(filepath.Dir(file))
+	if section == nil {
+		return nil
+	}
+
 	filemeta, err := b.readFile(file)
 	if err != nil {
 		return nil
 	}
-	lang := b.findLang(file, filemeta)
-	section := b.ctx.findSection(filepath.Dir(file), lang)
 
 	meta := section.Meta.clone()
 	meta["path"] = meta["page_path"]
@@ -333,15 +354,21 @@ func (b *Builder) insertPage(file string) *Page {
 	meta["formats"] = meta["page_formats"]
 	delete(meta, "slug")
 	delete(meta, "title")
+	delete(meta, "content")
+	delete(meta, "summary")
 	meta.load(filemeta)
 
-	now := time.Now()
+	lang := b.findLang(file, meta)
+	if lang != b.conf.Site.Language {
+		return nil
+	}
+
 	page := &Page{
+		Meta:    meta,
+		Lang:    lang,
 		File:    file,
 		Type:    section.FirstName(),
-		Meta:    meta,
-		Date:    now,
-		Lang:    lang,
+		Date:    time.Now(),
 		Section: section,
 	}
 	for k, v := range meta {
@@ -358,6 +385,8 @@ func (b *Builder) insertPage(file string) *Page {
 		switch strings.ToLower(k) {
 		case "type":
 			page.Type = v.(string)
+		case "slug":
+			page.Slug = v.(string)
 		case "title":
 			page.Title = v.(string)
 		case "date":
@@ -383,46 +412,34 @@ func (b *Builder) insertPage(file string) *Page {
 		}
 		meta[k] = v
 	}
-	filename := utils.FileBaseName(file)
-	if filename == "index" && !section.isRoot() {
-		filename = filepath.Base(filepath.Dir(file))
-	}
 	if page.Title == "" {
+		filename := utils.FileBaseName(file)
+		if filename == "index" && !section.isRoot() {
+			filename = filepath.Base(filepath.Dir(file))
+		}
 		page.Title = filename
 	}
 	if page.Modified.IsZero() {
 		page.Modified = page.Date
 	}
-	if page.Path == "" {
-		vars := map[string]string{
-			"{date:%Y}":      page.Date.Format("2006"),
-			"{date:%m}":      page.Date.Format("01"),
-			"{date:%d}":      page.Date.Format("02"),
-			"{date:%H}":      page.Date.Format("15"),
-			"{filename}":     filename,
-			"{section}":      section.RealName(),
-			"{section:slug}": section.Slug,
-		}
-		if slug, ok := meta["slug"]; ok && slug != "" {
-			vars["{slug}"] = slug.(string)
-		} else {
-			vars["{slug}"] = b.conf.GetSlug(page.Title)
-		}
-		page.Path = utils.StringReplace(meta.GetString("path"), vars)
+	if page.Slug == "" {
+		page.Slug = b.conf.GetSlug(page.Title)
 	}
-	page.Path = b.conf.GetRelURL(page.Path, page.Lang)
+	if page.Path == "" {
+		page.Path = page.realPath(meta.GetString("path"))
+	}
+	page.Path = b.conf.GetRelURL(page.Path)
 	page.Permalink = b.conf.GetURL(page.Path)
+	page.Formats = b.formats(page.Meta, nil)
 
-	page = b.hooks.AfterPageParse(page)
-
-	if b.ctx.filter != nil && !b.ctx.filter(page) {
+	page = b.hooks.Page(page)
+	if page == nil {
 		return nil
 	}
 
 	b.ctx.insertPage(page)
-	if page.isNormal() {
-		b.insertTaxonomies(page)
-	}
+
+	b.insertTaxonomies(page)
 	return page
 }
 
@@ -442,31 +459,31 @@ func (b *Builder) writePage(page *Page) {
 				b.write(tpl, aliase, ctx)
 			}
 		}
-		b.writeFormats(page.Meta, nil, ctx)
+		for _, format := range page.Formats {
+			if tpl := b.theme.LookupTemplate(format.Template); tpl != nil {
+				b.write(tpl, format.Path, map[string]interface{}{
+					"page":         page,
+					"current_lang": page.Lang,
+					"current_url":  format.Permalink,
+					"current_path": format.Path,
+				})
+			}
+		}
 		return
 	}
-
-	path := page.Meta.GetString("path")
-	if path == "" {
-		return
-	}
-
 	section := &Section{
-		Lang:    page.Lang,
-		File:    page.File,
-		Meta:    page.Meta,
-		Title:   page.Title,
-		Content: page.Content,
-		Parent:  page.Section,
+		Meta:      page.Meta,
+		Lang:      page.Lang,
+		File:      page.File,
+		Slug:      page.Slug,
+		Title:     page.Title,
+		Content:   page.Content,
+		Path:      page.Path,
+		Permalink: page.Permalink,
+		Parent:    page.Section,
 	}
-	slug := section.Meta.GetString("slug")
-	if slug == "" {
-		slug = b.conf.GetSlug(section.Title)
-	}
-	section.Slug = slug
-	section.Path = b.conf.GetRelURL(path, page.Lang)
-	section.Permalink = b.conf.GetURL(section.Path)
-	section.Pages = b.ctx.Pages(page.Lang).Filter(page.Meta.GetString("filter")).OrderBy(page.Meta.GetString("orderby"))
+	section.Pages = b.ctx.Pages().Filter(page.Meta.GetString("filter")).OrderBy(page.Meta.GetString("orderby"))
+	section.Formats = b.formats(section.Meta, section.realPath)
 
 	b.writeSection(section)
 }

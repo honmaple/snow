@@ -38,7 +38,7 @@ func (self *assets) Name() string {
 	return "assets"
 }
 
-func (self *assets) BeforeStaticsWrite(statics static.Statics) static.Statics {
+func (self *assets) Statics(statics static.Statics) static.Statics {
 	for name, opt := range self.opts {
 		h, err := self.execute(opt)
 		if err != nil {

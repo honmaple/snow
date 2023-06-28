@@ -15,7 +15,8 @@ import (
 var (
 	Globals        = make(map[string]interface{})
 	GlobalFuncs    = make(map[string]func(map[string]interface{}) interface{})
-	ConfigFuncs    = make(map[string]func(config.Config) pongo2.FilterFunction)
+	ConfigFuncs    = make(map[string]func(config.Config) func(map[string]interface{}) interface{})
+	ConfigFilters  = make(map[string]func(config.Config) pongo2.FilterFunction)
 	RegisterTag    = pongo2.RegisterTag
 	RegisterFilter = pongo2.RegisterFilter
 )
@@ -28,8 +29,12 @@ func RegisterFunc(k string, v func(map[string]interface{}) interface{}) {
 	GlobalFuncs[k] = v
 }
 
-func RegisterConfigFilter(k string, v func(config.Config) pongo2.FilterFunction) {
+func RegisterConfigFunc(k string, v func(config.Config) func(map[string]interface{}) interface{}) {
 	ConfigFuncs[k] = v
+}
+
+func RegisterConfigFilter(k string, v func(config.Config) pongo2.FilterFunction) {
+	ConfigFilters[k] = v
 }
 
 func RegisterStringFilter(k string, f func(string) interface{}) {
@@ -69,9 +74,9 @@ type (
 	}
 	template struct {
 		conf   config.Config
+		funcs  map[string]func(map[string]interface{}) interface{}
 		loader *loader
 		tplset *pongo2.TemplateSet
-		langs  map[string]interface{}
 	}
 )
 
@@ -100,6 +105,11 @@ func (t *writer) Write(file string, ctx map[string]interface{}) error {
 			vars[k] = v(vars)
 		}
 	}
+	for k, v := range t.t.funcs {
+		if _, ok := vars[k]; !ok {
+			vars[k] = v(vars)
+		}
+	}
 
 	var w bytes.Buffer
 	if err := t.w.ExecuteWriter(vars, &w); err != nil {
@@ -124,6 +134,11 @@ func (t *writer) Execute(ctx map[string]interface{}) (string, error) {
 			vars[k] = v(vars)
 		}
 	}
+	for k, v := range t.t.funcs {
+		if _, ok := vars[k]; !ok {
+			vars[k] = v(vars)
+		}
+	}
 	return t.w.Execute(vars)
 }
 
@@ -140,43 +155,36 @@ func (t *template) Lookup(name string) (Writer, error) {
 	return &writer{n: name, t: t, w: tpl}, nil
 }
 
-func (t *template) newConfig(ctx map[string]interface{}) interface{} {
-	lang := ctx["current_lang"]
-	if lang != nil && lang != t.conf.Site.Language {
-		if v, ok := t.langs[lang.(string)]; ok {
-			return v
-		}
-	}
-	return t.langs[t.conf.Site.Language]
-}
-
 func New(conf config.Config, theme fs.FS) Interface {
 	t := &template{
 		conf:   conf,
 		loader: newLoader(theme, conf.GetString("theme.override")),
+		funcs:  make(map[string]func(map[string]interface{}) interface{}),
 	}
 	t.tplset = pongo2.NewSet("app", t.loader)
 
-	t.langs = make(map[string]interface{})
-	for lang := range conf.Languages {
-		t.langs[lang] = t.conf.With(lang).AllSettings()
-	}
-	t.langs[conf.Site.Language] = conf.AllSettings()
-
-	Register("dict", dict)
-	Register("slice", slice)
-
-	RegisterFunc("config", t.newConfig)
-	RegisterFunc("scratch", newScratch)
-	RegisterFunc("newScratch", newScratchFunc)
-
-	RegisterFilter("absURL", t.absURL)
-	RegisterFilter("relURL", t.relURL)
-	RegisterFilter("slient", t.slient)
-	RegisterFilter("jsonify", t.jsonify)
-
 	for k, f := range ConfigFuncs {
+		t.funcs[k] = f(conf)
+	}
+
+	for k, f := range ConfigFilters {
 		RegisterFilter(k, f(conf))
 	}
 	return t
+}
+
+func init() {
+	Register("dict", dict)
+	Register("slice", slice)
+
+	RegisterFunc("scratch", newScratch)
+	RegisterFunc("newScratch", newScratchFunc)
+
+	RegisterFilter("slient", slient)
+	RegisterFilter("jsonify", jsonify)
+
+	RegisterConfigFunc("config", newConfig)
+
+	RegisterConfigFilter("absURL", absURL)
+	RegisterConfigFilter("relURL", relURL)
 }
