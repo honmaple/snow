@@ -174,9 +174,9 @@ func commonAction(clx *cli.Context) error {
 	}
 	conf.Init()
 
-	if clx.Bool("clean") {
-		conf.Log.Infoln("Removing the contents of", conf.OutputDir)
-		return utils.RemoveDir(conf.OutputDir)
+	if out := conf.OutputDir; out != "" && clx.Bool("clean") {
+		conf.Log.Infoln("Removing the contents of", out)
+		return utils.RemoveDir(out)
 	}
 	return nil
 }

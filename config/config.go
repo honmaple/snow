@@ -33,7 +33,7 @@ type Config struct {
 	ContentDir      string
 	DefaultLanguage string
 
-	Languages map[string]Config
+	Languages map[string]*Config
 }
 
 type Writer interface {
@@ -46,7 +46,7 @@ func (conf *Config) With(lang string) Config {
 	if !ok {
 		return *conf
 	}
-	return langc
+	return *langc
 }
 
 func (conf *Config) IsValidLanguage(lang string) bool {
@@ -100,8 +100,12 @@ func (conf *Config) SetMode(mode string) {
 	}
 }
 
-func (conf *Config) SetWriter(w Writer) {
+func (conf *Config) WithWriter(w Writer) Config {
 	conf.writer = w
+	for _, langc := range conf.Languages {
+		langc.writer = w
+	}
+	return *conf
 }
 
 func (conf *Config) Watch(file string) error {
@@ -240,12 +244,12 @@ func (conf *Config) Init() {
 	conf.ContentDir = conf.GetString("content_dir")
 	conf.DefaultLanguage = conf.GetString("site.language")
 
-	conf.Languages = make(map[string]Config)
+	conf.Languages = make(map[string]*Config)
 	for lang := range conf.GetStringMap("languages") {
 		if lang == conf.DefaultLanguage {
 			continue
 		}
-		langc := Config{
+		langc := &Config{
 			Log:    conf.Log,
 			Viper:  viper.New(),
 			writer: conf.writer,
@@ -270,7 +274,7 @@ func (conf *Config) Init() {
 
 		conf.Languages[lang] = langc
 	}
-	conf.Languages[conf.DefaultLanguage] = *conf
+	conf.Languages[conf.DefaultLanguage] = conf
 }
 
 var (

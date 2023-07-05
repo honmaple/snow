@@ -52,8 +52,8 @@ func newBuilder(conf config.Config) (Builder, error) {
 
 	bs := make(Builders, 0)
 	for _, langc := range conf.Languages {
-		bs = append(bs, page.NewBuilder(langc, th, hs.PageHooks()))
-		bs = append(bs, static.NewBuilder(langc, th, hs.StaticHooks()))
+		bs = append(bs, page.NewBuilder(*langc, th, hs.PageHooks()))
+		bs = append(bs, static.NewBuilder(*langc, th, hs.StaticHooks()))
 	}
 	return bs, nil
 }

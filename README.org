@@ -699,7 +699,7 @@
           return "test"
       }
 
-      func (testHook) AfterPageParse(page *page.Page) *page.Page {
+      func (testHook) Page(page *page.Page) *page.Page {
           fmt.Println(page.Title)
           return page
       }

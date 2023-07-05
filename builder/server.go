@@ -88,9 +88,7 @@ func (m *memoryServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *memoryServer) Build(ctx context.Context) error {
-	conf.SetWriter(m)
-
-	b, err := newBuilder(conf)
+	b, err := newBuilder(m.conf)
 	if err != nil {
 		return err
 	}
@@ -103,16 +101,16 @@ func (m *memoryServer) Build(ctx context.Context) error {
 					return
 				}
 				if event.Op == fsnotify.Write {
-					conf.Log.Infoln("The", event.Name, "has been modified. Rebuilding...")
+					m.conf.Log.Infoln("The", event.Name, "has been modified. Rebuilding...")
 					if err := b.Build(ctx); err != nil {
-						conf.Log.Errorln("Build error", err.Error())
+						m.conf.Log.Errorln("Build error", err.Error())
 					}
 				}
 			case err, ok := <-m.watcher.Errors:
 				if !ok {
 					return
 				}
-				conf.Log.Fatalln("Watch error", err.Error())
+				m.conf.Log.Fatalln("Watch error", err.Error())
 			}
 		}
 	}()
@@ -120,7 +118,7 @@ func (m *memoryServer) Build(ctx context.Context) error {
 		return err
 	}
 	if len(m.watchFiles) > 0 {
-		conf.Log.Infoln("Watching", strings.Join(m.watchFiles, ", "))
+		m.conf.Log.Infoln("Watching", strings.Join(m.watchFiles, ", "))
 	}
 	return nil
 }
@@ -152,9 +150,10 @@ func newServer(conf config.Config, autoload bool) *memoryServer {
 	if err != nil {
 		conf.Log.Error(err.Error())
 	}
-	return &memoryServer{
-		conf:     conf,
+	m := &memoryServer{
 		watcher:  watcher,
 		autoload: autoload,
 	}
+	m.conf = conf.WithWriter(m)
+	return m
 }

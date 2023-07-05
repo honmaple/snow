@@ -133,6 +133,7 @@ func (b *Builder) Write() error {
 		// b.conf.Log.Debugln("Copying", src, "to", dst)
 		file, err := static.Open()
 		if err != nil {
+			b.conf.Log.Errorf("Open %s error: %s", static.Name, err.Error())
 			continue
 		}
 		defer file.Close()

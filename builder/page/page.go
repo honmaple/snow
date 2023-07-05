@@ -481,9 +481,9 @@ func (b *Builder) writePage(page *Page) {
 		Path:      page.Path,
 		Permalink: page.Permalink,
 		Parent:    page.Section,
+		Formats:   page.Formats,
 	}
 	section.Pages = b.ctx.Pages().Filter(page.Meta.GetString("filter")).OrderBy(page.Meta.GetString("orderby"))
-	section.Formats = b.formats(section.Meta, section.realPath)
 
 	b.writeSection(section)
 }
