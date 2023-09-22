@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/gosimple/slug"
 	"github.com/honmaple/snow/utils"
@@ -24,7 +25,8 @@ type Site struct {
 
 type Config struct {
 	*viper.Viper
-	Log *logrus.Logger
+	Log   *logrus.Logger
+	Cache *sync.Map
 
 	writer Writer
 
@@ -250,8 +252,9 @@ func (conf *Config) Init() {
 			continue
 		}
 		langc := &Config{
-			Log:    conf.Log,
 			Viper:  viper.New(),
+			Log:    conf.Log,
+			Cache:  conf.Cache,
 			writer: conf.writer,
 		}
 		langc.MergeConfigMap(conf.AllSettings())
@@ -338,6 +341,7 @@ func DefaultConfig() Config {
 			Level: logrus.InfoLevel,
 		},
 		Viper: viper.New(),
+		Cache: new(sync.Map),
 	}
 	for k, v := range siteConfig {
 		c.SetDefault(k, v)

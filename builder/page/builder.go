@@ -31,8 +31,6 @@ type (
 	}
 )
 
-var cache sync.Map
-
 func (b *Builder) findLang(path string, filemeta Meta) string {
 	if filemeta != nil {
 		if lang := filemeta.GetString("lang"); lang != "" && b.conf.IsValidLanguage(lang) {
@@ -66,7 +64,7 @@ func (b *Builder) findFiles(path string, pattern string) []string {
 }
 
 func (b *Builder) readFile(file string) (Meta, error) {
-	v, ok := cache.Load(file)
+	v, ok := b.conf.Cache.Load(file)
 	if ok {
 		return v.(Meta), nil
 	}
@@ -89,7 +87,7 @@ func (b *Builder) readFile(file string) (Meta, error) {
 		return nil, fmt.Errorf("Read file %s: no meta", file)
 	}
 
-	cache.Store(file, meta)
+	b.conf.Cache.Store(file, meta)
 	return meta, nil
 }
 

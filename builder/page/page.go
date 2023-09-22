@@ -456,6 +456,9 @@ func (b *Builder) writePage(page *Page) {
 		}
 		if tpl := b.theme.LookupTemplate("alias.html", "_internal/partials/alias.html"); tpl != nil {
 			for _, aliase := range page.Aliases {
+				if !strings.HasPrefix(aliase, "/") {
+					aliase = filepath.Join(filepath.Dir(page.Path), aliase)
+				}
 				b.write(tpl, aliase, ctx)
 			}
 		}

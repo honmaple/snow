@@ -35,18 +35,10 @@ func (bs Builders) Build(ctx context.Context) error {
 }
 
 func Build(conf config.Config) error {
-	bs, err := newBuilder(conf)
-	if err != nil {
-		return err
-	}
-	return bs.Build(context.Background())
-}
-
-func newBuilder(conf config.Config) (Builder, error) {
 	// pongo2模版不支持单个实例注册filter或者tag，所以不支持多语言多主题
 	th, err := theme.New(conf)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	hs := hook.New(conf, th)
 
@@ -55,5 +47,5 @@ func newBuilder(conf config.Config) (Builder, error) {
 		bs = append(bs, page.NewBuilder(*langc, th, hs.PageHooks()))
 		bs = append(bs, static.NewBuilder(*langc, th, hs.StaticHooks()))
 	}
-	return bs, nil
+	return bs.Build(context.Background())
 }

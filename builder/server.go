@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -24,34 +26,36 @@ type (
 	memoryServer struct {
 		mu         sync.RWMutex
 		conf       config.Config
-		cache      sync.Map
+		files      sync.Map
 		watcher    *fsnotify.Watcher
 		autoload   bool
-		watchFiles []string
-		watchExist map[string]bool
+		watchFiles sync.Map
 	}
 )
 
-func (m *memoryServer) Close() error {
-	if m.watcher == nil {
-		return nil
-	}
-	return m.watcher.Close()
+func (m *memoryServer) reset() {
+	m.files.Range(func(k, v interface{}) bool {
+		m.files.Delete(k)
+		return true
+	})
 }
 
 func (m *memoryServer) Watch(file string) error {
 	if m.watcher == nil || !m.autoload {
 		return nil
 	}
-	m.mu.RLock()
-	exist := m.watchExist[file]
-	m.mu.RUnlock()
 
+	_, exist := m.watchFiles.LoadOrStore(file, true)
 	if !exist {
-		m.mu.Lock()
-		defer m.mu.Unlock()
-		m.watchFiles = append(m.watchFiles, file)
-		return m.watcher.Add(file)
+		return filepath.WalkDir(file, func(path string, info fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if file == path || info.IsDir() {
+				return m.watcher.Add(path)
+			}
+			return nil
+		})
 	}
 	return nil
 }
@@ -65,7 +69,7 @@ func (m *memoryServer) Write(file string, r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	m.cache.Store(file, &memoryFile{bytes.NewReader(buf), time.Now()})
+	m.files.Store(file, &memoryFile{bytes.NewReader(buf), time.Now()})
 	return nil
 }
 
@@ -74,9 +78,9 @@ func (m *memoryServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasSuffix(path, "/") {
 		path = filepath.Join(path, "index.html")
 	}
-	v, ok := m.cache.Load(path)
+	v, ok := m.files.Load(path)
 	if !ok {
-		v, ok = m.cache.Load("/404.html")
+		v, ok = m.files.Load("/404.html")
 		if !ok {
 			http.Error(w, "404", 404)
 			return
@@ -88,11 +92,6 @@ func (m *memoryServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *memoryServer) Build(ctx context.Context) error {
-	b, err := newBuilder(m.conf)
-	if err != nil {
-		return err
-	}
-
 	go func() {
 		for {
 			select {
@@ -102,7 +101,9 @@ func (m *memoryServer) Build(ctx context.Context) error {
 				}
 				if event.Op == fsnotify.Write {
 					m.conf.Log.Infoln("The", event.Name, "has been modified. Rebuilding...")
-					if err := b.Build(ctx); err != nil {
+					m.conf.Cache.Delete(event.Name)
+					m.reset()
+					if err := Build(m.conf); err != nil {
 						m.conf.Log.Errorln("Build error", err.Error())
 					}
 				}
@@ -114,11 +115,18 @@ func (m *memoryServer) Build(ctx context.Context) error {
 			}
 		}
 	}()
-	if err := b.Build(ctx); err != nil {
+	if err := Build(m.conf); err != nil {
 		return err
 	}
-	if len(m.watchFiles) > 0 {
-		m.conf.Log.Infoln("Watching", strings.Join(m.watchFiles, ", "))
+
+	watchFiles := make([]string, 0)
+	m.watchFiles.Range(func(k, v interface{}) bool {
+		watchFiles = append(watchFiles, k.(string))
+		return true
+	})
+	sort.Strings(watchFiles)
+	if len(watchFiles) > 0 {
+		m.conf.Log.Infoln("Watching", strings.Join(watchFiles, ", "))
 	}
 	return nil
 }
@@ -132,28 +140,24 @@ func Server(conf config.Config, listen string, autoload bool) error {
 		return err
 	}
 
-	mem := newServer(conf, autoload)
-	defer mem.Close()
-
-	if err := mem.Build(context.Background()); err != nil {
-		return err
-	}
-	mux := http.NewServeMux()
-	mux.Handle("/", mem)
-
-	conf.Log.Infoln("Listen", listen, "...")
-	return http.ListenAndServe(u.Host, mux)
-}
-
-func newServer(conf config.Config, autoload bool) *memoryServer {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		conf.Log.Error(err.Error())
+		return err
 	}
+	defer watcher.Close()
+
 	m := &memoryServer{
 		watcher:  watcher,
 		autoload: autoload,
 	}
 	m.conf = conf.WithWriter(m)
-	return m
+
+	if err := m.Build(context.Background()); err != nil {
+		return err
+	}
+	mux := http.NewServeMux()
+	mux.Handle("/", m)
+
+	conf.Log.Infoln("Listen", listen, "...")
+	return http.ListenAndServe(u.Host, mux)
 }

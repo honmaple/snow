@@ -15,7 +15,7 @@ type (
 )
 
 func (self *internalHook) Name() string {
-	return "internalHook"
+	return "internal"
 }
 
 func (self *internalHook) Page(p *page.Page) *page.Page {
