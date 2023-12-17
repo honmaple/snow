@@ -28,7 +28,7 @@ func (self *shortcode) Name() string {
 func (self *shortcode) template(path string) (func(map[string]interface{}) string, error) {
 	tpl := self.theme.LookupTemplate(path)
 	if tpl == nil {
-		return nil, fmt.Errorf("Lookup %s but not found", path)
+		return nil, fmt.Errorf("Lookup %s but not found or some error happen", path)
 	}
 	return func(vars map[string]interface{}) string {
 		out, err := tpl.Execute(vars)
@@ -65,17 +65,21 @@ func (self *shortcode) renderNext(page *page.Page, w *bytes.Buffer, z *html.Toke
 			}
 			shortcode, ok := self.tpls[name]
 			if ok {
-				vars := make(map[string]interface{})
-
-				attrs := make(map[string]interface{})
+				params := make(map[string]interface{})
 				for _, attr := range token.Attr {
-					vars[attr.Key] = attr.Val
-					attrs[attr.Key] = attr.Val
+					params[attr.Key] = attr.Val
 				}
-				vars["page"] = page
-				vars["attr"] = attrs
-				vars["body"] = ""
-				vars["_counter"] = counter[name]
+
+				vars := map[string]interface{}{
+					"page":     page,
+					"body":     "",
+					"params":   params,
+					"_name":    name,
+					"_counter": counter[name],
+					"_shortcode": func(s string) string {
+						return self.shortcode(page, s)
+					},
+				}
 				counter[name]++
 
 				if next == html.StartTagToken {

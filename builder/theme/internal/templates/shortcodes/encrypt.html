@@ -4,8 +4,8 @@
       <input class="encrypt-password" type="password" name="请输入密码" />
       <input class="encrypt-button" type="button" value="解密" onclick="decrypt(this)" />
     </div>
-    <div class="encrypt-content" style="display:none;">{{ body | encrypt:password }}</div>
-    {%- if description %}<div>{{ description }}</div>{%- endif %}
+    <div class="encrypt-content" style="display:none;">{{ body | encrypt:params.password }}</div>
+    {%- if params.description %}<div>{{ params.description }}</div>{%- endif %}
   </div>
 {%- endblock %}
 
