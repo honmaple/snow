@@ -9,8 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	libsass "github.com/wellington/go-libsass"
-
+	"github.com/bep/golibsass/libsass"
 	"github.com/spf13/cast"
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
@@ -104,18 +103,31 @@ func (self *assets) filter(name string, w io.Writer, r io.Reader, opt filterOpti
 }
 
 func (self *assets) libscss(w io.Writer, r io.Reader, opt filterOption) error {
-	paths := make([]string, 0)
-	if opt != nil {
-		for _, path := range cast.ToStringSlice(opt["path"]) {
-			paths = append(paths, self.theme.Path(path))
-		}
-	}
-
-	comp, err := libsass.New(w, r, libsass.IncludePaths(paths))
+	bs, err := ioutil.ReadAll(r)
 	if err != nil {
 		return err
 	}
-	return comp.Run()
+
+	opts := libsass.Options{}
+	if opt != nil {
+		paths := make([]string, 0)
+		for _, path := range cast.ToStringSlice(opt["path"]) {
+			paths = append(paths, self.theme.Path(path))
+		}
+		opts.IncludePaths = paths
+	}
+
+	transpiler, err := libsass.New(opts)
+	if err != nil {
+		return err
+	}
+
+	result, err := transpiler.Execute(string(bs))
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(w, result.CSS)
+	return err
 }
 
 func (self *assets) cssmin(w io.Writer, r io.Reader, opt filterOption) error {
