@@ -28,7 +28,7 @@ func (self *sofile) Name() string {
 
 func New(conf config.Config, theme theme.Theme) hook.Hook {
 	hooks := make(hook.Hooks, 0)
-	for _, file := range conf.GetStringSlice("params.sofiles") {
+	for _, file := range conf.GetStringSlice("hooks.sofile.files") {
 		if filepath.Ext(file) != ".so" {
 			continue
 		}

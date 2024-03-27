@@ -29,8 +29,7 @@ type (
 )
 
 var (
-	_hooks         map[string]hookCreator
-	_internalHooks map[string]hookCreator
+	_hooks map[string]hookCreator
 )
 
 func (hooks Hooks) PageHooks() (result page.Hooks) {
@@ -48,13 +47,23 @@ func (hooks Hooks) StaticHooks() (result static.Hooks) {
 }
 
 func New(conf config.Config, theme theme.Theme) Hooks {
-	names := conf.GetStringSlice("hooks")
-	hooks := make([]Hook, 0)
-
-	for _, creator := range _internalHooks {
-		hooks = append(hooks, creator(conf, theme))
+	names := conf.GetStringSlice("registered_hooks")
+	if len(names) == 0 {
+		names = make([]string, 0)
+		for name := range conf.GetStringMap("hooks") {
+			names = append(names, name)
+		}
+		sort.SliceStable(names, func(i, j int) bool {
+			wi := conf.GetInt("hooks." + names[i] + ".weight")
+			wj := conf.GetInt("hooks." + names[j] + ".weight")
+			if wi == wj {
+				return names[i] > names[j]
+			}
+			return wi > wj
+		})
 	}
 
+	hooks := make([]Hook, 0)
 	for _, name := range names {
 		if creator, ok := _hooks[name]; ok {
 			hooks = append(hooks, creator(conf, theme))
@@ -81,14 +90,6 @@ func Register(name string, creator hookCreator) {
 	_hooks[name] = creator
 }
 
-func RegisterInternal(name string, creator hookCreator) {
-	if _, ok := _internalHooks[name]; ok {
-		panic(fmt.Sprintf("The internal hook %s has been registered", name))
-	}
-	_internalHooks[name] = creator
-}
-
 func init() {
 	_hooks = make(map[string]hookCreator)
-	_internalHooks = make(map[string]hookCreator)
 }

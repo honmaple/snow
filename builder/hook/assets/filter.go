@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"io"
 	"io/ioutil"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -51,37 +52,53 @@ func (self *assets) execute(opt option) (string, error) {
 		h = md5.New()
 	)
 	for _, file := range opt.files {
-		var (
-			buf []byte
-			err error
-		)
-		if strings.HasPrefix(file, "@theme/") {
-			f, err := self.theme.Open(file[7:])
+		var matches []string
+
+		if strings.HasPrefix(file, "@theme/_internal/") {
+			matches = []string{file}
+		} else {
+			files, err := filepath.Glob(self.theme.Path(file))
 			if err != nil {
 				return "", err
 			}
-			buf, err = ioutil.ReadAll(f)
-		} else {
-			buf, err = ioutil.ReadFile(file)
+			matches = files
 		}
-		if err != nil {
-			return "", err
-		}
-		var (
-			w = bytes.NewBuffer(nil)
-			r = bytes.NewBuffer(buf)
-		)
-		// filters为空时返回原数据
-		w.Write(r.Bytes())
-		for i, filter := range opt.filters {
-			w.Reset()
-			if err := self.filter(filter, w, r, opt.filterOpts[i]); err != nil {
+
+		for _, match := range matches {
+			var (
+				buf []byte
+				err error
+			)
+
+			if strings.HasPrefix(match, "@theme/") {
+				f, err := self.theme.Open(match)
+				if err != nil {
+					return "", err
+				}
+				buf, err = ioutil.ReadAll(f)
+			} else {
+				buf, err = ioutil.ReadFile(match)
+			}
+			if err != nil {
 				return "", err
 			}
-			r.Reset()
-			r.Write(w.Bytes())
+			var (
+				w = bytes.NewBuffer(nil)
+				r = bytes.NewBuffer(buf)
+			)
+			// filters为空时返回原数据
+			w.Write(r.Bytes())
+			for i, filter := range opt.filters {
+				w.Reset()
+				if err := self.filter(filter, w, r, opt.filterOpts[i]); err != nil {
+					return "", err
+				}
+				r.Reset()
+				r.Write(w.Bytes())
+			}
+			b.Write(w.Bytes())
 		}
-		b.Write(w.Bytes())
+
 	}
 	// 边读边写
 	if err := self.conf.Write(opt.output, io.TeeReader(&b, h)); err != nil {

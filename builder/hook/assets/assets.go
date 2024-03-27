@@ -28,10 +28,10 @@ type (
 )
 
 const (
-	filesTemplate   = "params.assets.%s.files"
-	outputTemplate  = "params.assets.%s.output"
-	filtersTemplate = "params.assets.%s.filters"
-	versionTemplate = "params.assets.%s.version"
+	filesTemplate   = "hooks.assets.%s.files"
+	outputTemplate  = "hooks.assets.%s.output"
+	filtersTemplate = "hooks.assets.%s.filters"
+	versionTemplate = "hooks.assets.%s.version"
 )
 
 func (self *assets) Name() string {
@@ -52,7 +52,7 @@ func (self *assets) Statics(statics static.Statics) static.Statics {
 
 func New(conf config.Config, theme theme.Theme) hook.Hook {
 	opts := make(map[string]option)
-	meta := conf.GetStringMap("params.assets")
+	meta := conf.GetStringMap("hooks.assets")
 	for name := range meta {
 		opt := option{
 			files:   conf.GetStringSlice(fmt.Sprintf(filesTemplate, name)),

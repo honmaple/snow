@@ -64,7 +64,7 @@ func (conf *Config) SetDebug() {
 }
 
 func (conf *Config) SetFilter(filter string) {
-	conf.Set("build_filter", filter)
+	conf.Set("hooks.internal.filter", filter)
 }
 
 func (conf *Config) SetOutput(output string) {
@@ -72,8 +72,6 @@ func (conf *Config) SetOutput(output string) {
 }
 
 func (conf *Config) SetMode(mode string) {
-	conf.Set("build_mode", mode)
-
 	key := fmt.Sprintf("mode.%s", mode)
 	if !conf.IsSet(key) {
 		conf.Log.Fatalf("The mode %s not found", mode)

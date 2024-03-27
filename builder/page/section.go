@@ -128,7 +128,7 @@ func (b *Builder) insertSection(path string) *Section {
 		}
 	}
 
-	if l := filemeta.GetString("lang"); l != "" && l != b.conf.Site.Language {
+	if l := filemeta.GetString("lang"); l != "" && l != lang {
 		return nil
 	}
 

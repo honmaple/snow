@@ -28,10 +28,10 @@ func (self *internalHook) Page(p *page.Page) *page.Page {
 func newInternalHook(conf config.Config, theme theme.Theme) Hook {
 	return &internalHook{
 		conf:   conf,
-		filter: page.FilterExpr(conf.GetString("build_filter")),
+		filter: page.FilterExpr(conf.GetString("hooks.internal.filter")),
 	}
 }
 
 func init() {
-	RegisterInternal("internal", newInternalHook)
+	Register("internal", newInternalHook)
 }

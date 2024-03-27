@@ -98,7 +98,6 @@ type (
 	Page struct {
 		File     string
 		Meta     Meta
-		Type     string
 		Lang     string
 		Date     time.Time
 		Modified time.Time
@@ -149,13 +148,11 @@ func FilterExpr(filter string) func(*Page) bool {
 	return func(page *Page) bool {
 		args := page.Meta.clone()
 		args["page"] = page
-		args["type"] = page.Type
+		args["type"] = page.Section.FirstName()
+		args["section"] = page.Section.RealName()
 
 		result, err := tpl.Execute(map[string]interface{}(args))
-		if err == nil {
-			return result == "True"
-		}
-		return false
+		return err == nil && result == "True"
 	}
 }
 
@@ -233,8 +230,6 @@ func (pages Pages) setSort(key string) {
 			return utils.Compare(pages[i].Date, pages[j].Date)
 		case "modified":
 			return utils.Compare(pages[i].Modified, pages[j].Modified)
-		case "type":
-			return strings.Compare(pages[i].Type, pages[j].Type)
 		default:
 			return utils.Compare(pages[i].Meta[k], pages[j].Meta[k])
 		}
@@ -367,7 +362,6 @@ func (b *Builder) insertPage(file string) *Page {
 		Meta:    meta,
 		Lang:    lang,
 		File:    file,
-		Type:    section.FirstName(),
 		Date:    time.Now(),
 		Section: section,
 	}
@@ -383,8 +377,6 @@ func (b *Builder) insertPage(file string) *Page {
 			v = res
 		}
 		switch strings.ToLower(k) {
-		case "type":
-			page.Type = v.(string)
 		case "slug":
 			page.Slug = v.(string)
 		case "title":

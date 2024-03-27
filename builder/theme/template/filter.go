@@ -3,10 +3,12 @@ package template
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/flosch/pongo2/v6"
 	"github.com/honmaple/snow/config"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -63,6 +65,23 @@ func jsonify(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Erro
 		return nil, newError("jsonify", err)
 	}
 	return pongo2.AsValue(string(buf)), nil
+}
+
+func parser(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	kind := "yaml"
+	if param != nil {
+		if t := param.String(); t != "" {
+			kind = t
+		}
+	}
+
+	conf := viper.New()
+	conf.SetConfigType(kind)
+
+	if err := conf.ReadConfig(strings.NewReader(in.String())); err != nil {
+		return nil, newError("parser", err)
+	}
+	return pongo2.AsValue(conf.AllSettings()), nil
 }
 
 func absURL(conf config.Config) pongo2.FilterFunction {

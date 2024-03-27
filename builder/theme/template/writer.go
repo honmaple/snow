@@ -180,6 +180,7 @@ func init() {
 	RegisterFunc("scratch", newScratch)
 	RegisterFunc("newScratch", newScratchFunc)
 
+	RegisterFilter("parser", parser)
 	RegisterFilter("slient", slient)
 	RegisterFilter("jsonify", jsonify)
 

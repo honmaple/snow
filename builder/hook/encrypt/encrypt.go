@@ -123,13 +123,20 @@ func (e *Encrypt) filter(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Val
 			OrigError: errors.New("filter input argument must be of type 'string'"),
 		}
 	}
+
+	password := ""
 	if param == nil {
+		password = e.conf.GetString("hooks.encrypt.password")
+	} else {
+		password = param.String()
+	}
+
+	if password == "" {
 		return nil, &pongo2.Error{
 			Sender:    "filter:encrypt",
 			OrigError: errors.New("password is required"),
 		}
 	}
-	password := param.String()
 
 	text, err1 := e.encrypt(plaintext, password)
 	if err1 != nil {

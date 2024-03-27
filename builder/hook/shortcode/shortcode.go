@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 	"strings"
 
 	"github.com/honmaple/snow/builder/hook"
@@ -25,10 +26,10 @@ func (self *shortcode) Name() string {
 	return "shortcode"
 }
 
-func (self *shortcode) template(path string) (func(map[string]interface{}) string, error) {
-	tpl := self.theme.LookupTemplate(path)
+func (self *shortcode) template(lookups ...string) (func(map[string]interface{}) string, error) {
+	tpl := self.theme.LookupTemplate(lookups...)
 	if tpl == nil {
-		return nil, fmt.Errorf("Lookup %s but not found or some error happen", path)
+		return nil, fmt.Errorf("Lookup %s but not found or some error happen", lookups)
 	}
 	return func(vars map[string]interface{}) string {
 		out, err := tpl.Execute(vars)
@@ -77,7 +78,7 @@ func (self *shortcode) renderNext(page *page.Page, w *bytes.Buffer, z *html.Toke
 					"_name":    name,
 					"_counter": counter[name],
 					"_shortcode": func(s string) string {
-						return self.shortcode(page, s)
+						return self.render(page, s)
 					},
 				}
 				counter[name]++
@@ -103,7 +104,7 @@ func (self *shortcode) renderNext(page *page.Page, w *bytes.Buffer, z *html.Toke
 	return false
 }
 
-func (self *shortcode) shortcode(page *page.Page, content string) string {
+func (self *shortcode) render(page *page.Page, content string) string {
 	var (
 		w       bytes.Buffer
 		z       = html.NewTokenizer(strings.NewReader(content))
@@ -117,8 +118,8 @@ func (self *shortcode) Page(page *page.Page) *page.Page {
 	if len(self.tpls) == 0 {
 		return page
 	}
-	page.Content = self.shortcode(page, page.Content)
-	page.Summary = self.shortcode(page, page.Summary)
+	page.Content = self.render(page, page.Content)
+	page.Summary = self.render(page, page.Summary)
 	return page
 }
 
@@ -126,11 +127,37 @@ func New(conf config.Config, theme theme.Theme) hook.Hook {
 	h := &shortcode{conf: conf, theme: theme}
 	h.tpls = make(map[string]func(map[string]interface{}) string)
 
+	roots := []string{
+		"_internal/templates/shortcodes",
+		"templates/shortcodes",
+	}
+
+	rootFunc := func(path string) bool {
+		for _, root := range roots {
+			if root == path {
+				return true
+			}
+		}
+		return false
+	}
+
 	walkFunc := func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+		if err != nil {
 			return err
 		}
-		tpl, err := h.template(path)
+		if rootFunc(path) {
+			return nil
+		}
+
+		lookups := []string{path}
+		if d.IsDir() {
+			lookups = []string{
+				filepath.Join(path, "index.tpl"),
+				filepath.Join(path, "index.html"),
+			}
+		}
+
+		tpl, err := h.template(lookups...)
 		if err != nil {
 			conf.Log.Errorln(path, err.Error())
 			return nil
@@ -138,8 +165,10 @@ func New(conf config.Config, theme theme.Theme) hook.Hook {
 		h.tpls[utils.FileBaseName(path)] = tpl
 		return nil
 	}
-	fs.WalkDir(theme, "_internal/templates/shortcodes", walkFunc)
-	fs.WalkDir(theme, "templates/shortcodes", walkFunc)
+
+	for _, root := range roots {
+		fs.WalkDir(theme, root, walkFunc)
+	}
 	return h
 }
 

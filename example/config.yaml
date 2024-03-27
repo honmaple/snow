@@ -54,16 +54,23 @@ theme:
   # name: "snow"
   # override: "layouts"
 
-hooks:
+registered_hooks:
   - "pelican"
   - "i18n"
   - "assets"
   - "encrypt"
   - "shortcode"
   - "sofile"
-
-params.sofiles:
-  - "sofile.so"
+hooks:
+  internal:
+    converter:
+      tags: "^aaaaa"
+      categories: ""
+  sofiles:
+    files:
+      - "sofile.so"
+  encrypt:
+    password: "123456"
 
 params.extra:
   menus:
