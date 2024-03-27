@@ -2,7 +2,7 @@ name: Release
 
 on:
   release:
-    types: [prereleased]
+    types: [published]
     paths:
       - "**/*.go"
       - "go.mod"
@@ -19,7 +19,7 @@ jobs:
             os: macos-latest
             archive-name: darwin.tar.gz
           - build: linux
-            os: ubuntu-18.04
+            os: ubuntu-22.04
             archive-name: linux.tar.gz
 
     runs-on: ${{ matrix.os }}
@@ -34,29 +34,27 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.19
+          go-version: 1.22
 
       - name: Download dependencies
         run: go mod download
 
       - name: Build
         run: go build -v -o snow .
-        env:
-          CGO_ENABLED: 1
 
       - name: Prepare Packaging
-        run: tar zcvf snow-${{ matrix.archive-name }}.tar.gz snow LICENSE
+        run: tar zcvf snow-${{ matrix.archive-name }} snow LICENSE
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: snow-${{ matrix.archive-name }}.tar.gz
-          path: snow-${{ matrix.archive-name }}.tar.gz
+          name: snow-${{ matrix.archive-name }}
+          path: snow-${{ matrix.archive-name }}
 
       - name: Release version
         uses: ncipollo/release-action@v1
         if: github.event_name == 'release'
         with:
           allowUpdates: true
-          artifacts: snow-${{ matrix.archive-name }}.tar.gz
+          artifacts: snow-${{ matrix.archive-name }}
           token: ${{ secrets.GITHUB_TOKEN }}
