@@ -45,16 +45,14 @@ jobs:
       - name: Prepare Packaging
         run: tar zcvf snow-${{ matrix.archive-name }} snow LICENSE
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: snow-${{ matrix.archive-name }}
-          path: snow-${{ matrix.archive-name }}
+      - name: Checksum
+        run: shasum -a 256 snow-${{ matrix.archive-name }} | tee snow-${{ matrix.archive-name }}.sha256
 
       - name: Release version
-        uses: ncipollo/release-action@v1
+        uses: softprops/action-gh-release@v2
         if: github.event_name == 'release'
         with:
-          allowUpdates: true
-          artifacts: snow-${{ matrix.archive-name }}
+          files: |
+            snow-${{ matrix.archive-name }}
+            snow-${{ matrix.archive-name }}.sha256
           token: ${{ secrets.GITHUB_TOKEN }}
