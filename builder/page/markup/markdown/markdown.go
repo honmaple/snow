@@ -12,9 +12,8 @@ import (
 	"github.com/honmaple/snow/builder/page"
 	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
-	"github.com/pelletier/go-toml/v2"
 	"github.com/russross/blackfriday/v2"
-	"gopkg.in/yaml.v3"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -50,20 +49,18 @@ func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.M
 				b.WriteString(l)
 				b.WriteString("\n")
 			}
-			var (
-				err error
-				// 不要直接使用meta反序列化数据, 否则子元素map类型也会是page.Meta
-				mm = make(map[string]interface{})
-			)
+			cf := viper.New()
 			if line == "---" {
-				err = yaml.Unmarshal(b.Bytes(), &mm)
+				cf.SetConfigType("yaml")
 			} else {
-				err = toml.Unmarshal(b.Bytes(), &mm)
+				cf.SetConfigType("toml")
 			}
-			if err != nil {
+
+			if err := cf.ReadConfig(&b); err != nil {
 				return nil, err
 			}
-			meta = page.Meta(mm)
+			// 不要直接使用meta反序列化数据, 否则子元素map类型也会是page.Meta
+			meta = page.Meta(cf.AllSettings())
 			isFormat = false
 			continue
 		}

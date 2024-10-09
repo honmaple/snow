@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/honmaple/snow/builder/hook"
 	"github.com/honmaple/snow/builder/theme"
@@ -20,8 +21,9 @@ type (
 		trans map[string]map[string]tran
 	}
 	tran struct {
-		Id string `yaml:"id" json:"id"`
-		Tr string `yaml:"tr" json:"tr"`
+		Id    string `yaml:"id"    json:"id"`
+		Tr    string `yaml:"tr"    json:"tr"`
+		Lower bool   `yaml:"lower" json:"lower"`
 	}
 )
 
@@ -65,6 +67,10 @@ func getTrans(conf config.Config, theme theme.Theme) map[string]map[string]tran 
 		tr := make(map[string]tran)
 		for _, t := range ts {
 			tr[t.Id] = t
+
+			if t.Lower {
+				tr[strings.ToLower(t.Id)] = t
+			}
 		}
 
 		name := filepath.Base(stat.Name())
@@ -101,6 +107,10 @@ func getTrans(conf config.Config, theme theme.Theme) map[string]map[string]tran 
 		}
 		for _, t := range ts {
 			tr[t.Id] = t
+
+			if t.Lower {
+				tr[strings.ToLower(t.Id)] = t
+			}
 		}
 		trans[lang] = tr
 	}
