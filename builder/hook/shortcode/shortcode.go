@@ -66,15 +66,16 @@ func (self *shortcode) renderNext(page *page.Page, w *bytes.Buffer, z *html.Toke
 			}
 			shortcode, ok := self.tpls[name]
 			if ok {
-				params := make(map[string]interface{})
+				attrs := make(map[string]interface{})
 				for _, attr := range token.Attr {
-					params[attr.Key] = attr.Val
+					attrs[attr.Key] = attr.Val
 				}
 
 				vars := map[string]interface{}{
 					"page":     page,
 					"body":     "",
-					"params":   params,
+					"attrs":    attrs,
+					"params":   attrs,
 					"_name":    name,
 					"_counter": counter[name],
 					"_shortcode": func(s string) string {
@@ -118,8 +119,8 @@ func (self *shortcode) Page(page *page.Page) *page.Page {
 	if len(self.tpls) == 0 {
 		return page
 	}
-	page.Content = self.render(page, page.Content)
 	page.Summary = self.render(page, page.Summary)
+	page.Content = self.render(page, page.Content)
 	return page
 }
 

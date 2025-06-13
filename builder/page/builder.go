@@ -133,7 +133,7 @@ func (b *Builder) Build(ctx context.Context) error {
 			}
 		}
 
-		duration := time.Now().Sub(now)
+		duration := time.Since(now)
 		if len(ps) > 0 {
 			b.conf.Log.Infof("Done: %sPage Processed %s in %v", lang, strings.Join(ps, ", "), duration)
 		}
