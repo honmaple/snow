@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -179,7 +178,7 @@ func (conf *Config) GetURL(path string) string {
 	return conf.Site.URL + path
 }
 
-func (conf *Config) Reset(m map[string]interface{}) {
+func (conf *Config) Reset(m map[string]any) {
 	for k, v := range m {
 		if conf.IsSet(k) {
 			continue
@@ -205,7 +204,7 @@ func (conf *Config) ResetByFile(file string, r io.Reader) {
 	}
 }
 
-func (conf *Config) Unmarshal(key string, val interface{}) error {
+func (conf *Config) Unmarshal(key string, val any) error {
 	if conf.IsSet(key) {
 		return conf.UnmarshalKey(key, val, func(decoderConfig *mapstructure.DecoderConfig) {
 			decoderConfig.TagName = "json"
@@ -216,7 +215,7 @@ func (conf *Config) Unmarshal(key string, val interface{}) error {
 
 func (conf *Config) Load(path string) error {
 	if path != "" && utils.FileExists(path) {
-		content, err := ioutil.ReadFile(path)
+		content, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -257,7 +256,7 @@ func (conf *Config) Init() {
 		}
 		langc.MergeConfigMap(conf.AllSettings())
 		for _, ignore := range conf.GetStringSlice("languages." + lang + ".ignores") {
-			langc.Set(ignore, make(map[string]interface{}))
+			langc.Set(ignore, make(map[string]any))
 		}
 		langc.MergeConfigMap(conf.GetStringMap("languages." + lang))
 
@@ -279,7 +278,7 @@ func (conf *Config) Init() {
 }
 
 var (
-	sectionConfig = map[string]interface{}{
+	sectionConfig = map[string]any{
 		"sections._default.path":          "{section:slug}/index.html",
 		"sections._default.orderby":       "weight",
 		"sections._default.template":      "section.html",
@@ -289,7 +288,7 @@ var (
 		"sections._default.page_orderby":  "date desc",
 		"sections._default.page_template": "page.html",
 	}
-	taxonomyConfig = map[string]interface{}{
+	taxonomyConfig = map[string]any{
 		"taxonomies._default.path":               "{taxonomy}/index.html",
 		"taxonomies._default.orderby":            "name",
 		"taxonomies._default.term_path":          "{taxonomy}/{term:slug}/index.html",
@@ -300,13 +299,13 @@ var (
 		"taxonomies.tags.weight":       2,
 		"taxonomies.authors.weight":    3,
 	}
-	staticConfig = map[string]interface{}{
+	staticConfig = map[string]any{
 		"statics.@theme/_internal/static.path": "static",
 		"statics.@theme/static.path":           "static",
 		"statics.static.path":                  "static",
 	}
 	// 默认不需要修改的配置
-	otherConfig = map[string]interface{}{
+	otherConfig = map[string]any{
 		"content_truncate_len":      49,
 		"content_truncate_ellipsis": "...",
 		"content_highlight_style":   "monokai",
@@ -315,7 +314,7 @@ var (
 		"formats.atom.template":     "_internal/partials/atom.xml",
 	}
 	// 默认需要修改的配置
-	siteConfig = map[string]interface{}{
+	siteConfig = map[string]any{
 		"site.url":       "http://127.0.0.1:8000",
 		"site.title":     "snow",
 		"site.subtitle":  "snow is a static site generator.",

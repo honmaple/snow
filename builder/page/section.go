@@ -55,8 +55,8 @@ func (sec *Section) isEmpty() bool {
 	return len(sec.Pages) == 0 && len(sec.HiddenPages) == 0 && len(sec.SectionPages) == 0
 }
 
-func (sec *Section) Paginator() []*paginator {
-	return sec.Pages.Filter(sec.Meta.GetString("paginate_filter")).Paginator(
+func (sec *Section) Paginator() []*Paginator[*Page] {
+	return sec.Pages.Filter(sec.Meta.GetString("paginate_filter")).Paginate(
 		sec.Meta.GetInt("paginate"),
 		sec.Path,
 		sec.Meta.GetString("paginate_path"),
@@ -193,7 +193,7 @@ func (b *Builder) writeSection(section *Section) {
 		}
 		if tpl := b.theme.LookupTemplate(lookups...); tpl != nil {
 			for _, por := range section.Paginator() {
-				b.write(tpl, por.URL, map[string]interface{}{
+				b.write(tpl, por.URL, map[string]any{
 					"section":       section,
 					"paginator":     por,
 					"pages":         section.Pages,
@@ -206,7 +206,7 @@ func (b *Builder) writeSection(section *Section) {
 	}
 	for _, format := range section.Formats {
 		if tpl := b.theme.LookupTemplate(format.Template); tpl != nil {
-			b.write(tpl, format.Path, map[string]interface{}{
+			b.write(tpl, format.Path, map[string]any{
 				"section":      section,
 				"pages":        section.Pages,
 				"current_lang": section.Lang,

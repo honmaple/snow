@@ -34,7 +34,7 @@ type (
 )
 
 func (m *memoryServer) reset() {
-	m.files.Range(func(k, v interface{}) bool {
+	m.files.Range(func(k, v any) bool {
 		m.files.Delete(k)
 		return true
 	})
@@ -120,7 +120,7 @@ func (m *memoryServer) Build(ctx context.Context) error {
 	}
 
 	watchFiles := make([]string, 0)
-	m.watchFiles.Range(func(k, v interface{}) bool {
+	m.watchFiles.Range(func(k, v any) bool {
 		watchFiles = append(watchFiles, k.(string))
 		return true
 	})

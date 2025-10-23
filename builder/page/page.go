@@ -3,96 +3,12 @@ package page
 import (
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/utils"
-	"github.com/spf13/cast"
 )
-
-type Meta map[string]interface{}
-
-func (m Meta) load(other map[string]interface{}) {
-	for k, v := range other {
-		m[k] = v
-	}
-}
-
-func (m Meta) clone() Meta {
-	return utils.DeepCopy(m)
-}
-
-func (m Meta) Get(k string) interface{} {
-	return m[k]
-}
-
-func (m Meta) GetInt(k string) int {
-	return cast.ToInt(m[k])
-}
-
-func (m Meta) GetBool(k string) bool {
-	return cast.ToBool(m[k])
-}
-
-func (m Meta) GetString(k string) string {
-	return cast.ToString(m[k])
-}
-
-func (m Meta) GetSlice(k string) []string {
-	return cast.ToStringSlice(m[k])
-}
-
-func (m Meta) GetStringMap(k string) map[string]interface{} {
-	return cast.ToStringMap(m[k])
-}
-
-func (m Meta) Set(k, v string) {
-	var realVal interface{}
-
-	k = strings.ToLower(k)
-	v = strings.TrimSpace(v)
-	if len(v) >= 2 && v[0] == '[' && v[len(v)-1] == ']' {
-		realVal = utils.SplitTrim(v[1:len(v)-1], ",")
-	} else if b, err := strconv.Atoi(v); err == nil {
-		realVal = b
-	} else if b, err := strconv.ParseBool(v); err == nil {
-		realVal = b
-	} else {
-		realVal = v
-	}
-
-	ss := utils.SplitTrim(k, ".")
-	if len(ss) == 1 {
-		oldv, ok := m[k]
-		if ok {
-			m[k] = utils.Merge(oldv, realVal)
-		} else {
-			m[k] = realVal
-		}
-		return
-	}
-	var result map[string]interface{}
-	for i := len(ss) - 1; i >= 0; i-- {
-		if i == len(ss)-1 {
-			result = map[string]interface{}{
-				ss[i]: realVal,
-			}
-		} else {
-			result = map[string]interface{}{
-				ss[i]: result,
-			}
-		}
-	}
-	for key, val := range result {
-		if oldv, ok := m[key]; ok {
-			m[key] = utils.Merge(oldv, val)
-		} else {
-			m[key] = val
-		}
-	}
-}
 
 type (
 	Page struct {
@@ -151,7 +67,7 @@ func FilterExpr(filter string) func(*Page) bool {
 		args["type"] = page.Section.FirstName()
 		args["section"] = page.Section.RealName()
 
-		result, err := tpl.Execute(map[string]interface{}(args))
+		result, err := tpl.Execute(map[string]any(args))
 		return err == nil && result == "True"
 	}
 }
@@ -186,7 +102,7 @@ func (page *Page) isSection() bool {
 	return page.Meta.GetBool("section")
 }
 
-func (page *Page) Get(k string) interface{} {
+func (page *Page) Get(k string) any {
 	return page.Meta.Get(k)
 }
 
@@ -324,12 +240,8 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 	return terms
 }
 
-func (pages Pages) Paginator(number int, path string, paginatePath string) []*paginator {
-	list := make([]interface{}, len(pages))
-	for i, page := range pages {
-		list[i] = page
-	}
-	return Paginator(list, number, path, paginatePath)
+func (pages Pages) Paginate(number int, path string, paginatePath string) []*Paginator[*Page] {
+	return Paginate(pages, number, path, paginatePath)
 }
 
 func (b *Builder) insertPage(file string) *Page {
@@ -369,7 +281,7 @@ func (b *Builder) insertPage(file string) *Page {
 		if v == "" {
 			continue
 		}
-		if vs, ok := v.([]interface{}); ok {
+		if vs, ok := v.([]any); ok {
 			res := make([]string, len(vs))
 			for i, vv := range vs {
 				res[i] = vv.(string)
@@ -437,7 +349,7 @@ func (b *Builder) insertPage(file string) *Page {
 
 func (b *Builder) writePage(page *Page) {
 	if !page.isSection() {
-		ctx := map[string]interface{}{
+		ctx := map[string]any{
 			"page":         page,
 			"current_url":  page.Permalink,
 			"current_path": page.Path,
@@ -456,7 +368,7 @@ func (b *Builder) writePage(page *Page) {
 		}
 		for _, format := range page.Formats {
 			if tpl := b.theme.LookupTemplate(format.Template); tpl != nil {
-				b.write(tpl, format.Path, map[string]interface{}{
+				b.write(tpl, format.Path, map[string]any{
 					"page":         page,
 					"current_lang": page.Lang,
 					"current_url":  format.Permalink,

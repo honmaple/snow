@@ -17,9 +17,9 @@ import (
 	"github.com/tdewolff/minify/v2/js"
 )
 
-type filterOption map[string]interface{}
+type filterOption map[string]any
 
-func filterOptions(data interface{}) (names []string, opts []filterOption) {
+func filterOptions(data any) (names []string, opts []filterOption) {
 	if data == nil {
 		return
 	}
@@ -28,7 +28,7 @@ func filterOptions(data interface{}) (names []string, opts []filterOption) {
 		// - libsass:
 		//     path: ""
 		// - cssmin:
-		for _, item := range data.([]interface{}) {
+		for _, item := range data.([]any) {
 			for k, v := range cast.ToStringMap(item) {
 				opts = append(opts, cast.ToStringMap(v))
 				names = append(names, k)

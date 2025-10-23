@@ -16,13 +16,13 @@ func assertFunc(t *testing.T, text string) {
 	meta, _ := readMeta(r)
 
 	date, _ := utils.ParseTime("2023-02-24 20:35:51")
-	assert.Equal(t, map[string]interface{}{
+	assert.Equal(t, map[string]any{
 		"title":   "aaa",
 		"date":    date,
 		"tags":    []string{"snow", "hello", "world"},
 		"authors": []string{"snow", "snow1"},
-		"formats": map[string]interface{}{
-			"atom": map[string]interface{}{
+		"formats": map[string]any{
+			"atom": map[string]any{
 				"path":     "index.html",
 				"template": "index.json",
 			},
@@ -30,7 +30,7 @@ func assertFunc(t *testing.T, text string) {
 		"custom_css": []string{"./main.css", "./body.css"},
 		"custom_js":  []string{"./main.js"},
 		"content":    "content",
-	}, map[string]interface{}(meta))
+	}, map[string]any(meta))
 }
 
 func TestMeta(t *testing.T) {

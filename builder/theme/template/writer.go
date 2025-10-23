@@ -13,23 +13,23 @@ import (
 )
 
 var (
-	Globals        = make(map[string]interface{})
-	GlobalFuncs    = make(map[string]func(map[string]interface{}) interface{})
-	ConfigFuncs    = make(map[string]func(config.Config) func(map[string]interface{}) interface{})
+	Globals        = make(map[string]any)
+	GlobalFuncs    = make(map[string]func(map[string]any) any)
+	ConfigFuncs    = make(map[string]func(config.Config) func(map[string]any) any)
 	ConfigFilters  = make(map[string]func(config.Config) pongo2.FilterFunction)
 	RegisterTag    = pongo2.RegisterTag
 	RegisterFilter = pongo2.RegisterFilter
 )
 
-func Register(k string, v interface{}) {
+func Register(k string, v any) {
 	Globals[k] = v
 }
 
-func RegisterFunc(k string, v func(map[string]interface{}) interface{}) {
+func RegisterFunc(k string, v func(map[string]any) any) {
 	GlobalFuncs[k] = v
 }
 
-func RegisterConfigFunc(k string, v func(config.Config) func(map[string]interface{}) interface{}) {
+func RegisterConfigFunc(k string, v func(config.Config) func(map[string]any) any) {
 	ConfigFuncs[k] = v
 }
 
@@ -37,7 +37,7 @@ func RegisterConfigFilter(k string, v func(config.Config) pongo2.FilterFunction)
 	ConfigFilters[k] = v
 }
 
-func RegisterStringFilter(k string, f func(string) interface{}) {
+func RegisterStringFilter(k string, f func(string) any) {
 	pongo2.RegisterFilter(k, func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		v, ok := in.Interface().(string)
 		if !ok {
@@ -58,8 +58,8 @@ func Expr(expr string) (*pongo2.Template, error) {
 type (
 	Writer interface {
 		Name() string
-		Write(string, map[string]interface{}) error
-		Execute(map[string]interface{}) (string, error)
+		Write(string, map[string]any) error
+		Execute(map[string]any) (string, error)
 	}
 	Interface interface {
 		Lookup(string) (Writer, error)
@@ -74,7 +74,7 @@ type (
 	}
 	template struct {
 		conf   config.Config
-		funcs  map[string]func(map[string]interface{}) interface{}
+		funcs  map[string]func(map[string]any) any
 		loader *loader
 		tplset *pongo2.TemplateSet
 	}
@@ -84,14 +84,14 @@ func (t *writer) Name() string {
 	return t.n
 }
 
-func (t *writer) Write(file string, ctx map[string]interface{}) error {
+func (t *writer) Write(file string, ctx map[string]any) error {
 	if file == "" {
 		return nil
 	}
 	if filepath.Clean(file) != file {
 		return fmt.Errorf("The path '%s' is not valid", file)
 	}
-	vars := make(map[string]interface{})
+	vars := make(map[string]any)
 	for k, v := range ctx {
 		vars[k] = v
 	}
@@ -119,8 +119,8 @@ func (t *writer) Write(file string, ctx map[string]interface{}) error {
 	return t.t.conf.Write(file, &w)
 }
 
-func (t *writer) Execute(ctx map[string]interface{}) (string, error) {
-	vars := make(map[string]interface{})
+func (t *writer) Execute(ctx map[string]any) (string, error) {
+	vars := make(map[string]any)
 	for k, v := range ctx {
 		vars[k] = v
 	}
@@ -159,7 +159,7 @@ func New(conf config.Config, theme fs.FS) Interface {
 	t := &template{
 		conf:   conf,
 		loader: newLoader(theme, conf.GetString("theme.override")),
-		funcs:  make(map[string]func(map[string]interface{}) interface{}),
+		funcs:  make(map[string]func(map[string]any) any),
 	}
 	t.tplset = pongo2.NewSet("app", t.loader)
 

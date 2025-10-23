@@ -147,7 +147,7 @@ func (b *Builder) Build(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 
-	tasks := utils.NewTaskPool(&wg, 100, func(i interface{}) {
+	tasks := utils.NewTaskPool(&wg, 100, func(i any) {
 		defer wg.Done()
 		b.insertPage(i.(string))
 	})
@@ -213,7 +213,7 @@ func (b *Builder) Build(ctx context.Context) error {
 	return b.Write()
 }
 
-func (b *Builder) write(tpl template.Writer, path string, vars map[string]interface{}) {
+func (b *Builder) write(tpl template.Writer, path string, vars map[string]any) {
 	if path == "" {
 		return
 	}
@@ -222,7 +222,7 @@ func (b *Builder) write(tpl template.Writer, path string, vars map[string]interf
 		path = path + "index.html"
 	}
 
-	rvars := map[string]interface{}{
+	rvars := map[string]any{
 		"pages":                 b.ctx.Pages(),
 		"hidden_pages":          b.ctx.HiddenPages(),
 		"taxonomies":            b.ctx.Taxonomies(),
@@ -250,7 +250,7 @@ func (b *Builder) write(tpl template.Writer, path string, vars map[string]interf
 func (b *Builder) Write() error {
 	var wg sync.WaitGroup
 
-	tasks := utils.NewTaskPool(&wg, 10, func(i interface{}) {
+	tasks := utils.NewTaskPool(&wg, 10, func(i any) {
 		defer wg.Done()
 
 		switch v := i.(type) {

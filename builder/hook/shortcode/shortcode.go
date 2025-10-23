@@ -19,19 +19,19 @@ type shortcode struct {
 	hook.BaseHook
 	conf  config.Config
 	theme theme.Theme
-	tpls  map[string]func(map[string]interface{}) string
+	tpls  map[string]func(map[string]any) string
 }
 
 func (self *shortcode) Name() string {
 	return "shortcode"
 }
 
-func (self *shortcode) template(lookups ...string) (func(map[string]interface{}) string, error) {
+func (self *shortcode) template(lookups ...string) (func(map[string]any) string, error) {
 	tpl := self.theme.LookupTemplate(lookups...)
 	if tpl == nil {
 		return nil, fmt.Errorf("Lookup %s but not found or some error happen", lookups)
 	}
-	return func(vars map[string]interface{}) string {
+	return func(vars map[string]any) string {
 		out, err := tpl.Execute(vars)
 		if err != nil {
 			self.conf.Log.Error(err.Error())
@@ -66,12 +66,12 @@ func (self *shortcode) renderNext(page *page.Page, w *bytes.Buffer, z *html.Toke
 			}
 			shortcode, ok := self.tpls[name]
 			if ok {
-				attrs := make(map[string]interface{})
+				attrs := make(map[string]any)
 				for _, attr := range token.Attr {
 					attrs[attr.Key] = attr.Val
 				}
 
-				vars := map[string]interface{}{
+				vars := map[string]any{
 					"page":     page,
 					"body":     "",
 					"attrs":    attrs,
@@ -126,7 +126,7 @@ func (self *shortcode) Page(page *page.Page) *page.Page {
 
 func New(conf config.Config, theme theme.Theme) hook.Hook {
 	h := &shortcode{conf: conf, theme: theme}
-	h.tpls = make(map[string]func(map[string]interface{}) string)
+	h.tpls = make(map[string]func(map[string]any) string)
 
 	roots := []string{
 		"_internal/templates/shortcodes",

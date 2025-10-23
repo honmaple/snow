@@ -8,17 +8,17 @@ import (
 	"github.com/honmaple/snow/utils"
 )
 
-type paginator struct {
-	Next    *paginator
-	Prev    *paginator
+type Paginator[T any] struct {
+	Next    *Paginator[T]
+	Prev    *Paginator[T]
 	Total   int
 	PageNum int
-	List    []interface{}
+	List    []T
 	URL     string
-	All     []*paginator
+	All     []*Paginator[T]
 }
 
-func (p *paginator) Page(number int) *paginator {
+func (p *Paginator[T]) Page(number int) *Paginator[T] {
 	n := number - 1
 	if n <= 0 {
 		return p.All[0]
@@ -26,23 +26,23 @@ func (p *paginator) Page(number int) *paginator {
 	return p.All[n]
 }
 
-func (p *paginator) First() *paginator {
+func (p *Paginator[T]) First() *Paginator[T] {
 	return p.Page(1)
 }
 
-func (p *paginator) Last() *paginator {
+func (p *Paginator[T]) Last() *Paginator[T] {
 	return p.Page(p.Total)
 }
 
-func (p *paginator) HasPrev() bool {
+func (p *Paginator[T]) HasPrev() bool {
 	return p.Prev != nil
 }
 
-func (p *paginator) HasNext() bool {
+func (p *Paginator[T]) HasNext() bool {
 	return p.Next != nil
 }
 
-func Paginator(list []interface{}, number int, path string, paginatePath string) []*paginator {
+func Paginate[T any](list []T, number int, path string, paginatePath string) []*Paginator[T] {
 	output := path
 	if number > 0 {
 		if paginatePath == "" {
@@ -75,11 +75,11 @@ func Paginator(list []interface{}, number int, path string, paginatePath string)
 		maxpage = length/number + 1
 	}
 
-	var prev *paginator
+	var prev *Paginator[T]
 
-	pors := make([]*paginator, maxpage)
+	pors := make([]*Paginator[T], maxpage)
 	for num := range pors {
-		por := &paginator{
+		por := &Paginator[T]{
 			Total:   maxpage,
 			PageNum: num + 1,
 			Prev:    prev,

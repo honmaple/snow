@@ -98,7 +98,7 @@ func (b *Builder) writeTaxonomy(taxonomy *Taxonomy) {
 		}
 		if tpl := b.theme.LookupTemplate(lookups...); tpl != nil {
 			// example.com/tags/index.html
-			b.write(tpl, taxonomy.Path, map[string]interface{}{
+			b.write(tpl, taxonomy.Path, map[string]any{
 				"taxonomy":     taxonomy,
 				"terms":        taxonomy.Terms,
 				"current_lang": taxonomy.Lang,

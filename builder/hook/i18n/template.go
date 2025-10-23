@@ -17,7 +17,7 @@ func (node *i18nNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templa
 	if err != nil {
 		return err
 	}
-	args := make([]interface{}, len(node.args))
+	args := make([]any, len(node.args))
 	for i, arg := range node.args {
 		val, err := arg.Evaluate(ctx)
 		if err != nil {
@@ -59,14 +59,14 @@ func (self *i18n) nodeParser(doc *pongo2.Parser, start *pongo2.Token, arguments 
 	return node, nil
 }
 
-func (self *i18n) tranFunc(ctx map[string]interface{}) interface{} {
+func (self *i18n) tranFunc(ctx map[string]any) any {
 	lang := ""
 	if v, ok := ctx["current_lang"]; ok {
 		lang = v.(string)
 	}
 	// {{ i18n("cc") }}
 	// {{ i18n("cc %d", 11) }}
-	return func(id string, args ...interface{}) string {
+	return func(id string, args ...any) string {
 		format := self.Tran(id, lang)
 		if len(args) == 0 {
 			return format

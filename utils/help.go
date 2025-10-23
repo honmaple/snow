@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func Bool(value interface{}) bool {
+func Bool(value any) bool {
 	return value != nil && (value == true || value == "true")
 
 }
@@ -30,7 +30,7 @@ func Sort(key string, f func(string, int, int) int) func(int, int) bool {
 	}
 }
 
-func Compare(value interface{}, other interface{}) int {
+func Compare(value any, other any) int {
 	if value == other {
 		return 0
 	}
@@ -79,7 +79,7 @@ func Compare(value interface{}, other interface{}) int {
 	return 0
 }
 
-func Merge(v0, v1 interface{}) interface{} {
+func Merge(v0, v1 any) any {
 	val0 := reflect.ValueOf(v0)
 	val1 := reflect.ValueOf(v1)
 	// if val0.Kind() != val1.Kind() {
@@ -89,7 +89,7 @@ func Merge(v0, v1 interface{}) interface{} {
 	case reflect.Slice, reflect.Array:
 		switch val1.Kind() {
 		case reflect.Slice, reflect.Array:
-			m := make([]interface{}, 0)
+			m := make([]any, 0)
 			for i := 0; i < val0.Len(); i++ {
 				m = append(m, val0.Index(i).Interface())
 			}
@@ -103,7 +103,7 @@ func Merge(v0, v1 interface{}) interface{} {
 	case reflect.Map:
 		switch val1.Kind() {
 		case reflect.Map:
-			m := make(map[string]interface{})
+			m := make(map[string]any)
 			for _, key := range val0.MapKeys() {
 				m[key.String()] = val0.MapIndex(key).Interface()
 			}
@@ -122,10 +122,10 @@ func Merge(v0, v1 interface{}) interface{} {
 	return v1
 }
 
-func DeepCopy(m map[string]interface{}) map[string]interface{} {
-	newm := make(map[string]interface{})
+func DeepCopy(m map[string]any) map[string]any {
+	newm := make(map[string]any)
 	for k, v := range m {
-		mval, ok := v.(map[string]interface{})
+		mval, ok := v.(map[string]any)
 		if ok {
 			newm[k] = DeepCopy(mval)
 			continue

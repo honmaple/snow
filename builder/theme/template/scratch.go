@@ -13,12 +13,12 @@ type scratch struct {
 	m sync.Map
 }
 
-func (self *scratch) Set(key string, val interface{}) interface{} {
+func (self *scratch) Set(key string, val any) any {
 	self.m.Store(key, val)
 	return val
 }
 
-func (self *scratch) Get(key string) interface{} {
+func (self *scratch) Get(key string) any {
 	val, ok := self.m.Load(key)
 	if !ok {
 		return nil
@@ -26,7 +26,7 @@ func (self *scratch) Get(key string) interface{} {
 	return val
 }
 
-func (self *scratch) Add(key string, newVal interface{}) interface{} {
+func (self *scratch) Add(key string, newVal any) any {
 	oldVal, ok := self.m.Load(key)
 	if !ok {
 		return nil
@@ -49,7 +49,7 @@ func (self *scratch) Add(key string, newVal interface{}) interface{} {
 		case reflect.Array, reflect.Slice:
 			switch nrval.Kind() {
 			case reflect.Array, reflect.Slice:
-				m := make([]interface{}, orval.Len()+nrval.Len())
+				m := make([]any, orval.Len()+nrval.Len())
 				for i := 0; i < orval.Len(); i++ {
 					m[i] = orval.Index(i).Interface()
 				}
@@ -59,7 +59,7 @@ func (self *scratch) Add(key string, newVal interface{}) interface{} {
 				}
 				newVal = m
 			default:
-				m := make([]interface{}, orval.Len()+1)
+				m := make([]any, orval.Len()+1)
 				for i := 0; i < orval.Len(); i++ {
 					m[i] = orval.Index(i).Interface()
 				}
@@ -72,7 +72,7 @@ func (self *scratch) Add(key string, newVal interface{}) interface{} {
 	return newVal
 }
 
-func (self *scratch) JSON(key string) interface{} {
+func (self *scratch) JSON(key string) any {
 	val, ok := self.m.Load(key)
 	if !ok {
 		return nil
@@ -84,12 +84,12 @@ func (self *scratch) JSON(key string) interface{} {
 	return err.Error()
 }
 
-func newScratch(ctx map[string]interface{}) interface{} {
+func newScratch(ctx map[string]any) any {
 	return &scratch{}
 }
 
-func newScratchFunc(ctx map[string]interface{}) interface{} {
-	return func() interface{} {
+func newScratchFunc(ctx map[string]any) any {
+	return func() any {
 		return &scratch{}
 	}
 }

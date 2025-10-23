@@ -54,8 +54,8 @@ func (term *TaxonomyTerm) RealName() string {
 	return filepath.Join(term.Parent.RealName(), term.Name)
 }
 
-func (term *TaxonomyTerm) Paginator() []*paginator {
-	return term.List.Filter(term.Meta.GetString("term_paginate_filter")).Paginator(
+func (term *TaxonomyTerm) Paginator() []*Paginator[*Page] {
+	return term.List.Filter(term.Meta.GetString("term_paginate_filter")).Paginate(
 		term.Meta.GetInt("term_paginate"),
 		term.Path,
 		term.Meta.GetString("term_paginate_path"),
@@ -99,14 +99,6 @@ func (terms TaxonomyTerms) OrderBy(key string) TaxonomyTerms {
 
 	newTerms.setSort(key)
 	return newTerms
-}
-
-func (terms TaxonomyTerms) Paginator(number int, path string, paginatePath string) []*paginator {
-	list := make([]interface{}, len(terms))
-	for i, term := range terms {
-		list[i] = term
-	}
-	return Paginator(list, number, path, paginatePath)
 }
 
 func (b *Builder) insertTaxonomyTerms(taxonomy *Taxonomy, page *Page) {
@@ -168,7 +160,7 @@ func (b *Builder) writeTaxonomyTerm(term *TaxonomyTerm) {
 		}
 		if tpl := b.theme.LookupTemplate(lookups...); tpl != nil {
 			for _, por := range term.Paginator() {
-				b.write(tpl, por.URL, map[string]interface{}{
+				b.write(tpl, por.URL, map[string]any{
 					"term":          term,
 					"pages":         term.List,
 					"taxonomy":      term.Taxonomy,
@@ -185,7 +177,7 @@ func (b *Builder) writeTaxonomyTerm(term *TaxonomyTerm) {
 	}
 	for _, format := range term.Formats {
 		if tpl := b.theme.LookupTemplate(format.Template); tpl != nil {
-			b.write(tpl, format.Path, map[string]interface{}{
+			b.write(tpl, format.Path, map[string]any{
 				"term":         term,
 				"pages":        term.List,
 				"taxonomy":     term.Taxonomy,

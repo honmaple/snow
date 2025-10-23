@@ -153,8 +153,8 @@ tags: [linux,emacs,snow]
 	c.SetConfigFile(filepath.Join(name, "config.yaml"))
 	c.Set("site.title", title)
 	c.Set("site.author", author)
-	c.Set("mode.publish", map[string]interface{}{
-		"site": map[string]interface{}{"url": url},
+	c.Set("mode.publish", map[string]any{
+		"site": map[string]any{"url": url},
 	})
 	return c.WriteConfig()
 }

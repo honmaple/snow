@@ -26,8 +26,8 @@ func newError(name string, err error) *pongo2.Error {
 }
 
 // {% set newDict = dict("title", "h1", "weight", 0) %}
-func dict(args ...interface{}) map[string]interface{} {
-	m := make(map[string]interface{})
+func dict(args ...any) map[string]any {
+	m := make(map[string]any)
 
 	for i := 0; i < len(args); i = i + 2 {
 		key, ok := args[i].(string)
@@ -44,8 +44,8 @@ func dict(args ...interface{}) map[string]interface{} {
 }
 
 // {% set newSlice = slice("item1", "item2") %}
-func slice(args ...interface{}) []interface{} {
-	m := make([]interface{}, len(args))
+func slice(args ...any) []any {
+	m := make([]any, len(args))
 	for i, arg := range args {
 		m[i] = arg
 	}
@@ -104,12 +104,12 @@ func relURL(conf config.Config) pongo2.FilterFunction {
 	}
 }
 
-func newConfig(conf config.Config) func(map[string]interface{}) interface{} {
-	langs := make(map[string]interface{})
+func newConfig(conf config.Config) func(map[string]any) any {
+	langs := make(map[string]any)
 	for lang, c := range conf.Languages {
 		langs[lang] = c.AllSettings()
 	}
-	return func(ctx map[string]interface{}) interface{} {
+	return func(ctx map[string]any) any {
 		lang := ctx["current_lang"]
 		if lang == nil {
 			return langs[conf.Site.Language]
