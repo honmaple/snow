@@ -250,7 +250,7 @@ func (b *Builder) insertPage(file string) *Page {
 		return nil
 	}
 
-	filemeta, err := b.readFile(file)
+	result, err := b.parser.Parse(file)
 	if err != nil {
 		return nil
 	}
@@ -263,7 +263,7 @@ func (b *Builder) insertPage(file string) *Page {
 	delete(meta, "title")
 	delete(meta, "content")
 	delete(meta, "summary")
-	meta.load(filemeta)
+	meta.load(result.FrontMatter)
 
 	lang := b.findLang(file, meta)
 	if lang != b.conf.Site.Language {
@@ -276,6 +276,11 @@ func (b *Builder) insertPage(file string) *Page {
 		File:    file,
 		Date:    time.Now(),
 		Section: section,
+		Summary: result.Summary,
+		Content: result.Content,
+	}
+	if page.Summary == "" {
+		page.Summary = b.conf.GetSummary(page.Content)
 	}
 	for k, v := range meta {
 		if v == "" {
@@ -309,10 +314,6 @@ func (b *Builder) insertPage(file string) *Page {
 			page.Path = v.(string)
 		case "aliases":
 			page.Aliases = v.([]string)
-		case "summary":
-			page.Summary = v.(string)
-		case "content":
-			page.Content = v.(string)
 		}
 		meta[k] = v
 	}

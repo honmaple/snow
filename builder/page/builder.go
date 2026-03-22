@@ -3,15 +3,14 @@ package page
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/honmaple/snow/builder/parser"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
@@ -20,14 +19,11 @@ import (
 
 type (
 	Builder struct {
-		ctx     *Context
-		conf    config.Config
-		theme   theme.Theme
-		hooks   Hooks
-		readers map[string]Reader
-	}
-	Reader interface {
-		Read(io.Reader) (Meta, error)
+		ctx    *Context
+		conf   config.Config
+		theme  theme.Theme
+		hooks  Hooks
+		parser parser.Parser
 	}
 )
 
@@ -55,40 +51,12 @@ func (b *Builder) findFiles(path string, pattern string) []string {
 
 	files := make([]string, 0)
 	for _, m := range matches {
-		if _, ok := b.readers[filepath.Ext(m)]; !ok {
+		if !b.parser.IsSupport(filepath.Ext(m)) {
 			continue
 		}
 		files = append(files, m)
 	}
 	return files
-}
-
-func (b *Builder) readFile(file string) (Meta, error) {
-	v, ok := b.conf.Cache.Load(file)
-	if ok {
-		return v.(Meta), nil
-	}
-
-	reader, ok := b.readers[filepath.Ext(file)]
-	if !ok {
-		return nil, fmt.Errorf("no reader for %s", file)
-	}
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	meta, err := reader.Read(f)
-	if err != nil {
-		return nil, fmt.Errorf("Read file %s: %s", file, err.Error())
-	}
-	if len(meta) == 0 {
-		return nil, fmt.Errorf("Read file %s: no meta", file)
-	}
-
-	b.conf.Cache.Store(file, meta)
-	return meta, nil
 }
 
 func (b *Builder) Build(ctx context.Context) error {
@@ -196,7 +164,7 @@ func (b *Builder) Build(ctx context.Context) error {
 			}
 			return nil
 		}
-		if _, ok := b.readers[filepath.Ext(path)]; !ok {
+		if !b.parser.IsSupport(filepath.Ext(path)) {
 			b.insertAsset(path)
 			return nil
 		}
@@ -293,24 +261,12 @@ func (b *Builder) Write() error {
 	return nil
 }
 
-func NewBuilder(conf config.Config, theme theme.Theme, hooks Hooks) *Builder {
-	readers := make(map[string]Reader)
-	for ext, c := range _readers {
-		readers[ext] = c(conf)
-	}
+func NewBuilder(conf config.Config, parser parser.Parser, theme theme.Theme, hooks Hooks) *Builder {
 	return &Builder{
-		conf:    conf,
-		theme:   theme,
-		hooks:   hooks,
-		readers: readers,
-		ctx:     newContext(conf),
+		ctx:    newContext(conf),
+		conf:   conf,
+		theme:  theme,
+		parser: parser,
+		hooks:  hooks,
 	}
-}
-
-type creator func(config.Config) Reader
-
-var _readers = make(map[string]creator)
-
-func Register(ext string, c creator) {
-	_readers[ext] = c
 }

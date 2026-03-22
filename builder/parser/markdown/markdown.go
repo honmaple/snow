@@ -10,6 +10,7 @@ import (
 
 	"github.com/flosch/pongo2/v6"
 	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/parser"
 	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
 	"github.com/russross/blackfriday/v2"
@@ -83,7 +84,7 @@ func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.M
 	return meta, nil
 }
 
-func (m *markdown) Read(r io.Reader) (page.Meta, error) {
+func (m *markdown) Read(r io.Reader) (*parser.Result, error) {
 	var (
 		summary bytes.Buffer
 		content bytes.Buffer
@@ -92,28 +93,27 @@ func (m *markdown) Read(r io.Reader) (page.Meta, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := content.Bytes()
-	if summary.Len() == 0 {
-		meta["summary"] = m.HTML(buf, true)
-	} else {
-		meta["summary"] = m.HTML(summary.Bytes(), false)
+	result := &parser.Result{
+		FrontMatter: meta,
+		RawContent:  content.String(),
 	}
-	meta["content"] = m.HTML(buf, false)
-	return meta, nil
+	if summary.Len() > 0 {
+		result.Summary = m.HTML(summary.Bytes())
+	}
+	result.Content = m.HTML(content.Bytes())
+	return result, nil
 }
 
-func (m *markdown) HTML(data []byte, summary bool) string {
+func (m *markdown) HTML(data []byte) string {
 	d := blackfriday.Run(data, m.opts...)
-	if summary {
-		return m.conf.GetSummary(string(d))
-	}
 	return string(d)
 }
 
-func New(conf config.Config) page.Reader {
-	return &markdown{conf, []blackfriday.Option{
+func New(conf config.Config) parser.Reader {
+	opts := []blackfriday.Option{
 		blackfriday.WithRenderer(NewChromaRenderer(conf.GetHighlightStyle())),
-	}}
+	}
+	return &markdown{conf, opts}
 }
 
 func NewPongo2Filter(conf config.Config) pongo2.FilterFunction {
@@ -128,11 +128,11 @@ func NewPongo2Filter(conf config.Config) pongo2.FilterFunction {
 				OrigError: errors.New("filter input argument must be of type 'string'"),
 			}
 		}
-		return pongo2.AsValue(r.HTML([]byte(v), false)), nil
+		return pongo2.AsValue(r.HTML([]byte(v))), nil
 	}
 }
 
 func init() {
-	page.Register(".md", New)
+	parser.Register(".md", New)
 	template.RegisterConfigFilter("markdown", NewPongo2Filter)
 }

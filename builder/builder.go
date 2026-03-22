@@ -7,6 +7,7 @@ import (
 
 	"github.com/honmaple/snow/builder/hook"
 	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/parser"
 	"github.com/honmaple/snow/builder/static"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
@@ -43,8 +44,9 @@ func Build(conf config.Config) error {
 	hs := hook.New(conf, th)
 
 	bs := make(Builders, 0)
+
 	for _, langc := range conf.Languages {
-		bs = append(bs, page.NewBuilder(*langc, th, hs.PageHooks()))
+		bs = append(bs, page.NewBuilder(*langc, parser.New(*langc), th, hs.PageHooks()))
 		bs = append(bs, static.NewBuilder(*langc, th, hs.StaticHooks()))
 	}
 	return bs.Build(context.Background())

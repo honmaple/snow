@@ -12,9 +12,9 @@ import (
 	"github.com/honmaple/snow/utils"
 	"github.com/urfave/cli/v2"
 
-	_ "github.com/honmaple/snow/builder/page/markup/html"
-	_ "github.com/honmaple/snow/builder/page/markup/markdown"
-	_ "github.com/honmaple/snow/builder/page/markup/orgmode"
+	_ "github.com/honmaple/snow/builder/parser/html"
+	_ "github.com/honmaple/snow/builder/parser/markdown"
+	_ "github.com/honmaple/snow/builder/parser/orgmode"
 
 	_ "github.com/honmaple/snow/builder/hook/assets"
 	_ "github.com/honmaple/snow/builder/hook/encrypt"

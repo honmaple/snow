@@ -12,6 +12,7 @@ import (
 	"github.com/honmaple/org-golang"
 	"github.com/honmaple/org-golang/render"
 	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/parser"
 	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
 )
@@ -79,7 +80,7 @@ func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.M
 	return meta, nil
 }
 
-func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
+func (m *orgmode) Read(r io.Reader) (*parser.Result, error) {
 	var (
 		content bytes.Buffer
 		summary bytes.Buffer
@@ -88,29 +89,27 @@ func (m *orgmode) Read(r io.Reader) (page.Meta, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf := content.Bytes()
-	if summary.Len() == 0 {
-		meta["summary"] = m.HTML(buf, false, true)
-	} else {
-		meta["summary"] = m.HTML(summary.Bytes(), false, false)
+	result := &parser.Result{
+		FrontMatter: meta,
+		RawContent:  content.String(),
 	}
-	meta["content"] = m.HTML(buf, true, false)
-	return meta, nil
+	if summary.Len() > 0 {
+		result.Summary = m.HTML(summary.Bytes(), false)
+	}
+	result.Content = m.HTML(content.Bytes(), true)
+	return result, nil
 }
 
-func (m *orgmode) HTML(data []byte, showToc bool, summary bool) string {
+func (m *orgmode) HTML(data []byte, showToc bool) string {
 	rd := render.HTML{
 		Toc:            showToc,
 		Document:       org.New(bytes.NewBuffer(data)),
 		RenderNodeFunc: m.renderNode,
 	}
-	if summary {
-		return m.conf.GetSummary(rd.String())
-	}
 	return rd.String()
 }
 
-func New(conf config.Config) page.Reader {
+func New(conf config.Config) parser.Reader {
 	return &orgmode{conf}
 }
 
@@ -124,11 +123,11 @@ func NewPongo2Filter(conf config.Config) pongo2.FilterFunction {
 				OrigError: errors.New("filter input argument must be of type 'string'"),
 			}
 		}
-		return pongo2.AsValue(r.HTML([]byte(v), false, false)), nil
+		return pongo2.AsValue(r.HTML([]byte(v), false)), nil
 	}
 }
 
 func init() {
-	page.Register(".org", New)
+	parser.Register(".org", New)
 	template.RegisterConfigFilter("org", NewPongo2Filter)
 }

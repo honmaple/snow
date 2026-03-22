@@ -113,17 +113,17 @@ func (b *Builder) insertSection(path string) *Section {
 	lang := b.conf.Site.Language
 
 	filemeta := make(Meta)
-	for ext := range b.readers {
-		meta, err := b.readFile(filepath.Join(path, "_index"+ext))
+	for _, ext := range b.parser.SupportExtensions() {
+		result, err := b.parser.Parse(filepath.Join(path, "_index"+ext))
 		if err == nil {
-			filemeta.load(meta)
+			filemeta.load(result.FrontMatter)
 			break
 		}
 	}
-	for ext := range b.readers {
-		meta, err := b.readFile(filepath.Join(path, "_index."+lang+ext))
+	for _, ext := range b.parser.SupportExtensions() {
+		result, err := b.parser.Parse(filepath.Join(path, "_index"+ext))
 		if err == nil {
-			filemeta.load(meta)
+			filemeta.load(result.FrontMatter)
 			break
 		}
 	}

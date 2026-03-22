@@ -9,11 +9,9 @@ import (
 )
 
 func assertFunc(t *testing.T, text string) {
-	var (
-		r = strings.NewReader(text)
-	)
+	r := &htmlReader{}
 
-	meta, _ := readMeta(r)
+	result, _ := r.Read(strings.NewReader(text))
 
 	date, _ := utils.ParseTime("2023-02-24 20:35:51")
 	assert.Equal(t, map[string]any{
@@ -29,8 +27,7 @@ func assertFunc(t *testing.T, text string) {
 		},
 		"custom_css": []string{"./main.css", "./body.css"},
 		"custom_js":  []string{"./main.js"},
-		"content":    "content",
-	}, map[string]any(meta))
+	}, result.FrontMatter)
 }
 
 func TestMeta(t *testing.T) {
