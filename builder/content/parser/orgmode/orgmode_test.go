@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/honmaple/snow/builder/content/parser"
 	"github.com/honmaple/snow/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +17,11 @@ func assertFunc(t *testing.T, text string) {
 		summary bytes.Buffer
 	)
 
-	meta, _ := readMeta(r, &content, &summary)
+	result := &parser.Result{
+		FrontMatter: make(map[string]any),
+	}
+
+	_ = readMeta(r, &content, &summary, result)
 
 	date, _ := utils.ParseTime("2023-02-24 20:35:51")
 	assert.Equal(t, map[string]any{
@@ -33,7 +38,7 @@ func assertFunc(t *testing.T, text string) {
 		"formats.js": map[string]any{
 			"atom": "index.xml",
 		},
-	}, map[string]any(meta))
+	}, result.FrontMatter)
 
 	assert.Equal(t, "\nsummary\n", summary.String())
 	assert.Equal(t, "\nsummary\n#+MORE\ncontent\n", content.String())

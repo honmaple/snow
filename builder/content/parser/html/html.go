@@ -10,11 +10,11 @@ import (
 	"golang.org/x/net/html"
 )
 
-type htmlReader struct {
+type htmlParser struct {
 	conf config.Config
 }
 
-func (d *htmlReader) parse(result *parser.Result, n *html.Node) error {
+func (d *htmlParser) parse(result *parser.Result, n *html.Node) error {
 	if n.Type == html.ElementNode {
 		switch n.Data {
 		case "title":
@@ -75,7 +75,7 @@ func (d *htmlReader) parse(result *parser.Result, n *html.Node) error {
 	return nil
 }
 
-func (d *htmlReader) Read(r io.Reader) (*parser.Result, error) {
+func (d *htmlParser) Parse(r io.Reader) (*parser.Result, error) {
 	doc, err := html.Parse(r)
 	if err != nil {
 		return nil, err
@@ -90,8 +90,8 @@ func (d *htmlReader) Read(r io.Reader) (*parser.Result, error) {
 	return result, nil
 }
 
-func New(conf config.Config) parser.Reader {
-	return &htmlReader{conf}
+func New(conf config.Config) parser.MarkupParser {
+	return &htmlParser{conf}
 }
 
 func init() {

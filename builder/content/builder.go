@@ -51,7 +51,7 @@ func (b *Builder) findFiles(path string, pattern string) []string {
 
 	files := make([]string, 0)
 	for _, m := range matches {
-		if !b.parser.IsSupport(filepath.Ext(m)) {
+		if !b.parser.IsSupported(filepath.Ext(m)) {
 			continue
 		}
 		files = append(files, m)
@@ -164,7 +164,7 @@ func (b *Builder) Build(ctx context.Context) error {
 			}
 			return nil
 		}
-		if !b.parser.IsSupport(filepath.Ext(path)) {
+		if !b.parser.IsSupported(filepath.Ext(path)) {
 			b.insertAsset(path)
 			return nil
 		}

@@ -11,7 +11,7 @@ import (
 	"github.com/honmaple/org-golang/render"
 )
 
-func (m *orgmode) highlightCodeBlock(source, lang string) string {
+func (m *orgParser) highlightCodeBlock(source, lang string) string {
 	theme := m.conf.GetHighlightStyle()
 
 	var w strings.Builder
@@ -36,7 +36,7 @@ func (m *orgmode) highlightCodeBlock(source, lang string) string {
 	return w.String()
 }
 
-func (m *orgmode) renderNode(r render.Renderer, n parser.Node) string {
+func (m *orgParser) renderNode(r render.Renderer, n parser.Node) string {
 	switch node := n.(type) {
 	case *parser.Block:
 		if node.Type == "SRC" || node.Type == "EXAMPLE" {

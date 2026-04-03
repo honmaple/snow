@@ -11,24 +11,24 @@ import (
 )
 
 type (
-	Reader interface {
-		Read(io.Reader) (*Result, error)
-	}
 	Parser interface {
 		Parse(string) (*Result, error)
-		IsSupport(string) bool
+		IsSupported(string) bool
 		SupportExtensions() []string
+	}
+	MarkupParser interface {
+		Parse(io.Reader) (*Result, error)
 	}
 )
 
 type parserImpl struct {
-	cache   sync.Map
-	exts    []string
-	readers map[string]Reader
+	cache sync.Map
+	ps    map[string]MarkupParser
+	exts  []string
 }
 
-func (d *parserImpl) IsSupport(ext string) bool {
-	_, ok := d.readers[ext]
+func (d *parserImpl) IsSupported(ext string) bool {
+	_, ok := d.ps[ext]
 	return ok
 }
 
@@ -42,9 +42,9 @@ func (d *parserImpl) Parse(file string) (*Result, error) {
 		return v.(*Result), nil
 	}
 
-	reader, ok := d.readers[filepath.Ext(file)]
+	p, ok := d.ps[filepath.Ext(file)]
 	if !ok {
-		return nil, fmt.Errorf("no reader for %s", file)
+		return nil, fmt.Errorf("no parser for %s", file)
 	}
 	f, err := os.Open(file)
 	if err != nil {
@@ -52,7 +52,7 @@ func (d *parserImpl) Parse(file string) (*Result, error) {
 	}
 	defer f.Close()
 
-	result, err := reader.Read(f)
+	result, err := p.Parse(f)
 	if err != nil {
 		return nil, fmt.Errorf("Read file %s err: %s", file, err.Error())
 	}
@@ -62,17 +62,18 @@ func (d *parserImpl) Parse(file string) (*Result, error) {
 
 func New(conf config.Config) Parser {
 	d := &parserImpl{
-		exts:    make([]string, 0),
-		readers: make(map[string]Reader),
+		ps:   make(map[string]MarkupParser),
+		exts: make([]string, 0),
 	}
 	for ext, foctory := range factories {
 		d.exts = append(d.exts, ext)
-		d.readers[ext] = foctory(conf)
+
+		d.ps[ext] = foctory(conf)
 	}
 	return d
 }
 
-type Factory func(config.Config) Reader
+type Factory func(config.Config) MarkupParser
 
 func Register(ext string, c Factory) {
 	factories[ext] = c

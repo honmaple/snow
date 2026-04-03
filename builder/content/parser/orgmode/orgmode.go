@@ -11,7 +11,6 @@ import (
 	"github.com/flosch/pongo2/v6"
 	"github.com/honmaple/org-golang"
 	"github.com/honmaple/org-golang/render"
-	"github.com/honmaple/snow/builder/content"
 	"github.com/honmaple/snow/builder/content/parser"
 	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
@@ -24,13 +23,12 @@ var (
 	ORGMODE_META       = regexp.MustCompile(`^:([^:]+):(\s+(.*)|$)`)
 )
 
-type orgmode struct {
+type orgParser struct {
 	conf config.Config
 }
 
-func readMeta(r io.Reader, contentBuf *bytes.Buffer, summaryBuf *bytes.Buffer) (content.Meta, error) {
+func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer, result *parser.Result) error {
 	var (
-		meta      = make(content.Meta)
 		scanner   = bufio.NewScanner(r)
 		isMeta    = true
 		isFormat  = true
@@ -48,7 +46,7 @@ func readMeta(r io.Reader, contentBuf *bytes.Buffer, summaryBuf *bytes.Buffer) (
 				if match == nil || match[1] == "END" {
 					break
 				}
-				meta.Set(match[1], match[2])
+				result.SetFrontMatter(match[1], match[2])
 			}
 			isFormat = false
 			continue
@@ -62,37 +60,37 @@ func readMeta(r io.Reader, contentBuf *bytes.Buffer, summaryBuf *bytes.Buffer) (
 					if len(s) > 1 {
 						v = strings.TrimSpace(s[1])
 					}
-					meta.Set(k, v)
+					result.SetFrontMatter(k, v)
 				} else {
-					meta.Set(strings.ToLower(match[1]), strings.TrimSpace(match[3]))
+					result.SetFrontMatter(strings.ToLower(match[1]), strings.TrimSpace(match[3]))
 				}
 				continue
 			}
 		}
 		isMeta = false
 		if isSummary && ORGMODE_MORE.MatchString(line) {
-			summaryBuf.WriteString(contentBuf.String())
+			summary.WriteString(content.String())
 			isSummary = false
 		}
-		contentBuf.WriteString(line)
-		contentBuf.WriteString("\n")
+		content.WriteString(line)
+		content.WriteString("\n")
 	}
-	return meta, nil
+	return nil
 }
 
-func (m *orgmode) Read(r io.Reader) (*parser.Result, error) {
+func (m *orgParser) Parse(r io.Reader) (*parser.Result, error) {
 	var (
 		content bytes.Buffer
 		summary bytes.Buffer
 	)
-	meta, err := readMeta(r, &content, &summary)
-	if err != nil {
+	result := &parser.Result{
+		FrontMatter: make(map[string]any),
+	}
+	if err := readMeta(r, &content, &summary, result); err != nil {
 		return nil, err
 	}
-	result := &parser.Result{
-		FrontMatter: meta,
-		RawContent:  content.String(),
-	}
+	result.RawContent = content.String()
+
 	if summary.Len() > 0 {
 		result.Summary = m.HTML(summary.Bytes(), false)
 	}
@@ -100,7 +98,7 @@ func (m *orgmode) Read(r io.Reader) (*parser.Result, error) {
 	return result, nil
 }
 
-func (m *orgmode) HTML(data []byte, showToc bool) string {
+func (m *orgParser) HTML(data []byte, showToc bool) string {
 	rd := render.HTML{
 		Toc:            showToc,
 		Document:       org.New(bytes.NewBuffer(data)),
@@ -109,12 +107,12 @@ func (m *orgmode) HTML(data []byte, showToc bool) string {
 	return rd.String()
 }
 
-func New(conf config.Config) parser.Reader {
-	return &orgmode{conf}
+func New(conf config.Config) parser.MarkupParser {
+	return &orgParser{conf}
 }
 
 func NewPongo2Filter(conf config.Config) pongo2.FilterFunction {
-	r := &orgmode{conf}
+	r := &orgParser{conf}
 	return func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		v, ok := in.Interface().(string)
 		if !ok {
