@@ -1,4 +1,4 @@
-package page
+package content
 
 import (
 	"github.com/spf13/viper"

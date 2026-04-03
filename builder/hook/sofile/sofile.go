@@ -5,7 +5,7 @@ import (
 	"plugin"
 
 	"github.com/honmaple/snow/builder/hook"
-	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/content"
 	"github.com/honmaple/snow/builder/static"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
@@ -13,7 +13,7 @@ import (
 
 type (
 	hookFunc    = func(config.Config, theme.Theme) hook.Hook
-	pageHooks   = page.Hooks
+	pageHooks   = content.Hooks
 	staticHooks = static.Hooks
 	sofile      struct {
 		pageHooks

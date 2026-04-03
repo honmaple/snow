@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/honmaple/snow/builder/parser"
+	"github.com/honmaple/snow/builder/content/parser"
 	"github.com/honmaple/snow/config"
 	"golang.org/x/net/html"
 )

@@ -2,7 +2,7 @@ package pelican
 
 import (
 	"github.com/honmaple/snow/builder/hook"
-	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/content"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
 	"github.com/honmaple/snow/utils"
@@ -19,7 +19,7 @@ func (self *pelican) Name() string {
 	return "pelican"
 }
 
-func (self *pelican) Page(p *page.Page) *page.Page {
+func (self *pelican) Page(p *content.Page) *content.Page {
 	if v, ok := p.Meta["tag"]; ok {
 		p.Meta["tags"] = utils.SplitTrim(v.(string), ",")
 	}

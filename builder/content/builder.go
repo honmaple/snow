@@ -1,4 +1,4 @@
-package page
+package content
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/honmaple/snow/builder/parser"
+	"github.com/honmaple/snow/builder/content/parser"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"

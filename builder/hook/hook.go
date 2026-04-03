@@ -5,14 +5,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/content"
 	"github.com/honmaple/snow/builder/static"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
 )
 
 type (
-	pageHooks   = page.Hooks
+	pageHooks   = content.Hooks
 	staticHooks = static.Hooks
 	BaseHook    struct {
 		pageHooks
@@ -21,7 +21,7 @@ type (
 
 	Hook interface {
 		Name() string
-		page.Hook
+		content.Hook
 		static.Hook
 	}
 	Hooks       []Hook
@@ -32,7 +32,7 @@ var (
 	_hooks map[string]hookCreator
 )
 
-func (hooks Hooks) PageHooks() (result page.Hooks) {
+func (hooks Hooks) PageHooks() (result content.Hooks) {
 	for _, hook := range hooks {
 		result = append(result, hook)
 	}

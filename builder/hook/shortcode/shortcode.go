@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/honmaple/snow/builder/hook"
-	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/content"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
 	"github.com/honmaple/snow/utils"
@@ -41,7 +41,7 @@ func (self *shortcode) template(lookups ...string) (func(map[string]any) string,
 	}, nil
 }
 
-func (self *shortcode) renderNext(page *page.Page, w *bytes.Buffer, z *html.Tokenizer, startToken *html.Token, counter map[string]int) bool {
+func (self *shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Tokenizer, startToken *html.Token, counter map[string]int) bool {
 	for {
 		next := z.Next()
 		if next == html.ErrorToken {
@@ -105,7 +105,7 @@ func (self *shortcode) renderNext(page *page.Page, w *bytes.Buffer, z *html.Toke
 	return false
 }
 
-func (self *shortcode) render(page *page.Page, content string) string {
+func (self *shortcode) render(page *content.Page, content string) string {
 	var (
 		w       bytes.Buffer
 		z       = html.NewTokenizer(strings.NewReader(content))
@@ -115,7 +115,7 @@ func (self *shortcode) render(page *page.Page, content string) string {
 	return w.String()
 }
 
-func (self *shortcode) Page(page *page.Page) *page.Page {
+func (self *shortcode) Page(page *content.Page) *content.Page {
 	if len(self.tpls) == 0 {
 		return page
 	}

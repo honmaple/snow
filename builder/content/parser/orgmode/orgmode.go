@@ -11,8 +11,8 @@ import (
 	"github.com/flosch/pongo2/v6"
 	"github.com/honmaple/org-golang"
 	"github.com/honmaple/org-golang/render"
-	"github.com/honmaple/snow/builder/page"
-	"github.com/honmaple/snow/builder/parser"
+	"github.com/honmaple/snow/builder/content"
+	"github.com/honmaple/snow/builder/content/parser"
 	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
 )
@@ -28,9 +28,9 @@ type orgmode struct {
 	conf config.Config
 }
 
-func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.Meta, error) {
+func readMeta(r io.Reader, contentBuf *bytes.Buffer, summaryBuf *bytes.Buffer) (content.Meta, error) {
 	var (
-		meta      = make(page.Meta)
+		meta      = make(content.Meta)
 		scanner   = bufio.NewScanner(r)
 		isMeta    = true
 		isFormat  = true
@@ -71,11 +71,11 @@ func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.M
 		}
 		isMeta = false
 		if isSummary && ORGMODE_MORE.MatchString(line) {
-			summary.WriteString(content.String())
+			summaryBuf.WriteString(contentBuf.String())
 			isSummary = false
 		}
-		content.WriteString(line)
-		content.WriteString("\n")
+		contentBuf.WriteString(line)
+		contentBuf.WriteString("\n")
 	}
 	return meta, nil
 }

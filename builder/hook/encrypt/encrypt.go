@@ -17,7 +17,7 @@ import (
 	"crypto/md5"
 
 	"github.com/honmaple/snow/builder/hook"
-	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/content"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
@@ -96,7 +96,7 @@ func (e *Encrypt) decrypt(ciphertext, key string) (string, error) {
 	return string(decrypted), nil
 }
 
-func (e *Encrypt) Page(page *page.Page) *page.Page {
+func (e *Encrypt) Page(page *content.Page) *content.Page {
 	password := page.Meta.GetString("password")
 	if password == "" {
 		return page

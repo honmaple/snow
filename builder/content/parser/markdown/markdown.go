@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/flosch/pongo2/v6"
-	"github.com/honmaple/snow/builder/page"
-	"github.com/honmaple/snow/builder/parser"
+	"github.com/honmaple/snow/builder/content"
+	"github.com/honmaple/snow/builder/content/parser"
 	"github.com/honmaple/snow/builder/theme/template"
 	"github.com/honmaple/snow/config"
 	"github.com/russross/blackfriday/v2"
@@ -29,12 +29,12 @@ type markdown struct {
 	opts []blackfriday.Option
 }
 
-func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.Meta, error) {
+func readMeta(r io.Reader, contentBuf *bytes.Buffer, summaryBuf *bytes.Buffer) (content.Meta, error) {
 	var (
 		isMeta    = true
 		isFormat  = true
 		isSummery = true
-		meta      = make(page.Meta)
+		meta      = make(content.Meta)
 		scanner   = bufio.NewScanner(r)
 	)
 
@@ -61,7 +61,7 @@ func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.M
 				return nil, err
 			}
 			// 不要直接使用meta反序列化数据, 否则子元素map类型也会是page.Meta
-			meta = page.Meta(cf.AllSettings())
+			meta = content.Meta(cf.AllSettings())
 			isFormat = false
 			continue
 		}
@@ -75,11 +75,11 @@ func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer) (page.M
 		}
 		isMeta = false
 		if isSummery && MARKDOWN_MORE.MatchString(line) {
-			summary.WriteString(content.String())
+			summaryBuf.WriteString(contentBuf.String())
 			isSummery = false
 		}
-		content.WriteString(line)
-		content.WriteString("\n")
+		contentBuf.WriteString(line)
+		contentBuf.WriteString("\n")
 	}
 	return meta, nil
 }

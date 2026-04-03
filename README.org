@@ -686,7 +686,7 @@
           "fmt"
 
           "github.com/honmaple/snow/builder/hook"
-          "github.com/honmaple/snow/builder/page"
+          "github.com/honmaple/snow/builder/content"
           "github.com/honmaple/snow/builder/theme"
           "github.com/honmaple/snow/config"
       )
@@ -699,7 +699,7 @@
           return "test"
       }
 
-      func (testHook) Page(page *page.Page) *page.Page {
+      func (testHook) Page(page *content.Page) *content.Page {
           fmt.Println(page.Title)
           return page
       }

@@ -1,7 +1,7 @@
 package hook
 
 import (
-	"github.com/honmaple/snow/builder/page"
+	"github.com/honmaple/snow/builder/content"
 	"github.com/honmaple/snow/builder/theme"
 	"github.com/honmaple/snow/config"
 )
@@ -10,7 +10,7 @@ type (
 	internalHook struct {
 		BaseHook
 		conf   config.Config
-		filter func(*page.Page) bool
+		filter func(*content.Page) bool
 	}
 )
 
@@ -18,7 +18,7 @@ func (self *internalHook) Name() string {
 	return "internal"
 }
 
-func (self *internalHook) Page(p *page.Page) *page.Page {
+func (self *internalHook) Page(p *content.Page) *content.Page {
 	if self.filter != nil && !self.filter(p) {
 		return nil
 	}
@@ -28,7 +28,7 @@ func (self *internalHook) Page(p *page.Page) *page.Page {
 func newInternalHook(conf config.Config, theme theme.Theme) Hook {
 	return &internalHook{
 		conf:   conf,
-		filter: page.FilterExpr(conf.GetString("hooks.internal.filter")),
+		filter: content.FilterExpr(conf.GetString("hooks.internal.filter")),
 	}
 }
 
