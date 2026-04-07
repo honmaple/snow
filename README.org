@@ -685,9 +685,9 @@
       import (
           "fmt"
 
-          "github.com/honmaple/snow/builder/hook"
-          "github.com/honmaple/snow/builder/content"
-          "github.com/honmaple/snow/builder/theme"
+          "github.com/honmaple/snow/internal/hook"
+          "github.com/honmaple/snow/internal/content"
+          "github.com/honmaple/snow/internal/theme"
           "github.com/honmaple/snow/config"
       )
 

@@ -1,0 +1,27 @@
+{% extends "internal/layout.html" %}
+{% block title %}{{ taxonomy.Name }} · {{ block.Super }}{% endblock %}
+{% block content %}
+  {% macro page_list(term) %}
+    <h2><a href="{{ term.Permalink }}">{{ term.Name }}</a><span style="font-size: 0.8rem; color: #000;">({{ term.List | length }})</span></h2>
+    <ul style="list-style-type: circle; padding-left: 2rem;">
+      {% for page in term.List %}
+        <li>
+          <a href="{{ page.Permalink }}">{{ page.Title }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+
+    {% for subterm in term.Children %}
+      {{ page_list(subterm) }}
+    {% endfor %}
+  {% endmacro %}
+
+  {% for term in terms %}
+    {{ page_list(term) }}
+  {% endfor %}
+  {% if terms | length == 0 %}
+    <div style="text-align: center; font-size: 1.2rem; margin-top: 2rem;">
+      No {{ taxonomy.Name }}
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,15 +1,15 @@
 module github.com/honmaple/snow
 
-go 1.18
+go 1.25
 
 require (
 	github.com/alecthomas/chroma v0.7.3
 	github.com/bep/golibsass v1.1.1
-	github.com/flosch/pongo2/v6 v6.0.0
+	github.com/expr-lang/expr v1.17.8
+	github.com/flosch/pongo2/v7 v7.0.0-alpha.1
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/gosimple/slug v1.13.1
 	github.com/honmaple/org-golang v0.0.0-20231114033037-6fde0a6c226d
-	github.com/mitchellh/mapstructure v1.5.0
 	github.com/panjf2000/ants/v2 v2.7.1
 	github.com/russross/blackfriday/v2 v2.0.1
 	github.com/sirupsen/logrus v1.6.0
@@ -32,6 +32,7 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -42,7 +43,8 @@ require (
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/tdewolff/parse/v2 v2.6.4 // indirect
 	golang.org/x/sys v0.8.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/text v0.33.0 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

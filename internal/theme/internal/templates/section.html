@@ -1,0 +1,22 @@
+{% extends "internal/layout.html" %}
+{% block content %}
+  <ul style="padding:0;">
+    {% for page in paginator.List %}
+      <li>
+        <h2><a href="{{ page.Permalink }}">{{ page.Title }}</a></h2>
+        {% include "page.info.html" %}
+        <hr />
+        <div>
+          {{ page.Content | safe }}
+        </div>
+      </li>
+    {% endfor %}
+    {% if paginator.List | length == 0 %}
+      <li>No Posts.</li>
+    {% else %}
+      {% if paginator.Total > 1 %}
+        <li>{% include 'internal/partials/pagination.html' %}</li>
+      {% endif %}
+    {% endif %}
+  </ul>
+{% endblock %}
