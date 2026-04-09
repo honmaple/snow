@@ -26,6 +26,9 @@ type (
 		Error(...any)
 		Errorf(string, ...any)
 		Errorln(...any)
+		Fatal(...any)
+		Fatalf(string, ...any)
+		Fatalln(...any)
 	}
 	Context struct {
 		Theme   fs.FS

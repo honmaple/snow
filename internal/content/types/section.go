@@ -3,8 +3,8 @@ package types
 type (
 	Section struct {
 		IsHome      bool
+		File        *File
 		FrontMatter *FrontMatter
-		File        string
 
 		Lang string
 
@@ -12,6 +12,7 @@ type (
 		Description string
 		Summary     string
 		Content     string
+		RawContent  string
 
 		Slug         string
 		Path         string

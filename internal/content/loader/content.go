@@ -4,32 +4,10 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"strings"
 
 	"github.com/honmaple/snow/internal/content/types"
-	"strings"
 )
-
-func (d *DiskLoader) findLang(path string, lang string) string {
-	if lang == "" {
-		filename := filepath.Base(path)
-		// 1. 去掉最末尾的后缀 (例如 .md)
-		nameWithoutExt := strings.TrimSuffix(filename, filepath.Ext(filename))
-
-		// 2. 再次获取当前的后缀 (即潜在的语言代码)
-		langExt := filepath.Ext(nameWithoutExt) // 得到 .en 或 .fr
-		if langExt != "" {
-			// 3. 去掉点，得到 en 或 fr
-			lang = strings.TrimPrefix(langExt, ".")
-		}
-	}
-	if lang == "" || lang == d.ctx.GetDefaultLanguage() {
-		return d.ctx.GetDefaultLanguage()
-	}
-	if _, ok := d.ctx.Locales[lang]; ok {
-		return lang
-	}
-	return d.ctx.GetDefaultLanguage()
-}
 
 func (d *DiskLoader) findFiles(path string, pattern string) []string {
 	matches, _ := filepath.Glob(filepath.Join(path, pattern))
@@ -59,7 +37,30 @@ func (d *DiskLoader) findSection(path string) *types.Section {
 	return d.findSection(filepath.Dir(path))
 }
 
-func (d *DiskLoader) loadContents() (types.Store, error) {
+func (d *DiskLoader) isIgnoredContent(root, path string, info fs.DirEntry) bool {
+	// 忽略以.或者_开头的文件或目录，不要忽略_index.md
+	if basename := filepath.Base(path); !strings.HasPrefix(basename, "_index.") && (strings.HasPrefix(basename, "_") || strings.HasPrefix(basename, ".")) {
+		return true
+	}
+
+	for _, pattern := range d.ctx.Config.GetStringSlice("ignored_content") {
+		matchPath := strings.TrimPrefix(path, root+"/")
+		if info.IsDir() {
+			matchPath = matchPath + "/"
+		}
+		matched, err := filepath.Match(pattern, matchPath)
+		if err != nil {
+			d.ctx.Logger.Warnf("The pattern %s match %s err: %s", pattern, path, err)
+			continue
+		}
+		if matched {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *DiskLoader) Load() (types.Store, error) {
 	root := d.ctx.GetContentDir()
 	if root == "" {
 		return nil, fmt.Errorf("The content dir is null")
@@ -70,34 +71,18 @@ func (d *DiskLoader) loadContents() (types.Store, error) {
 			return err
 		}
 		if path == root {
-			d.insertSection(path, true)
+			d.insertIndexSection(path)
 			return nil
 		}
-		// 忽略以.或者_开头的文件或目录
-		if basename := filepath.Base(path); strings.HasPrefix(basename, "_") || strings.HasPrefix(basename, ".") {
+		// 忽略指定的文件
+		if d.isIgnoredContent(root, path, info) {
 			if info.IsDir() {
 				return fs.SkipDir
 			}
 			return nil
 		}
-		// 忽略指定的文件
-		for _, pattern := range d.ctx.Config.GetStringSlice("ignored_content") {
-			matchPath := strings.TrimPrefix(path, root+"/")
-			if info.IsDir() {
-				matchPath = matchPath + "/"
-			}
-			matched, err := filepath.Match(pattern, matchPath)
-			if err != nil {
-				d.ctx.Logger.Warnf("The pattern %s match %s err: %s", pattern, path, err)
-			}
-			if matched {
-				if info.IsDir() {
-					return fs.SkipDir
-				}
-				return nil
-			}
-		}
 		if info.IsDir() {
+			// index.md、index.en.md
 			indexFiles := d.findFiles(path, "index.*")
 			if len(indexFiles) > 0 {
 				d.insertPage(filepath.Join(path, indexFiles[0]), true)
@@ -105,7 +90,7 @@ func (d *DiskLoader) loadContents() (types.Store, error) {
 			}
 			sectionFiles := d.findFiles(path, "_index.*")
 			if len(sectionFiles) > 0 {
-				d.insertSection(filepath.Join(path, sectionFiles[0]), false)
+				d.insertSection(filepath.Join(path, sectionFiles[0]))
 				return nil
 			}
 			return nil

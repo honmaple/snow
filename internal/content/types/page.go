@@ -2,6 +2,8 @@ package types
 
 import (
 	// "strings"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/flosch/pongo2/v7"
@@ -10,7 +12,7 @@ import (
 
 type (
 	Page struct {
-		File        string
+		File        *File
 		FrontMatter *FrontMatter
 
 		Lang     string
@@ -21,29 +23,25 @@ type (
 		Description string
 		Summary     string
 		Content     string
+		RawContent  string
 
 		Slug         string
 		Path         string
 		Permalink    string
 		RelPermalink string
 
-		Draft      bool
-		Assets     []*Asset
-		WordCount  int64
-		Taxonomies Taxonomies
+		Draft     bool
+		WordCount int64
 
-		// Params        map[string]any
-		Formats Formats
+		Assets     Assets
+		Formats    Formats
+		Taxonomies Taxonomies
 	}
 	Pages []*Page
 )
 
 func (page *Page) IsBundle() bool {
-	return utils.FileBaseName(page.File) == "index"
-}
-
-func (pages Pages) Paginate(number int, path string, paginatePath string) []*Paginator[*Page] {
-	return Paginate(pages, number, path, paginatePath)
+	return page.File != nil && page.File.BaseName == "index"
 }
 
 func (pages Pages) Filter(filter string) Pages {
@@ -61,64 +59,89 @@ func (pages Pages) Filter(filter string) Pages {
 	return npages
 }
 
-// func (pages Pages) OrderBy(key string) Pages {
-//	newPs := make(Pages, len(pages))
-//	copy(newPs, pages)
+func (pages Pages) OrderBy(key string) Pages {
+	newPs := make(Pages, len(pages))
+	copy(newPs, pages)
 
-//	newPs.setSort(key)
-//	return newPs
-// }
+	sort.SliceStable(pages, utils.Sort(key, func(k string, i int, j int) int {
+		switch k {
+		case "-":
+			// "-"表示默认排序, 避免时间相同时排序混乱
+			return 0 - strings.Compare(pages[i].Title, pages[j].Title)
+		case "title":
+			return strings.Compare(pages[i].Title, pages[j].Title)
+		case "date":
+			return utils.Compare(pages[i].Date, pages[j].Date)
+		case "modified":
+			return utils.Compare(pages[i].Modified, pages[j].Modified)
+		default:
+			return utils.Compare(pages[i].FrontMatter.Get(k), pages[j].FrontMatter.Get(k))
+		}
+	}))
+	return newPs
+}
 
-// func (pages Pages) GroupBy(key string) TaxonomyTerms {
-//	var groupf func(*Page) []string
+func (pages Pages) GroupBy(key string) TaxonomyTerms {
+	var groupf func(*Page) []string
 
-//	terms := make(TaxonomyTerms, 0)
-//	termm := make(map[string]*TaxonomyTerm)
+	if strings.HasPrefix(key, "date:") {
+		format := key[5:]
+		groupf = func(page *Page) []string {
+			return []string{page.Date.Format(format)}
+		}
+	} else {
+		groupf = func(page *Page) []string {
+			value := page.FrontMatter.Get(key)
+			switch v := value.(type) {
+			case string:
+				return []string{v}
+			case []string:
+				return v
+			default:
+				return nil
+			}
+		}
+	}
 
-//	if strings.HasPrefix(key, "date:") {
-//		format := key[5:]
-//		groupf = func(page *Page) []string {
-//			return []string{page.Date.Format(format)}
-//		}
-//	} else {
-//		groupf = func(page *Page) []string {
-//			value := page.Meta[key]
-//			switch v := value.(type) {
-//			case string:
-//				return []string{v}
-//			case []string:
-//				return v
-//			default:
-//				return nil
-//			}
-//		}
-//	}
-//	for _, page := range pages {
-//		for _, name := range groupf(page) {
-//			// 不要忽略大小写
-//			var parent *TaxonomyTerm
+	root := &TaxonomyTerm{
+		Children: make(TaxonomyTerms, 0),
+	}
+	for _, page := range pages {
+		for _, name := range groupf(page) {
+			currentTerm := root
+			currentName := ""
+			for _, part := range strings.Split(strings.Trim(name, "/"), "/") {
+				part = strings.TrimSpace(part)
+				if part == "" {
+					continue
+				}
+				if currentName == "" {
+					currentName = part
+				} else {
+					currentName += "/" + part
+				}
 
-//			for _, subname := range utils.SplitPrefix(name, "/") {
-//				term, ok := termm[subname]
-//				if !ok {
-//					term = &TaxonomyTerm{Name: subname[strings.LastIndex(subname, "/")+1:], Parent: parent}
-//					if parent == nil {
-//						terms = append(terms, term)
-//					}
-//				}
-//				term.List = append(term.List, page)
-//				termm[subname] = term
-//				if parent != nil {
-//					if !parent.Children.Has(subname) {
-//						parent.Children = append(parent.Children, term)
-//					}
-//				}
-//				parent = term
-//			}
-//		}
-//	}
-//	return terms
-// }
+				child := currentTerm.FindChild(part)
+				if child == nil {
+					child = &TaxonomyTerm{
+						FullName: currentName,
+						Name:     part,
+						Children: make(TaxonomyTerms, 0),
+					}
+					currentTerm.Children = append(currentTerm.Children, child)
+				}
+				child.Pages = append(child.Pages, page)
+
+				currentTerm = child
+			}
+		}
+	}
+	return root.Children
+}
+
+func (pages Pages) Paginate(number int, path string, paginatePath string) []*Paginator[*Page] {
+	return Paginate(pages, number, path, paginatePath)
+}
 
 func FilterExpr(filter string) func(*Page) bool {
 	tpl, err := pongo2.FromString("{{" + filter + "}}")

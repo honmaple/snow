@@ -13,17 +13,32 @@ type (
 
 type (
 	TaxonomyTerm struct {
-		Name      string
+		FullName string
+		Name     string
+
 		Slug      string
 		Path      string
 		Permalink string
 
+		Parent   *TaxonomyTerm
+		Children TaxonomyTerms
+
 		Pages    Pages
 		Formats  Formats
 		Taxonomy *Taxonomy
-
-		// Parent   *TaxonomyTerm
-		// Children TaxonomyTerms
 	}
 	TaxonomyTerms []*TaxonomyTerm
 )
+
+func (term *TaxonomyTerm) FindChild(name string) *TaxonomyTerm {
+	for _, child := range term.Children {
+		if child.Name == name {
+			return child
+		}
+	}
+	return nil
+}
+
+func (terms TaxonomyTerms) OrderBy() TaxonomyTerms {
+	return nil
+}

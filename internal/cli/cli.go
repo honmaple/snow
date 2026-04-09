@@ -26,23 +26,11 @@ const (
 
 var (
 	flags = []cli.Flag{
-		&cli.StringFlag{
-			Name:    "mode",
-			Aliases: []string{"m"},
-			Value:   "",
-			Usage:   "Build site with special mode",
-		},
-		&cli.StringFlag{
-			Name:    "output",
-			Aliases: []string{"o"},
-			Value:   "output",
-			Usage:   "Build output content",
-		},
 		&cli.BoolFlag{
-			Name:    "clean",
-			Aliases: []string{"C"},
+			Name:    "debug",
+			Aliases: []string{"D"},
 			Value:   false,
-			Usage:   "Clean output content",
+			Usage:   "Enable debug mode",
 		},
 		&cli.StringFlag{
 			Name:    "filter",
@@ -50,11 +38,11 @@ var (
 			Value:   "",
 			Usage:   "Filter when build",
 		},
-		&cli.BoolFlag{
-			Name:    "debug",
-			Aliases: []string{"D"},
-			Value:   false,
-			Usage:   "Enable debug mode",
+		&cli.StringFlag{
+			Name:    "mode",
+			Aliases: []string{"m"},
+			Value:   "",
+			Usage:   "Build site with special mode",
 		},
 	}
 	conf = core.DefaultConfig()
@@ -66,16 +54,16 @@ func beforeAction(clx *cli.Context) error {
 
 func commonAction(clx *cli.Context) error {
 	if clx.Bool("debug") {
-		conf.Set("debug", true)
-	}
-	if filter := clx.String("filter"); filter != "" {
-		conf.Set("hooks.internal.filter", filter)
-	}
-	if output := clx.String("output"); output != "" {
-		conf.Set("output_dir", output)
+		conf.SetDebug()
 	}
 	if mode := clx.String("mode"); mode != "" {
 		conf.SetMode(mode)
+	}
+	if filter := clx.String("filter"); filter != "" {
+		conf.Set("hooks.filter.page_filter", filter)
+	}
+	if output := clx.String("output"); output != "" {
+		conf.SetOutput(output)
 	}
 	return nil
 }

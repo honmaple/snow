@@ -111,7 +111,7 @@ func New(ctx *core.Context) *orgParser {
 	return &orgParser{ctx}
 }
 
-func NewPongo2Filter(ctx *core.Context) pongo2.FilterFunction {
+func orgFilter(ctx *core.Context) pongo2.FilterFunction {
 	r := New(ctx)
 	return func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, error) {
 		v, ok := in.Interface().(string)
@@ -129,5 +129,5 @@ func init() {
 	parser.Register(".org", func(ctx *core.Context) parser.MarkupParser {
 		return New(ctx)
 	})
-	template.RegisterContextFilter("org", NewPongo2Filter)
+	template.RegisterContextFilter("org", orgFilter)
 }

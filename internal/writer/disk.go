@@ -10,11 +10,11 @@ import (
 	"github.com/honmaple/snow/internal/utils"
 )
 
-type diskWriter struct {
+type DiskWriter struct {
 	ctx *core.Context
 }
 
-func (w *diskWriter) Write(ctx context.Context, file string, r io.Reader) error {
+func (w *DiskWriter) Write(ctx context.Context, file string, r io.Reader) error {
 	if file == "" {
 		return nil
 	}
@@ -34,6 +34,6 @@ func (w *diskWriter) Write(ctx context.Context, file string, r io.Reader) error 
 	return err
 }
 
-func NewDiskWriter(ctx *core.Context) *diskWriter {
-	return &diskWriter{ctx: ctx}
+func NewDiskWriter(ctx *core.Context) *DiskWriter {
+	return &DiskWriter{ctx: ctx}
 }

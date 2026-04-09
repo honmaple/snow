@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +13,6 @@ import (
 	"github.com/honmaple/snow/internal/content/types"
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/theme/template"
-	"github.com/honmaple/snow/internal/utils"
 )
 
 type (
@@ -87,11 +85,6 @@ func (b *Builder) writeAsset(ctx context.Context, asset *types.Asset) error {
 }
 
 func (b *Builder) writeSection(ctx context.Context, section *types.Section) error {
-	// b.hook.BeforeSectionWrite(section)
-	// defer func() {
-	//	b.hook.AfterSectionWrite(section)
-	// }()
-
 	customTemplate := section.FrontMatter.GetString("template")
 	if customTemplate == "" {
 		customTemplate = b.ctx.Config.GetString(fmt.Sprintf("sections.%s.template", section.File))
@@ -141,10 +134,10 @@ func (b *Builder) writePage(ctx context.Context, page *types.Page) error {
 
 	customTemplate := page.FrontMatter.GetString("template")
 	if customTemplate == "" {
-		if utils.FileBaseName(page.File) == "index" {
-			customTemplate = b.ctx.GetSectionConfig(filepath.Dir(page.File), "page_template")
+		if page.File.BaseName == "index" {
+			customTemplate = b.ctx.GetSectionConfig(filepath.Dir(page.File.Dir), "page_template")
 		} else {
-			customTemplate = b.ctx.GetSectionConfig(page.File, "page_template")
+			customTemplate = b.ctx.GetSectionConfig(page.File.Dir, "page_template")
 		}
 	}
 
@@ -242,24 +235,6 @@ func (b *Builder) writeTaxonomyTerm(ctx context.Context, term *types.TaxonomyTer
 	return nil
 }
 
-func (b *Builder) writeStatic(ctx context.Context, static *types.Static) error {
-	var (
-		src fs.File
-		err error
-	)
-
-	if strings.HasPrefix(static.File, "@theme/") {
-		src, err = b.ctx.Theme.Open(static.File)
-	} else {
-		src, err = os.Open(static.File)
-	}
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-	return b.writer.Write(ctx, static.Path, src)
-}
-
 func (b *Builder) Build(ctx context.Context) error {
 	store, err := b.loader.Load()
 	if err != nil {
@@ -270,16 +245,13 @@ func (b *Builder) Build(ctx context.Context) error {
 		b.store = store
 	})
 
-	// if err := b.hook.BeforeBuild(); err != nil {
-	//	return err
-	// }
 	pages := b.hook.HandlePages(store.Pages())
 	sections := b.hook.HandleSections(store.Sections())
 	taxonomies := b.hook.HandleTaxonomies(store.Taxonomies())
 
 	b.ctx.Logger.Infof("%d pages", len(pages))
 	b.ctx.Logger.Infof("%d sections", len(sections))
-	b.ctx.Logger.Infof("%d taxonomies", len(store.Taxonomies()))
+	b.ctx.Logger.Infof("%d taxonomies", len(taxonomies))
 
 	for _, page := range pages {
 		b.writePage(ctx, page)

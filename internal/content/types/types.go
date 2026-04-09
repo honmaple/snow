@@ -25,11 +25,14 @@ type (
 	}
 )
 
-type Asset struct {
-	File      string
-	Path      string
-	Permalink string
-}
+type (
+	Asset struct {
+		File      string
+		Path      string
+		Permalink string
+	}
+	Assets []*Asset
+)
 
 type (
 	Static struct {

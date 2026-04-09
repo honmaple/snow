@@ -2,14 +2,14 @@ package writer
 
 import (
 	"bytes"
+	"context"
 	"io"
+	"io/fs"
 	"strings"
 	"sync"
 	"time"
 
-	"context"
 	"github.com/honmaple/snow/internal/core"
-	"io/fs"
 )
 
 type (
@@ -23,8 +23,15 @@ type (
 	}
 )
 
-func (m *MemoryWriter) Find(file string) (fs.File, bool) {
-	return nil, false
+func (m *MemoryWriter) Reset() {
+	m.files.Range(func(k, v interface{}) bool {
+		m.files.Delete(k)
+		return true
+	})
+}
+
+func (m *MemoryWriter) Open(file string) (fs.File, error) {
+	return nil, nil
 }
 
 func (m *MemoryWriter) Write(ctx context.Context, file string, r io.Reader) error {

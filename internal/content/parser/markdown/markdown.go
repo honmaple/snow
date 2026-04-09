@@ -113,7 +113,7 @@ func New(ctx *core.Context) *mdParser {
 	}
 }
 
-func NewPongo2Filter(ctx *core.Context) pongo2.FilterFunction {
+func markdownFilter(ctx *core.Context) pongo2.FilterFunction {
 	r := New(ctx)
 	return func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, error) {
 		v, ok := in.Interface().(string)
@@ -131,5 +131,5 @@ func init() {
 	parser.Register(".md", func(ctx *core.Context) parser.MarkupParser {
 		return New(ctx)
 	})
-	template.RegisterContextFilter("markdown", NewPongo2Filter)
+	template.RegisterContextFilter("markdown", markdownFilter)
 }

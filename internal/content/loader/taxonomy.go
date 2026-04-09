@@ -89,7 +89,8 @@ func (d *DiskLoader) insertTaxonomyTerm(page *types.Page, taxonomy *types.Taxono
 			term.Slug = d.ctx.GetSlug(value)
 			term.Path = d.ctx.GetRelURL(outputPath)
 			term.Permalink = d.ctx.GetURL(term.Path)
-			d.insertTaxonomyTermFormat(term)
+			term.Formats = d.loadTaxonomyTermFormats(term)
+
 			d.taxonomyTerms.Add(fmt.Sprintf("%s:%s", taxonomy.Name, term.Name), term)
 		}
 		term.Pages = append(term.Pages, page)
@@ -97,7 +98,7 @@ func (d *DiskLoader) insertTaxonomyTerm(page *types.Page, taxonomy *types.Taxono
 	return nil
 }
 
-func (d *DiskLoader) insertTaxonomyTermFormat(term *types.TaxonomyTerm) error {
+func (d *DiskLoader) loadTaxonomyTermFormats(term *types.TaxonomyTerm) types.Formats {
 	customFormats := d.ctx.Config.GetStringMap(fmt.Sprintf("taxonomies.%s.formats", term.Taxonomy.Name))
 	if len(customFormats) == 0 {
 		customFormats = d.ctx.Config.GetStringMap("taxonomies._default.formats")
@@ -106,6 +107,7 @@ func (d *DiskLoader) insertTaxonomyTermFormat(term *types.TaxonomyTerm) error {
 	v := viper.New()
 	v.MergeConfigMap(customFormats)
 
+	formats := make(types.Formats, 0)
 	for name := range customFormats {
 		customPath := v.GetString(name + ".path")
 		customTemplate := v.GetString(name + ".template")
@@ -129,7 +131,7 @@ func (d *DiskLoader) insertTaxonomyTermFormat(term *types.TaxonomyTerm) error {
 		format.Path = d.ctx.GetRelURL(outputPath)
 		format.Permalink = d.ctx.GetRelURL(format.Path)
 
-		term.Formats = append(term.Formats, format)
+		formats = append(formats, format)
 	}
-	return nil
+	return formats
 }

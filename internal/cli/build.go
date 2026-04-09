@@ -14,7 +14,7 @@ import (
 var (
 	buildCommand = &cli.Command{
 		Name:  "build",
-		Usage: "build and output",
+		Usage: "build site",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "hooks",
@@ -48,6 +48,10 @@ var (
 				Name:  "drafts",
 				Usage: "Build with drafts",
 			},
+			&cli.BoolFlag{
+				Name:  "dry-run",
+				Usage: "dry run",
+			},
 		},
 		Action: buildAction,
 	}
@@ -68,8 +72,16 @@ func buildAction(clx *cli.Context) error {
 		return utils.RemoveDir(out)
 	}
 
-	w := writer.NewDebugWriter(ctx)
+	var w core.Writer
+	if clx.Bool("dry-run") {
+		w = writer.NewDebugWriter(ctx)
+	} else {
+		w = writer.NewDebugWriter(ctx)
+	}
+	return build(ctx, w)
+}
 
+func build(ctx *core.Context, w core.Writer) error {
 	staticBuilder, err := static.New(ctx, static.WithWriter(w))
 	if err != nil {
 		return err
@@ -80,8 +92,4 @@ func buildAction(clx *cli.Context) error {
 		return err
 	}
 	return core.Build(context.TODO(), staticBuilder, contentBuilder)
-}
-
-func build() error {
-	return nil
 }

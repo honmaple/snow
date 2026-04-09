@@ -101,6 +101,10 @@ func NewSet(ctx *core.Context, theme fs.FS) TemplateSet {
 	set.RegisterFilter("slient", slient)
 	set.RegisterFilter("jsonify", jsonify)
 
+	for k, v := range GlobalVariables {
+		set.Globals[k] = v
+	}
+
 	for k, f := range GlobalFuncs {
 		set.Globals[k] = f(ctx)
 	}

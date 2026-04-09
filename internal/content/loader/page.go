@@ -2,6 +2,8 @@ package loader
 
 import (
 	"io/fs"
+	"os"
+	stdpath "path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -20,86 +22,102 @@ func (d *DiskLoader) GetPage(path string) *types.Page {
 }
 
 func (d *DiskLoader) GetPageURL(path string) string {
-	result, _ := d.pages.Find(path)
-	if result == nil {
+	result, ok := d.pages.Find(path)
+	if !ok {
 		return ""
 	}
 	return result.Permalink
 }
 
 func (d *DiskLoader) getPagePath(page *types.Page, customPath string) string {
-	filename := utils.FileBaseName(page.File)
-	if filename == "index" {
-		filename = filepath.Base(filepath.Dir(page.File))
-	}
-
-	path := strings.TrimPrefix(filepath.ToSlash(filepath.Dir(page.File)), d.ctx.GetContentDir()+"/")
 	return utils.StringReplace(customPath, map[string]string{
 		"{date:%Y}":   page.Date.Format("2006"),
 		"{date:%m}":   page.Date.Format("01"),
 		"{date:%d}":   page.Date.Format("02"),
 		"{date:%H}":   page.Date.Format("15"),
 		"{slug}":      page.Slug,
-		"{filename}":  filename,
-		"{path}":      path,
-		"{path:slug}": d.ctx.GetPathSlug(path),
+		"{filename}":  page.File.BaseName,
+		"{path}":      page.File.Dir,
+		"{path:slug}": d.ctx.GetPathSlug(page.File.Dir),
 	})
 }
 
-func (d *DiskLoader) insertPage(file string, isDir bool) error {
-	result, err := d.parser.Parse(file)
+func (d *DiskLoader) insertPage(fullpath string, isBundle bool) error {
+	result, err := d.parser.Parse(fullpath)
 	if err != nil {
 		return err
 	}
 
+	file, err := d.loadPageFile(fullpath)
+	if err != nil {
+		return err
+	}
 	meta := types.NewFrontMatter(result.FrontMatter)
+
+	lang := meta.GetString("lang")
+	if lang == "" {
+		langExt := stdpath.Ext(file.BaseName)
+		if langExt != "" {
+			lang = strings.TrimPrefix(langExt, ".")
+		}
+	}
+	if lang == "" || !d.ctx.IsValidLanguage(lang) {
+		lang = d.ctx.GetDefaultLanguage()
+	}
+	if ext := "." + lang; strings.HasSuffix(file.BaseName, ext) {
+		file.BaseName = strings.TrimSuffix(file.BaseName, ext)
+		file.LanguageName = lang
+	}
+	lctx := d.ctx.For(lang)
 
 	page := &types.Page{
 		FrontMatter: meta,
-		File:        strings.TrimPrefix(file, d.ctx.GetContentDir()+"/"),
+		File:        file,
+		Lang:        lang,
 		Title:       meta.GetString("title"),
 		Summary:     meta.GetString("summary"),
 		Content:     result.Content,
+		RawContent:  result.RawContent,
 		Slug:        meta.GetString("slug"),
 		Draft:       meta.GetBool("draft"),
 		Date:        meta.GetTime("date"),
 		Modified:    meta.GetTime("modified"),
 	}
-	page.Lang = d.findLang(filepath.Base(file), meta.GetString("lang"))
-
-	lctx := d.ctx.For(page.Lang)
-
 	if page.Summary == "" {
 		page.Summary = lctx.GetSummary(result.Content)
 	}
-
 	if page.Title == "" {
-		filename := utils.FileBaseName(page.File)
-		if filename == "index" {
-			filename = filepath.Base(filepath.Dir(page.File))
+		if isBundle && page.File.Dir != "" {
+			page.Title = stdpath.Base(page.File.Dir)
+		} else {
+			page.Title = page.File.BaseName
 		}
-		page.Title = filename
 	}
 	if page.Slug == "" {
 		page.Slug = lctx.GetSlug(page.Title)
 	}
 	if page.Date.IsZero() {
-		page.Date = time.Now()
+		stat, err := os.Stat(fullpath)
+		if err != nil {
+			page.Date = time.Now()
+		} else {
+			page.Date = stat.ModTime()
+		}
 	}
 	if page.Modified.IsZero() {
 		page.Modified = page.Date
 	}
 
 	// 添加附属资源
-	if isDir {
+	if isBundle {
 		assets := make([]string, 0)
 
-		root := filepath.Dir(file)
+		root := filepath.Dir(fullpath)
 		if err := filepath.WalkDir(root, func(path string, info fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			if path == root || path == file || info.IsDir() {
+			if path == root || path == fullpath || info.IsDir() {
 				return nil
 			}
 			assets = append(assets, path)
@@ -119,9 +137,10 @@ func (d *DiskLoader) insertPage(file string, isDir bool) error {
 			page.Assets[i] = asset
 		}
 	}
-	sectionPath := filepath.Dir(page.File)
-	if isDir {
-		sectionPath = filepath.Dir(sectionPath)
+
+	sectionPath := page.File.Dir
+	if isBundle {
+		sectionPath = stdpath.Dir(sectionPath)
 	}
 
 	customPath := meta.GetString("path")
@@ -136,11 +155,10 @@ func (d *DiskLoader) insertPage(file string, isDir bool) error {
 	page.Path = lctx.GetRelURL(outputPath)
 	page.Permalink = lctx.GetURL(page.Path)
 	page.RelPermalink = page.Path
+	page.Formats = d.loadPageFormats(page)
 
 	section := d.findSection(sectionPath)
 	section.Pages = append(section.Pages, page)
-
-	d.insertPageFormats(page)
 
 	if d.hook != nil {
 		page = d.hook.HandlePage(page)
@@ -150,11 +168,35 @@ func (d *DiskLoader) insertPage(file string, isDir bool) error {
 	}
 	d.insertTaxonomies(page)
 
-	d.pages.Add(page.File, page)
+	d.pages.Add(page.File.Path, page)
 	return nil
 }
 
-func (d *DiskLoader) insertPageFormats(page *types.Page) error {
+func (d *DiskLoader) loadPageFile(fullpath string) (*types.File, error) {
+	relPath, err := filepath.Rel(d.ctx.GetContentDir(), fullpath)
+	if err != nil {
+		return nil, err
+	}
+	relPath = filepath.ToSlash(relPath)
+
+	ext := stdpath.Ext(relPath)
+	nameWithExt := stdpath.Base(relPath)
+	nameWithoutExt := strings.TrimSuffix(nameWithExt, ext)
+
+	dir := stdpath.Dir(relPath)
+	if dir == "." {
+		dir = ""
+	}
+	return &types.File{
+		Path:     relPath,
+		Dir:      dir,
+		Ext:      ext,
+		Name:     nameWithExt,
+		BaseName: nameWithoutExt,
+	}, nil
+}
+
+func (d *DiskLoader) loadPageFormats(page *types.Page) types.Formats {
 	customFormats := page.FrontMatter.GetStringMap("formats")
 
 	formats := make(types.Formats, 0)
@@ -181,6 +223,5 @@ func (d *DiskLoader) insertPageFormats(page *types.Page) error {
 
 		formats = append(formats, format)
 	}
-	page.Formats = formats
-	return nil
+	return formats
 }

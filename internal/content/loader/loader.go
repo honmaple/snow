@@ -21,13 +21,6 @@ type (
 	LoaderOption func(*DiskLoader)
 )
 
-func (d *DiskLoader) Load() (types.Store, error) {
-	if _, err := d.loadContents(); err != nil {
-		return nil, err
-	}
-	return d, nil
-}
-
 func WithHook(h types.Hook) LoaderOption {
 	return func(d *DiskLoader) {
 		d.hook = h

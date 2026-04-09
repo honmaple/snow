@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -35,11 +36,7 @@ func (conf *Config) GetSubSlice(key string) []*viper.Viper {
 }
 
 func (conf *Config) SetDebug() {
-	// conf.Log.SetLevel(logrus.DebugLevel)
-}
-
-func (conf *Config) SetFilter(filter string) {
-	conf.Set("hooks.internal.filter", filter)
+	conf.Set("debug", true)
 }
 
 func (conf *Config) SetOutput(output string) {
@@ -47,32 +44,34 @@ func (conf *Config) SetOutput(output string) {
 }
 
 func (conf *Config) SetMode(mode string) {
-	// key := fmt.Sprintf("mode.%s", mode)
-	// if !conf.IsSet(key) {
-	//	conf.Log.Fatalf("The mode %s not found", mode)
-	// }
-	// var c *Config
-	// if file := conf.GetString(fmt.Sprintf("%s.include", key)); file != "" {
-	//	c = &Config{
-	//		Viper: viper.New(),
-	//	}
-	//	if err := c.Load(file); err != nil {
-	//		conf.Log.Fatal(err.Error())
-	//	}
-	// } else {
-	//	c = &Config{
-	//		Viper: conf.Sub(key),
-	//	}
-	// }
-	// keys := conf.AllKeys()
-	// for _, k := range c.AllKeys() {
-	//	conf.Set(k, c.Get(k))
-	// }
-	// for _, k := range keys {
-	//	if !c.IsSet(k) {
-	//		conf.Set(k, conf.Get(k))
-	//	}
-	// }
+	key := fmt.Sprintf("mode.%s", mode)
+	if !conf.IsSet(key) {
+		fmt.Printf("The mode %s not found", mode)
+		return
+	}
+	var modeConfig *Config
+	if file := conf.GetString(fmt.Sprintf("%s.include", key)); file != "" {
+		modeConfig = &Config{
+			Viper: viper.New(),
+		}
+		if err := modeConfig.LoadFromFile(file); err != nil {
+			fmt.Printf("The mode %s not found", mode)
+			return
+		}
+	} else {
+		modeConfig = &Config{
+			Viper: conf.Sub(key),
+		}
+	}
+	keys := conf.AllKeys()
+	for _, k := range modeConfig.AllKeys() {
+		conf.Set(k, modeConfig.Get(k))
+	}
+	for _, k := range keys {
+		if !modeConfig.IsSet(k) {
+			conf.Set(k, conf.Get(k))
+		}
+	}
 }
 
 func (conf *Config) Reset(m map[string]any) {
@@ -98,20 +97,6 @@ func (conf *Config) LoadFromFile(path string) error {
 			return err
 		}
 	}
-
-	// if n := conf.GetString("theme"); n != "" {
-	//	path := filepath.Join("themes", n, "theme.yaml")
-	//	if utils.FileExists(path) {
-	//		content, err := os.ReadFile(path)
-	//		if err != nil {
-	//			return err
-	//		}
-	//		conf.SetConfigFile(path)
-	//		if err := conf.ReadConfig(strings.NewReader(os.ExpandEnv(string(content)))); err != nil {
-	//			return err
-	//		}
-	//	}
-	// }
 
 	conf.Reset(siteConfig)
 	conf.Reset(otherConfig)
