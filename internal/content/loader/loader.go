@@ -9,9 +9,10 @@ import (
 
 type (
 	DiskLoader struct {
-		ctx    *core.Context
-		hook   types.Hook
-		parser parser.Parser
+		ctx        *core.Context
+		hook       types.Hook
+		parser     parser.Parser
+		parserExts map[string]bool
 
 		pages         *utils.Slice[*types.Page]
 		sections      *utils.Slice[*types.Section]
@@ -46,6 +47,11 @@ func New(ctx *core.Context, opts ...LoaderOption) *DiskLoader {
 	}
 	if d.parser == nil {
 		d.parser = parser.New(ctx)
+	}
+
+	d.parserExts = make(map[string]bool)
+	for _, ext := range d.parser.SupportedExtensions() {
+		d.parserExts[ext] = true
 	}
 	return d
 }

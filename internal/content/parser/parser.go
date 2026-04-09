@@ -13,8 +13,7 @@ import (
 type (
 	Parser interface {
 		Parse(string) (*Result, error)
-		IsSupported(string) bool
-		SupportExtensions() []string
+		SupportedExtensions() []string
 	}
 	MarkupParser interface {
 		Parse(io.Reader) (*Result, error)
@@ -25,15 +24,6 @@ type parserImpl struct {
 	cache sync.Map
 	ps    map[string]MarkupParser
 	exts  []string
-}
-
-func (d *parserImpl) IsSupported(ext string) bool {
-	_, ok := d.ps[ext]
-	return ok
-}
-
-func (d *parserImpl) SupportExtensions() []string {
-	return d.exts
 }
 
 func (d *parserImpl) Parse(file string) (*Result, error) {
@@ -58,6 +48,10 @@ func (d *parserImpl) Parse(file string) (*Result, error) {
 	}
 	d.cache.Store(file, result)
 	return result, nil
+}
+
+func (d *parserImpl) SupportedExtensions() []string {
+	return d.exts
 }
 
 func New(ctx *core.Context) Parser {

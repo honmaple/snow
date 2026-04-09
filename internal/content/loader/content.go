@@ -17,7 +17,7 @@ func (d *DiskLoader) findFiles(path string, pattern string) []string {
 
 	files := make([]string, 0)
 	for _, m := range matches {
-		if d.parser.IsSupported(filepath.Ext(m)) {
+		if d.parserExts[filepath.Ext(m)] {
 			files = append(files, m)
 		}
 	}
@@ -96,7 +96,7 @@ func (d *DiskLoader) Load() (types.Store, error) {
 			return nil
 		}
 
-		if d.parser.IsSupported(filepath.Ext(path)) {
+		if d.parserExts[filepath.Ext(path)] {
 			d.insertPage(path, false)
 			return nil
 		}
