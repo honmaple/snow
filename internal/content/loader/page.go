@@ -48,7 +48,7 @@ func (d *DiskLoader) insertPage(fullpath string, isBundle bool) error {
 		return err
 	}
 
-	file, err := d.loadPageFile(fullpath)
+	file, err := d.loadFile(fullpath)
 	if err != nil {
 		return err
 	}
@@ -69,6 +69,20 @@ func (d *DiskLoader) insertPage(fullpath string, isBundle bool) error {
 		file.LanguageName = lang
 	}
 	lctx := d.ctx.For(lang)
+
+	sectionPath := file.Dir
+	if isBundle {
+		sectionPath = stdpath.Dir(sectionPath)
+	}
+
+	customPath := meta.GetString("path")
+	if customPath == "" {
+		// 查找顺序: posts/linux/emacs -> posts/linux -> posts -> _default
+		customPath = lctx.GetSectionConfig(sectionPath, "page_path")
+	}
+	if customPath == "" || customPath == "none" {
+		return nil
+	}
 
 	page := &types.Page{
 		FrontMatter: meta,
@@ -110,49 +124,13 @@ func (d *DiskLoader) insertPage(fullpath string, isBundle bool) error {
 
 	// 添加附属资源
 	if isBundle {
-		assets := make([]string, 0)
-
-		root := filepath.Dir(fullpath)
-		if err := filepath.WalkDir(root, func(path string, info fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if path == root || path == fullpath || info.IsDir() {
-				return nil
-			}
-			assets = append(assets, path)
-			return nil
-		}); err != nil {
+		assets, err := d.loadPageAssets(fullpath, page)
+		if err != nil {
 			return err
 		}
-
-		page.Assets = make([]*types.Asset, len(assets))
-		for i, assetFile := range assets {
-			asset := &types.Asset{
-				File: assetFile,
-			}
-			asset.Path = lctx.GetRelURL(meta.GetString("asset_path"))
-			asset.Permalink = lctx.GetURL(asset.Path)
-
-			page.Assets[i] = asset
-		}
+		page.Assets = assets
 	}
-
-	sectionPath := page.File.Dir
-	if isBundle {
-		sectionPath = stdpath.Dir(sectionPath)
-	}
-
-	customPath := meta.GetString("path")
-	// 如果自定义path为空，则从配置中获取
-	if customPath == "" {
-		// 获取配置 content/posts/linux/emacs/page-01.md
-		// 查找顺序: posts/linux/emacs -> posts/linux -> posts -> _default
-		customPath = lctx.GetSectionConfig(sectionPath, "page_path")
-	}
-	outputPath := d.getPagePath(page, customPath)
-
-	page.Path = lctx.GetRelURL(outputPath)
+	page.Path = lctx.GetRelURL(d.getPagePath(page, customPath))
 	page.Permalink = lctx.GetURL(page.Path)
 	page.RelPermalink = page.Path
 	page.Formats = d.loadPageFormats(page)
@@ -172,40 +150,62 @@ func (d *DiskLoader) insertPage(fullpath string, isBundle bool) error {
 	return nil
 }
 
-func (d *DiskLoader) loadPageFile(fullpath string) (*types.File, error) {
-	relPath, err := filepath.Rel(d.ctx.GetContentDir(), fullpath)
-	if err != nil {
+func (d *DiskLoader) loadPageAssets(fullpath string, page *types.Page) (types.Assets, error) {
+	lctx := d.ctx.For(page.Lang)
+
+	customPath := page.FrontMatter.GetString("asset_path")
+	if customPath == "" {
+		customPath = lctx.GetSectionConfig(stdpath.Dir(page.File.Dir), "page_asset_path")
+	}
+	if customPath == "" || customPath == "none" {
+		return nil, nil
+	}
+	assets := make(types.Assets, 0)
+
+	root := filepath.Dir(fullpath)
+	if err := filepath.WalkDir(root, func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path == root || path == fullpath || info.IsDir() {
+			return nil
+		}
+
+		asset := &types.Asset{
+			File: path,
+		}
+		outputPath := utils.StringReplace(customPath, map[string]string{
+			"{date:%Y}":   page.Date.Format("2006"),
+			"{date:%m}":   page.Date.Format("01"),
+			"{date:%d}":   page.Date.Format("02"),
+			"{date:%H}":   page.Date.Format("15"),
+			"{slug}":      page.Slug,
+			"{filename}":  page.File.BaseName,
+			"{path}":      page.File.Dir,
+			"{path:slug}": lctx.GetPathSlug(page.File.Dir),
+		})
+
+		asset.Path = lctx.GetRelURL(outputPath)
+		asset.Permalink = lctx.GetURL(asset.Path)
+
+		assets = append(assets, asset)
+		return nil
+	}); err != nil {
 		return nil, err
 	}
-	relPath = filepath.ToSlash(relPath)
-
-	ext := stdpath.Ext(relPath)
-	nameWithExt := stdpath.Base(relPath)
-	nameWithoutExt := strings.TrimSuffix(nameWithExt, ext)
-
-	dir := stdpath.Dir(relPath)
-	if dir == "." {
-		dir = ""
-	}
-	return &types.File{
-		Path:     relPath,
-		Dir:      dir,
-		Ext:      ext,
-		Name:     nameWithExt,
-		BaseName: nameWithoutExt,
-	}, nil
+	return assets, nil
 }
 
 func (d *DiskLoader) loadPageFormats(page *types.Page) types.Formats {
-	customFormats := page.FrontMatter.GetStringMap("formats")
+	lctx := d.ctx.For(page.Lang)
 
 	formats := make(types.Formats, 0)
-	for name := range customFormats {
+	for name := range page.FrontMatter.GetStringMap("formats") {
 		customPath := page.FrontMatter.GetString(name + ".path")
 		customTemplate := page.FrontMatter.GetString(name + ".template")
 		// 从全局配置获取
 		if customTemplate == "" {
-			customTemplate = d.ctx.Config.GetString("formats." + name + ".template")
+			customTemplate = lctx.Config.GetString("formats." + name + ".template")
 		}
 		if customPath == "" || customTemplate == "" {
 			continue
@@ -218,8 +218,8 @@ func (d *DiskLoader) loadPageFormats(page *types.Page) types.Formats {
 
 		outputPath := d.getPagePath(page, customPath)
 
-		format.Path = d.ctx.GetRelURL(outputPath)
-		format.Permalink = d.ctx.GetRelURL(format.Path)
+		format.Path = lctx.GetRelURL(outputPath)
+		format.Permalink = lctx.GetRelURL(format.Path)
 
 		formats = append(formats, format)
 	}

@@ -1,7 +1,6 @@
 package types
 
 import (
-	// "strings"
 	"sort"
 	"strings"
 	"time"
@@ -110,7 +109,7 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 		for _, name := range groupf(page) {
 			currentTerm := root
 			currentName := ""
-			for _, part := range strings.Split(strings.Trim(name, "/"), "/") {
+			for part := range strings.SplitSeq(strings.Trim(name, "/"), "/") {
 				part = strings.TrimSpace(part)
 				if part == "" {
 					continue

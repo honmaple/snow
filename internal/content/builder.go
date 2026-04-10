@@ -51,6 +51,7 @@ func (b *Builder) write(ctx context.Context, path string, tpl template.Template,
 		"get_taxonomy_term_url": b.store.GetTaxonomyTermURL,
 		"current_url":           b.ctx.GetURL(path),
 		"current_path":          path,
+		"current_lang":          b.ctx.GetDefaultLanguage(),
 		"current_template":      tpl.Name(),
 	}
 	for k, v := range commonVars {
@@ -186,9 +187,7 @@ func (b *Builder) writeTaxonomy(ctx context.Context, taxonomy *types.Taxonomy) e
 	if tpl := b.tplset.Lookup(lookups...); tpl != nil {
 		// example.com/tags/index.html
 		b.write(ctx, taxonomy.Path, tpl, map[string]any{
-			"taxonomy":     taxonomy,
-			"terms":        taxonomy.Terms,
-			"current_lang": taxonomy.Lang,
+			"taxonomy": taxonomy,
 		})
 	}
 	for _, term := range taxonomy.Terms {
@@ -216,7 +215,6 @@ func (b *Builder) writeTaxonomyTerm(ctx context.Context, term *types.TaxonomyTer
 				"pages":         term.Pages,
 				"taxonomy":      term.Taxonomy,
 				"paginator":     por,
-				"current_lang":  term.Taxonomy.Lang,
 				"current_path":  por.Path,
 				"current_index": por.PageNum,
 			})
@@ -225,10 +223,9 @@ func (b *Builder) writeTaxonomyTerm(ctx context.Context, term *types.TaxonomyTer
 	for _, format := range term.Formats {
 		if tpl := b.tplset.Lookup(format.Template); tpl != nil {
 			b.write(ctx, format.Path, tpl, map[string]any{
-				"term":         term,
-				"pages":        term.Pages,
-				"taxonomy":     term.Taxonomy,
-				"current_lang": term.Taxonomy.Lang,
+				"term":     term,
+				"pages":    term.Pages,
+				"taxonomy": term.Taxonomy,
 			})
 		}
 	}

@@ -14,10 +14,11 @@ type (
 		parser     parser.Parser
 		parserExts map[string]bool
 
-		pages         *utils.Slice[*types.Page]
-		sections      *utils.Slice[*types.Section]
-		taxonomies    *utils.Slice[*types.Taxonomy]
-		taxonomyTerms *utils.Slice[*types.TaxonomyTerm]
+		pages      *utils.Slice[*types.Page]
+		sections   *utils.Slice[*types.Section]
+		taxonomies *utils.Slice[*types.Taxonomy]
+
+		taxonomyTermMap map[string]*types.TaxonomyTerm
 	}
 	LoaderOption func(*DiskLoader)
 )
@@ -36,11 +37,11 @@ func WithParser(p parser.Parser) LoaderOption {
 
 func New(ctx *core.Context, opts ...LoaderOption) *DiskLoader {
 	d := &DiskLoader{
-		ctx:           ctx,
-		pages:         utils.NewSlice[*types.Page](),
-		sections:      utils.NewSlice[*types.Section](),
-		taxonomies:    utils.NewSlice[*types.Taxonomy](),
-		taxonomyTerms: utils.NewSlice[*types.TaxonomyTerm](),
+		ctx:             ctx,
+		pages:           utils.NewSlice[*types.Page](),
+		sections:        utils.NewSlice[*types.Section](),
+		taxonomies:      utils.NewSlice[*types.Taxonomy](),
+		taxonomyTermMap: make(map[string]*types.TaxonomyTerm),
 	}
 	for _, opt := range opts {
 		opt(d)

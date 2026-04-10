@@ -3,11 +3,11 @@ package loader
 import (
 	stdpath "path"
 	"path/filepath"
+	"strings"
 
 	"github.com/honmaple/snow/internal/content/parser"
 	"github.com/honmaple/snow/internal/content/types"
 	"github.com/honmaple/snow/internal/utils"
-	"strings"
 )
 
 func (d *DiskLoader) Sections() types.Sections {
@@ -20,11 +20,27 @@ func (d *DiskLoader) GetSection(name string) *types.Section {
 }
 
 func (d *DiskLoader) GetSectionURL(name string) string {
-	result := d.GetSection(name)
-	if result == nil {
+	result, ok := d.sections.Find(name)
+	if !ok {
 		return ""
 	}
 	return result.Permalink
+}
+
+func (d *DiskLoader) findSection(dir string) *types.Section {
+	currentDir := dir
+	for {
+		if currentDir == "" || currentDir == "." {
+			break
+		}
+		result, ok := d.sections.Find(currentDir)
+		if ok {
+			return result
+		}
+		currentDir = stdpath.Dir(currentDir)
+	}
+	result, _ := d.sections.Find("/")
+	return result
 }
 
 func (d *DiskLoader) getSectionPath(section *types.Section, customPath string) string {
@@ -52,7 +68,7 @@ func (d *DiskLoader) insertIndexSection(fullpath string) error {
 		}
 	}
 
-	file, err := d.loadSectionFile(fullpath)
+	file, err := d.loadFile(fullpath)
 	if err != nil {
 		return err
 	}
@@ -89,7 +105,7 @@ func (d *DiskLoader) insertIndexSection(fullpath string) error {
 
 	d.loadSectionFormats(section)
 
-	d.sections.Add("@home", section)
+	d.sections.Add("/", section)
 	return nil
 }
 
@@ -99,7 +115,7 @@ func (d *DiskLoader) insertSection(fullpath string) error {
 		return err
 	}
 
-	file, err := d.loadSectionFile(fullpath)
+	file, err := d.loadFile(fullpath)
 	if err != nil {
 		return err
 	}
@@ -185,30 +201,6 @@ func (d *DiskLoader) insertSectionAsset(fullpath string) error {
 
 	section.Assets = append(section.Assets, asset)
 	return nil
-}
-
-func (d *DiskLoader) loadSectionFile(fullpath string) (*types.File, error) {
-	relPath, err := filepath.Rel(d.ctx.GetContentDir(), fullpath)
-	if err != nil {
-		return nil, err
-	}
-	relPath = filepath.ToSlash(relPath)
-
-	ext := stdpath.Ext(relPath)
-	nameWithExt := stdpath.Base(relPath)
-	nameWithoutExt := strings.TrimSuffix(nameWithExt, ext)
-
-	dir := stdpath.Dir(relPath)
-	if dir == "." {
-		dir = ""
-	}
-	return &types.File{
-		Path:     relPath,
-		Dir:      dir,
-		Ext:      ext,
-		Name:     nameWithExt,
-		BaseName: nameWithoutExt,
-	}, nil
 }
 
 func (d *DiskLoader) loadSectionFormats(section *types.Section) types.Formats {

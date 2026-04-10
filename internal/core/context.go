@@ -1,9 +1,9 @@
 package core
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
+	stdpath "path"
 	"strings"
 
 	"github.com/gosimple/slug"
@@ -43,9 +43,9 @@ func (ctx *Context) For(lang string) *Context {
 	if lang == ctx.GetDefaultLanguage() {
 		return ctx
 	}
-	c, ok := ctx.Locales[lang]
+	lctx, ok := ctx.Locales[lang]
 	if ok {
-		return c
+		return lctx
 	}
 	return ctx
 }
@@ -126,32 +126,44 @@ func (ctx *Context) GetContentDir() string {
 	return ctx.Config.GetString("content_dir")
 }
 
-func (ctx *Context) GetStaticConfig(file string, key string) string {
-	strs := strings.Split(file, "/")
-	for i := len(strs); i > 0; i-- {
-		value := ctx.Config.GetString(fmt.Sprintf("static.%s.%s", strings.Join(strs[:i], "/"), key))
-		if value != "" {
-			return value
+func (ctx *Context) GetStaticConfig(dir string, keyName string) string {
+	currentDir := dir
+	for {
+		if currentDir == "" || currentDir == "." {
+			break
 		}
+		sectionKey := "statics." + currentDir
+		if ctx.Config.IsSet(sectionKey) {
+			section := ctx.Config.Sub(sectionKey)
+			if section != nil && section.IsSet(keyName) {
+				if val := section.GetString(keyName); val != "" {
+					return val
+				}
+			}
+		}
+		currentDir = stdpath.Dir(currentDir)
 	}
-	return ctx.Config.GetString(fmt.Sprintf("static._default.%s", key))
+	return ctx.Config.GetString("statics._default." + keyName)
 }
 
-func (ctx *Context) GetSectionConfig(dir string, key string) string {
-	if dir == "." {
-		return ctx.Config.GetString(fmt.Sprintf("sections._default.%s", key))
-	}
-	// dir := filepath.Dir(path)
-	// 获取配置 content/posts/linux/emacs/page-01.md
-	// 查找顺序: posts/linux/emacs -> posts/linux -> posts -> _default
-	strs := strings.Split(dir, "/")
-	for i := len(strs); i > 0; i-- {
-		value := ctx.Config.GetString(fmt.Sprintf("sections.%s.%s", strings.Join(strs[:i], "/"), key))
-		if value != "" {
-			return value
+func (ctx *Context) GetSectionConfig(dir string, keyName string) string {
+	currentDir := dir
+	for {
+		if currentDir == "" || currentDir == "." {
+			break
 		}
+		sectionKey := "sections." + currentDir
+		if ctx.Config.IsSet(sectionKey) {
+			section := ctx.Config.Sub(sectionKey)
+			if section != nil && section.IsSet(keyName) {
+				if val := section.GetString(keyName); val != "" {
+					return val
+				}
+			}
+		}
+		currentDir = stdpath.Dir(currentDir)
 	}
-	return ctx.Config.GetString(fmt.Sprintf("sections._default.%s", key))
+	return ctx.Config.GetString("sections._default." + keyName)
 }
 
 func (ctx *Context) GetHighlightStyle() string {

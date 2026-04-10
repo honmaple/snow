@@ -3,39 +3,12 @@ package loader
 import (
 	"fmt"
 	"io/fs"
+	stdpath "path"
 	"path/filepath"
 	"strings"
 
 	"github.com/honmaple/snow/internal/content/types"
 )
-
-func (d *DiskLoader) findFiles(path string, pattern string) []string {
-	matches, _ := filepath.Glob(filepath.Join(path, pattern))
-	if len(matches) == 0 {
-		return nil
-	}
-
-	files := make([]string, 0)
-	for _, m := range matches {
-		if d.parserExts[filepath.Ext(m)] {
-			files = append(files, m)
-		}
-	}
-	return files
-}
-
-func (d *DiskLoader) findSection(path string) *types.Section {
-	if path == "." {
-		result, _ := d.sections.Find("@home")
-		return result
-	}
-
-	section, ok := d.sections.Find(path)
-	if ok {
-		return section
-	}
-	return d.findSection(filepath.Dir(path))
-}
 
 func (d *DiskLoader) isIgnoredContent(root, path string, info fs.DirEntry) bool {
 	// 忽略以.或者_开头的文件或目录，不要忽略_index.md
@@ -58,6 +31,45 @@ func (d *DiskLoader) isIgnoredContent(root, path string, info fs.DirEntry) bool 
 		}
 	}
 	return false
+}
+
+func (d *DiskLoader) findFiles(path string, pattern string) []string {
+	matches, _ := filepath.Glob(filepath.Join(path, pattern))
+	if len(matches) == 0 {
+		return nil
+	}
+
+	files := make([]string, 0)
+	for _, m := range matches {
+		if d.parserExts[filepath.Ext(m)] {
+			files = append(files, m)
+		}
+	}
+	return files
+}
+
+func (d *DiskLoader) loadFile(fullpath string) (*types.File, error) {
+	relPath, err := filepath.Rel(d.ctx.GetContentDir(), fullpath)
+	if err != nil {
+		return nil, err
+	}
+	relPath = filepath.ToSlash(relPath)
+
+	ext := stdpath.Ext(relPath)
+	nameWithExt := stdpath.Base(relPath)
+	nameWithoutExt := strings.TrimSuffix(nameWithExt, ext)
+
+	dir := stdpath.Dir(relPath)
+	if dir == "." {
+		dir = ""
+	}
+	return &types.File{
+		Path:     relPath,
+		Dir:      dir,
+		Ext:      ext,
+		Name:     nameWithExt,
+		BaseName: nameWithoutExt,
+	}, nil
 }
 
 func (d *DiskLoader) Load() (types.Store, error) {

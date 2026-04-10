@@ -2,7 +2,6 @@ package types
 
 type (
 	Taxonomy struct {
-		Lang      string
 		Name      string
 		Path      string
 		Permalink string
