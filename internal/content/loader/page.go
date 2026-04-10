@@ -30,6 +30,7 @@ func (d *DiskLoader) GetPageURL(path string) string {
 }
 
 func (d *DiskLoader) getPagePath(page *types.Page, customPath string) string {
+	lctx := d.ctx.For(page.Lang)
 	return utils.StringReplace(customPath, map[string]string{
 		"{date:%Y}":   page.Date.Format("2006"),
 		"{date:%m}":   page.Date.Format("01"),
@@ -38,7 +39,7 @@ func (d *DiskLoader) getPagePath(page *types.Page, customPath string) string {
 		"{slug}":      page.Slug,
 		"{filename}":  page.File.BaseName,
 		"{path}":      page.File.Dir,
-		"{path:slug}": d.ctx.GetPathSlug(page.File.Dir),
+		"{path:slug}": lctx.GetPathSlug(page.File.Dir),
 	})
 }
 
@@ -56,8 +57,7 @@ func (d *DiskLoader) insertPage(fullpath string, isBundle bool) error {
 
 	lang := meta.GetString("lang")
 	if lang == "" {
-		langExt := stdpath.Ext(file.BaseName)
-		if langExt != "" {
+		if langExt := stdpath.Ext(file.BaseName); langExt != "" {
 			lang = strings.TrimPrefix(langExt, ".")
 		}
 	}

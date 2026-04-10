@@ -2,7 +2,6 @@ package types
 
 type (
 	Section struct {
-		IsHome      bool
 		File        *File
 		FrontMatter *FrontMatter
 

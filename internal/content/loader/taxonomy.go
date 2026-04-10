@@ -13,8 +13,8 @@ func (d *DiskLoader) Taxonomies() types.Taxonomies {
 	return d.taxonomies.List()
 }
 
-func (d *DiskLoader) GetTaxonomy(path string) *types.Taxonomy {
-	result, _ := d.taxonomies.Find(path)
+func (d *DiskLoader) GetTaxonomy(name string) *types.Taxonomy {
+	result, _ := d.taxonomies.Find(name)
 	return result
 }
 
@@ -26,8 +26,8 @@ func (d *DiskLoader) GetTaxonomyURL(name string) string {
 	return result.Permalink
 }
 
-func (d *DiskLoader) GetTaxonomyTerms(taxonomyName string) types.TaxonomyTerms {
-	result, ok := d.taxonomies.Find(taxonomyName)
+func (d *DiskLoader) GetTaxonomyTerms(name string) types.TaxonomyTerms {
+	result, ok := d.taxonomies.Find(name)
 	if !ok {
 		return nil
 	}

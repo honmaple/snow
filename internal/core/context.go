@@ -31,6 +31,8 @@ type (
 		Fatalln(...any)
 	}
 	Context struct {
+		cache utils.Cache[string, string]
+
 		Theme   fs.FS
 		Logger  Logger
 		Config  *Config
@@ -50,12 +52,12 @@ func (ctx *Context) For(lang string) *Context {
 	return ctx
 }
 
-func (ctx *Context) IsValidLanguage(lang string) bool {
-	return ctx.GetDefaultLanguage() == lang || ctx.Config.IsSet("languages."+lang)
-}
-
 func (ctx *Context) IsHome(path string) bool {
 	return ctx.Config.GetString("content_dir") == path
+}
+
+func (ctx *Context) IsValidLanguage(lang string) bool {
+	return ctx.GetDefaultLanguage() == lang || ctx.Config.IsSet("languages."+lang)
 }
 
 func (ctx *Context) GetConfigMap(lang string) map[string]any {
@@ -69,10 +71,10 @@ func (ctx *Context) GetConfigMap(lang string) map[string]any {
 	return locale.Config.AllSettings()
 }
 
-func (ctx *Context) GetSummary(text string) string {
+func (ctx *Context) GetSummary(content string) string {
 	length := ctx.Config.GetInt("content_truncate_len")
 	ellipsis := ctx.Config.GetString("content_truncate_ellipsis")
-	return utils.TruncateHTML(text, length, ellipsis)
+	return utils.TruncateHTML(content, length, ellipsis)
 }
 
 func (ctx *Context) GetSlug(name string) string {

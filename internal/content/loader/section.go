@@ -2,10 +2,8 @@ package loader
 
 import (
 	stdpath "path"
-	"path/filepath"
 	"strings"
 
-	"github.com/honmaple/snow/internal/content/parser"
 	"github.com/honmaple/snow/internal/content/types"
 	"github.com/honmaple/snow/internal/utils"
 )
@@ -44,72 +42,16 @@ func (d *DiskLoader) findSection(dir string) *types.Section {
 }
 
 func (d *DiskLoader) getSectionPath(section *types.Section, customPath string) string {
+	lctx := d.ctx.For(section.Lang)
 	return utils.StringReplace(customPath, map[string]string{
 		"{path}":         section.File.Dir,
-		"{path:slug}":    d.ctx.GetPathSlug(section.File.Dir),
+		"{path:slug}":    lctx.GetPathSlug(section.File.Dir),
 		"{section}":      section.Title,
 		"{section:slug}": section.Slug,
 	})
 }
 
-func (d *DiskLoader) insertIndexSection(fullpath string) error {
-	var result *parser.Result
-
-	sectionFiles := d.findFiles(fullpath, "_index.*")
-	if len(sectionFiles) > 0 {
-		r, err := d.parser.Parse(sectionFiles[0])
-		if err != nil {
-			return err
-		}
-		result = r
-	} else {
-		result = &parser.Result{
-			FrontMatter: make(map[string]any),
-		}
-	}
-
-	file, err := d.loadFile(fullpath)
-	if err != nil {
-		return err
-	}
-
-	meta := types.NewFrontMatter(result.FrontMatter)
-
-	section := &types.Section{
-		IsHome:      true,
-		FrontMatter: meta,
-		File:        file,
-		Title:       meta.GetString("title"),
-		Content:     result.Content,
-		RawContent:  result.RawContent,
-		Summary:     meta.GetString("summary"),
-		Slug:        meta.GetString("slug"),
-		Lang:        meta.GetString("lang"),
-		Draft:       meta.GetBool("draft"),
-		Pages:       make(types.Pages, 0),
-		Assets:      make([]*types.Asset, 0),
-	}
-	if section.Summary == "" {
-		section.Summary = d.ctx.GetSummary(result.Content)
-	}
-	if section.Title == "" {
-		section.Title = "index"
-	}
-	if section.Slug == "" {
-		section.Slug = d.ctx.GetSlug(section.Title)
-	}
-
-	section.Path = d.ctx.GetRelURL("/index.html")
-	section.Permalink = d.ctx.GetURL(section.Path)
-	section.RelPermalink = section.Path
-
-	d.loadSectionFormats(section)
-
-	d.sections.Add("/", section)
-	return nil
-}
-
-func (d *DiskLoader) insertSection(fullpath string) error {
+func (d *DiskLoader) insertSection(fullpath string, isRoot bool) error {
 	result, err := d.parser.Parse(fullpath)
 	if err != nil {
 		return err
@@ -153,7 +95,11 @@ func (d *DiskLoader) insertSection(fullpath string) error {
 		section.Summary = lctx.GetSummary(result.Content)
 	}
 	if section.Title == "" {
-		section.Title = stdpath.Base(section.File.Dir)
+		if isRoot {
+			section.Title = "index"
+		} else {
+			section.Title = stdpath.Base(section.File.Dir)
+		}
 	}
 	if section.Slug == "" {
 		section.Slug = lctx.GetSlug(section.Title)
@@ -162,7 +108,7 @@ func (d *DiskLoader) insertSection(fullpath string) error {
 	customPath := meta.GetString("path")
 	// 如果自定义path为空，则从配置中获取
 	if customPath == "" {
-		customPath = lctx.GetSectionConfig(fullpath, "path")
+		customPath = lctx.GetSectionConfig(section.File.Dir, "path")
 	}
 
 	outputPath := d.getSectionPath(section, customPath)
@@ -178,12 +124,21 @@ func (d *DiskLoader) insertSection(fullpath string) error {
 		}
 	}
 
-	d.sections.Add(section.File.Path, section)
+	if isRoot {
+		d.sections.Add("/", section)
+	} else {
+		d.sections.Add(section.File.Dir, section)
+	}
 	return nil
 }
 
 func (d *DiskLoader) insertSectionAsset(fullpath string) error {
-	section := d.findSection(filepath.Dir(fullpath))
+	file, err := d.loadFile(fullpath)
+	if err != nil {
+		return err
+	}
+
+	section := d.findSection(file.Dir)
 
 	asset := &types.Asset{
 		File: fullpath,
@@ -204,6 +159,8 @@ func (d *DiskLoader) insertSectionAsset(fullpath string) error {
 }
 
 func (d *DiskLoader) loadSectionFormats(section *types.Section) types.Formats {
+	lctx := d.ctx.For(section.Lang)
+
 	customFormats := section.FrontMatter.GetStringMap("formats")
 
 	formats := make(types.Formats, 0)
@@ -226,8 +183,8 @@ func (d *DiskLoader) loadSectionFormats(section *types.Section) types.Formats {
 			"{section:slug}": section.Slug,
 		})
 
-		format.Path = d.ctx.GetRelURL(outputPath)
-		format.Permalink = d.ctx.GetRelURL(format.Path)
+		format.Path = lctx.GetRelURL(outputPath)
+		format.Permalink = lctx.GetRelURL(format.Path)
 
 		formats = append(formats, format)
 	}
