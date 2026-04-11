@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	stdpath "path"
@@ -31,12 +32,13 @@ type (
 		Fatalln(...any)
 	}
 	Context struct {
-		cache utils.Cache[string, string]
-
+		context.Context
 		Theme   fs.FS
 		Logger  Logger
 		Config  *Config
 		Locales map[string]*Context
+
+		cache utils.Cache[string, string]
 	}
 	ContextOption func(*Context)
 )
@@ -131,7 +133,7 @@ func (ctx *Context) GetContentDir() string {
 func (ctx *Context) GetStaticConfig(dir string, keyName string) string {
 	currentDir := dir
 	for {
-		if currentDir == "" || currentDir == "." {
+		if currentDir == "@theme" || currentDir == "" || currentDir == "." {
 			break
 		}
 		sectionKey := "statics." + currentDir
@@ -186,6 +188,7 @@ func WithTheme(theme fs.FS) ContextOption {
 
 func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 	ctx := &Context{
+		Context: context.TODO(),
 		Config:  conf,
 		Locales: make(map[string]*Context),
 	}
@@ -225,8 +228,9 @@ func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 			continue
 		}
 		lctx := &Context{
-			Logger: ctx.Logger,
-			Config: NewConfig(),
+			Context: ctx.Context,
+			Logger:  ctx.Logger,
+			Config:  NewConfig(),
 		}
 		lctx.Config.MergeConfigMap(conf.AllSettings())
 		lctx.Config.MergeConfigMap(conf.GetStringMap("languages." + lang))

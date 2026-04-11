@@ -5,69 +5,87 @@ import (
 	"errors"
 	"io/fs"
 	"os"
-	"strings"
+	"path/filepath"
 	"sync"
 
 	"github.com/honmaple/snow/internal/core"
-	"github.com/honmaple/snow/internal/static/loader"
-	"github.com/honmaple/snow/internal/static/types"
 )
 
 type (
 	Builder struct {
 		ctx    *core.Context
 		once   sync.Once
-		hook   types.Hook
-		store  types.Store
-		loader types.Loader
 		writer core.Writer
 	}
 	BuilderOption func(*Builder)
 )
 
-func (b *Builder) writeStatic(ctx context.Context, static *types.Static) error {
-	var (
-		src fs.File
-		err error
-	)
+func (b *Builder) isIgnored(path string, isDir bool) bool {
+	matchPath := path
+	if isDir {
+		matchPath = matchPath + "/"
+	}
+	for _, pattern := range b.ctx.Config.GetStringSlice("ignored_static") {
+		matched, err := filepath.Match(pattern, matchPath)
+		if err != nil {
+			b.ctx.Logger.Warnf("The pattern %s match %s err: %s", pattern, path, err)
+			continue
+		}
+		if matched {
+			return true
+		}
+	}
+	return false
+}
 
-	if strings.HasPrefix(static.File, "@theme/") {
-		src, err = b.ctx.Theme.Open(static.File)
-	} else {
-		src, err = os.Open(static.File)
-	}
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-	return b.writer.Write(ctx, static.Path, src)
+func (b *Builder) copyDir(ctx context.Context, staticFS fs.FS) error {
+	return fs.WalkDir(staticFS, ".", func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if b.isIgnored(path, info.IsDir()) {
+			if info.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+		src, err := staticFS.Open(path)
+		if err != nil {
+			return err
+		}
+		defer src.Close()
+
+		return b.writer.Write(ctx, path, src)
+	})
 }
 
 func (b *Builder) Build(ctx context.Context) error {
-	store, err := b.loader.Load()
-	if err != nil {
-		return err
+	if _, err := fs.Stat(b.ctx.Theme, "static"); err == nil {
+		b.ctx.Logger.Debug("Copy theme static")
+
+		subFS, err := fs.Sub(b.ctx.Theme, "static")
+		if err != nil {
+			return err
+		}
+		if err := b.copyDir(ctx, subFS); err != nil {
+			return err
+		}
 	}
 
-	b.ctx.Logger.Infof("%d statics", len(store.Statics()))
+	staticDir := b.ctx.GetStaticDir()
+	if _, err := os.Stat(staticDir); err == nil {
+		b.ctx.Logger.Debugf("Copy static: %s", staticDir)
 
-	b.once.Do(func() {
-		b.store = store
-	})
-
-	statics := b.hook.HandleStatics(store.Statics())
-	for _, static := range statics {
-		if err := b.writeStatic(ctx, static); err != nil {
+		if err := b.copyDir(ctx, os.DirFS(staticDir)); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func WithLoader(l types.Loader) BuilderOption {
-	return func(b *Builder) {
-		b.loader = l
-	}
 }
 
 func WithWriter(w core.Writer) BuilderOption {
@@ -85,9 +103,6 @@ func New(ctx *core.Context, opts ...BuilderOption) (*Builder, error) {
 	}
 	if b.writer == nil {
 		return nil, errors.New("static writer is required")
-	}
-	if b.loader == nil {
-		b.loader = loader.New(ctx)
 	}
 	return b, nil
 }

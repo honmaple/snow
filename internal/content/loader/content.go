@@ -107,6 +107,7 @@ func (d *DiskLoader) Load() (types.Store, error) {
 				}
 				return nil
 			}
+			d.insertRootSection()
 			return nil
 		}
 		// 忽略指定的文件

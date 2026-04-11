@@ -7,7 +7,6 @@ import (
 
 	"github.com/honmaple/snow/internal/content"
 	"github.com/honmaple/snow/internal/core"
-	"github.com/honmaple/snow/internal/static"
 )
 
 type Registry struct {
@@ -85,26 +84,6 @@ func (r *Registry) HandleTaxonomy(result *content.Taxonomy) *content.Taxonomy {
 func (r *Registry) HandleTaxonomies(results content.Taxonomies) content.Taxonomies {
 	for _, hook := range r.hooks {
 		results = hook.HandleTaxonomies(results)
-		if len(results) == 0 {
-			return nil
-		}
-	}
-	return results
-}
-
-func (r *Registry) HandleStatic(result *static.Static) *static.Static {
-	for _, hook := range r.hooks {
-		result = hook.HandleStatic(result)
-		if result == nil {
-			return nil
-		}
-	}
-	return result
-}
-
-func (r *Registry) HandleStatics(results static.Statics) static.Statics {
-	for _, hook := range r.hooks {
-		results = hook.HandleStatics(results)
 		if len(results) == 0 {
 			return nil
 		}

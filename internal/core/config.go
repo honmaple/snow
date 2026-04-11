@@ -100,7 +100,6 @@ func (conf *Config) LoadFromFile(path string) error {
 
 	conf.Reset(siteConfig)
 	conf.Reset(otherConfig)
-	conf.Reset(staticConfig)
 	conf.Reset(sectionConfig)
 	conf.Reset(taxonomyConfig)
 	return nil
@@ -127,11 +126,6 @@ var (
 		"taxonomies.categories.weight": 1,
 		"taxonomies.tags.weight":       2,
 		"taxonomies.authors.weight":    3,
-	}
-	staticConfig = map[string]any{
-		"statics.@theme/_internal/static.path": "static",
-		"statics.@theme/static.path":           "static",
-		"statics.static.path":                  "static",
 	}
 	// 默认不需要修改的配置
 	otherConfig = map[string]any{
@@ -170,7 +164,6 @@ func DefaultConfig() *Config {
 	}
 	conf.Reset(siteConfig)
 	conf.Reset(otherConfig)
-	conf.Reset(staticConfig)
 	conf.Reset(sectionConfig)
 	conf.Reset(taxonomyConfig)
 	return conf

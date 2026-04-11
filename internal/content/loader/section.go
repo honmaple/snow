@@ -51,6 +51,19 @@ func (d *DiskLoader) getSectionPath(section *types.Section, customPath string) s
 	})
 }
 
+func (d *DiskLoader) insertRootSection() error {
+	section := &types.Section{
+		FrontMatter: types.NewFrontMatter(nil),
+		Pages:       make(types.Pages, 0),
+		Assets:      make([]*types.Asset, 0),
+	}
+	section.Path = "/index.html"
+	section.Permalink = d.ctx.GetURL(section.Path)
+
+	d.sections.Add("/", section)
+	return nil
+}
+
 func (d *DiskLoader) insertSection(fullpath string, isRoot bool) error {
 	result, err := d.parser.Parse(fullpath)
 	if err != nil {

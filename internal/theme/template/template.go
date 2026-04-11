@@ -1,7 +1,6 @@
 package template
 
 import (
-	"fmt"
 	"io/fs"
 	"maps"
 	"sync"
@@ -78,7 +77,6 @@ func (set *templateSet) Lookup(names ...string) Template {
 		// 模版未找到不输出日志, 编译模版有问题才输出
 		template, err := set.lookup(name)
 		if err != nil {
-			fmt.Println(err)
 			continue
 		}
 		set.cache.Store(name, template)

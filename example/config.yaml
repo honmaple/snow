@@ -28,8 +28,6 @@ sections:
     path: ""
     page_path: "pages/{slug}.html"
     hidden: true
-  drafts:
-    draft: true
 
 taxonomies:
   tags:
@@ -42,45 +40,9 @@ taxonomies:
 output_dir: "output"
 content_dir: "content"
 
-build_filter: "not draft"
-build_ignore_files: "not draft"
+ignored_static:
+  - js/encrypt.js
 
 statics:
-  static:
-    path: "assets"
-
-theme:
-  # name: "archie-snow"
-  # name: "snow"
-  # override: "layouts"
-
-registered_hooks:
-  - "pelican"
-  - "i18n"
-  - "assets"
-  - "encrypt"
-  - "shortcode"
-  - "sofile"
-hooks:
-  internal:
-    converter:
-      tags: "^aaaaa"
-      categories: ""
-  sofiles:
-    files:
-      - "sofile.so"
-  encrypt:
-    password: "123456"
-
-params.extra:
-  menus:
-    - name: "Home"
-      url: "/"
-    - name: "All Posts"
-      url: "/posts"
-    - name: "About"
-      url: "/pages/about.html"
-    - name: "Tags"
-      url: "/tags"
-  mode: "toggle"
-  copyright: "honmaple"
+  robots.txt:
+    path: "robots.txt"

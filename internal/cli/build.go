@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"context"
-
 	"github.com/honmaple/snow/internal/content"
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/static"
@@ -91,5 +89,5 @@ func build(ctx *core.Context, w core.Writer) error {
 	if err != nil {
 		return err
 	}
-	return core.Build(context.TODO(), staticBuilder, contentBuilder)
+	return core.Build(ctx, staticBuilder, contentBuilder)
 }

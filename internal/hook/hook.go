@@ -2,13 +2,10 @@ package hook
 
 import (
 	"github.com/honmaple/snow/internal/content"
-	"github.com/honmaple/snow/internal/static"
 )
 
 type (
-	StaticHook       = static.Hook
 	ContentHook      = content.Hook
-	StaticEmptyHook  = static.EmptyHook
 	ContentEmptyHook = content.EmptyHook
 
 	BuildHook interface {
@@ -17,13 +14,11 @@ type (
 	}
 	Hook interface {
 		BuildHook
-		StaticHook
 		ContentHook
 	}
 )
 
 type HookImpl struct {
-	StaticEmptyHook
 	ContentEmptyHook
 }
 
