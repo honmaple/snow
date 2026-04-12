@@ -11,19 +11,21 @@ var (
 	RegisterTag    = pongo2.RegisterTag
 	RegisterFilter = pongo2.RegisterFilter
 	// 临时变量
-	TransientFuncs     = make(map[string]TransientContextFunc)
-	TransientVariables = make(map[string]any)
+	TransientVars  = make(map[string]any)
+	TransientFuncs = make(map[string]TransientContextFunc)
 
-	GlobalTags      = make(map[string]func(*core.Context) pongo2.TagParser)
-	GlobalFilters   = make(map[string]func(*core.Context) pongo2.FilterFunction)
-	GlobalFuncs     = make(map[string]func(*core.Context) any)
-	GlobalVariables = make(map[string]any)
+	GlobalTags    = make(map[string]func(*core.Context) pongo2.TagParser)
+	GlobalFilters = make(map[string]func(*core.Context) pongo2.FilterFunction)
+	GlobalFuncs   = make(map[string]func(*core.Context) any)
+	GlobalVars    = make(map[string]any)
+
+	PrivateVars = make(map[string]any)
 )
 
 type TransientContextFunc func(*core.Context, map[string]any) any
 
 func Register(k string, v any) {
-	GlobalVariables[k] = v
+	GlobalVars[k] = v
 }
 
 func RegisterContextFunc(k string, v func(*core.Context) any) {
@@ -38,8 +40,12 @@ func RegisterContextFilter(k string, v func(*core.Context) pongo2.FilterFunction
 	GlobalFilters[k] = v
 }
 
+func RegisterPrivate(k string, v any) {
+	PrivateVars[k] = v
+}
+
 func RegisterTransient(k string, v any) {
-	TransientVariables[k] = v
+	TransientVars[k] = v
 }
 
 func RegisterTransientFunc(k string, v TransientContextFunc) {

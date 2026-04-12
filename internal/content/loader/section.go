@@ -53,7 +53,15 @@ func (d *DiskLoader) getSectionPath(section *types.Section, customPath string) s
 
 func (d *DiskLoader) insertRootSection() error {
 	section := &types.Section{
+		File: &types.File{
+			Path:     "_index.md",
+			Dir:      "",
+			Ext:      ".md",
+			Name:     "_index.md",
+			BaseName: "_index",
+		},
 		FrontMatter: types.NewFrontMatter(nil),
+		Title:       "index",
 		Pages:       make(types.Pages, 0),
 		Assets:      make([]*types.Asset, 0),
 	}
@@ -65,15 +73,16 @@ func (d *DiskLoader) insertRootSection() error {
 }
 
 func (d *DiskLoader) insertSection(fullpath string, isRoot bool) error {
+	file, err := d.loadFile(fullpath)
+	if err != nil {
+		return err
+	}
+
 	result, err := d.parser.Parse(fullpath)
 	if err != nil {
 		return err
 	}
 
-	file, err := d.loadFile(fullpath)
-	if err != nil {
-		return err
-	}
 	meta := types.NewFrontMatter(result.FrontMatter)
 
 	lang := meta.GetString("lang")
@@ -83,9 +92,13 @@ func (d *DiskLoader) insertSection(fullpath string, isRoot bool) error {
 			lang = strings.TrimPrefix(langExt, ".")
 		}
 	}
-	if lang == "" || !d.ctx.IsValidLanguage(lang) {
+	if lang == "" {
 		lang = d.ctx.GetDefaultLanguage()
+	} else if !d.ctx.IsValidLanguage(lang) {
+		lang = d.ctx.GetDefaultLanguage()
+		d.ctx.Logger.Warnf("Get useless lang %s: %s", lang, fullpath)
 	}
+
 	if ext := "." + lang; strings.HasSuffix(file.BaseName, ext) {
 		file.BaseName = strings.TrimSuffix(file.BaseName, ext)
 		file.LanguageName = lang
@@ -150,22 +163,23 @@ func (d *DiskLoader) insertSectionAsset(fullpath string) error {
 	if err != nil {
 		return err
 	}
-
 	section := d.findSection(file.Dir)
+
+	lctx := d.ctx.For(section.Lang)
 
 	asset := &types.Asset{
 		File: fullpath,
 	}
 	customPath := section.FrontMatter.GetString("asset_path")
 	if customPath == "" {
-		customPath = d.ctx.GetSectionConfig(section.File.Path, "asset_path")
+		customPath = lctx.GetSectionConfig(section.File.Path, "asset_path")
 	}
 	outputPath := utils.StringReplace(customPath, map[string]string{
 		"{section}":      section.Title,
 		"{section:slug}": section.Slug,
 	})
-	asset.Path = d.ctx.GetRelURL(outputPath)
-	asset.Permalink = d.ctx.GetURL(asset.Path)
+	asset.Path = lctx.GetRelURL(outputPath)
+	asset.Permalink = lctx.GetURL(asset.Path)
 
 	section.Assets = append(section.Assets, asset)
 	return nil

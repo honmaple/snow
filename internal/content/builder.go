@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	stdpath "path"
 	"strings"
 	"sync"
 
@@ -74,7 +74,7 @@ func (b *Builder) write(ctx context.Context, path string, tpl template.Template,
 func (b *Builder) writeAsset(ctx context.Context, asset *types.Asset) error {
 	dst := asset.Path
 	if strings.HasSuffix(dst, "/") {
-		dst = filepath.Join(dst, filepath.Base(asset.File))
+		dst = stdpath.Join(dst, stdpath.Base(asset.File))
 	}
 	srcFile, err := os.Open(asset.File)
 	if err != nil {
@@ -91,7 +91,7 @@ func (b *Builder) writeSection(ctx context.Context, section *types.Section) erro
 		customTemplate = b.ctx.Config.GetString(fmt.Sprintf("sections.%s.template", section.File))
 	}
 
-	if tpl := b.tplset.Lookup(customTemplate, "section.html", "internal/section.html"); tpl != nil {
+	if tpl := b.tplset.Lookup(customTemplate, "section.html"); tpl != nil {
 		paginators := section.Pages.Paginate(
 			section.FrontMatter.GetInt("paginate"),
 			section.Path,
@@ -136,35 +136,41 @@ func (b *Builder) writePage(ctx context.Context, page *types.Page) error {
 	customTemplate := page.FrontMatter.GetString("template")
 	if customTemplate == "" {
 		if page.File.BaseName == "index" {
-			customTemplate = b.ctx.GetSectionConfig(filepath.Dir(page.File.Dir), "page_template")
+			customTemplate = b.ctx.GetSectionConfig(stdpath.Dir(page.File.Dir), "page_template")
 		} else {
 			customTemplate = b.ctx.GetSectionConfig(page.File.Dir, "page_template")
 		}
 	}
 
-	if tpl := b.tplset.Lookup(customTemplate, "page.html", "internal/page.html"); tpl != nil {
-		b.write(ctx, page.Path, tpl, vars)
+	if tpl := b.tplset.Lookup(customTemplate, "page.html"); tpl != nil {
+		if err := b.write(ctx, page.Path, tpl, vars); err != nil {
+			return err
+		}
 	}
-	if tpl := b.tplset.Lookup("alias.html", "internal/partials/alias.html"); tpl != nil {
+	if tpl := b.tplset.Lookup("alias.html", "partials/alias.html"); tpl != nil {
 		for _, alias := range page.FrontMatter.GetStringSlice("aliases") {
 			if !strings.HasPrefix(alias, "/") {
 				if strings.HasSuffix(page.Path, "/") {
-					alias = filepath.Join(page.Path, alias)
+					alias = stdpath.Join(page.Path, alias)
 				} else {
-					alias = filepath.Join(filepath.Dir(page.Path), alias)
+					alias = stdpath.Join(stdpath.Dir(page.Path), alias)
 				}
 			}
-			b.write(ctx, alias, tpl, vars)
+			if err := b.write(ctx, alias, tpl, vars); err != nil {
+				return err
+			}
 		}
 	}
 	for _, format := range page.Formats {
 		if tpl := b.tplset.Lookup(format.Template); tpl != nil {
-			b.write(ctx, format.Path, tpl, map[string]any{
+			if err := b.write(ctx, format.Path, tpl, map[string]any{
 				"page":         page,
 				"current_lang": page.Lang,
 				"current_url":  format.Permalink,
 				"current_path": format.Path,
-			})
+			}); err != nil {
+				return err
+			}
 		}
 	}
 	for _, asset := range page.Assets {
@@ -182,19 +188,16 @@ func (b *Builder) writeTaxonomy(ctx context.Context, taxonomy *types.Taxonomy) e
 		customTemplate,
 		fmt.Sprintf("%s/taxonomy.html", taxonomy.Name),
 		"taxonomy.html",
-		"internal/taxonomy.html",
 	}
 	if tpl := b.tplset.Lookup(lookups...); tpl != nil {
 		// example.com/tags/index.html
-		b.write(ctx, taxonomy.Path, tpl, map[string]any{
+		return b.write(ctx, taxonomy.Path, tpl, map[string]any{
 			"taxonomy": taxonomy,
 		})
 	}
-	for _, term := range taxonomy.Terms {
-		b.writeTaxonomyTerm(ctx, term)
-	}
 	return nil
 }
+
 func (b *Builder) writeTaxonomyTerm(ctx context.Context, term *types.TaxonomyTerm) error {
 	customTemplate := b.ctx.Config.GetString(fmt.Sprintf("taxonomies.%s.term_template", term.Taxonomy.Name))
 
@@ -202,7 +205,6 @@ func (b *Builder) writeTaxonomyTerm(ctx context.Context, term *types.TaxonomyTer
 		customTemplate,
 		fmt.Sprintf("%s/taxonomy.terms.html", term.Taxonomy.Name),
 		"taxonomy.terms.html",
-		"internal/taxonomy.terms.html",
 	}
 	if tpl := b.tplset.Lookup(lookups...); tpl != nil {
 		for _, por := range term.Pages.Paginate(
@@ -210,23 +212,27 @@ func (b *Builder) writeTaxonomyTerm(ctx context.Context, term *types.TaxonomyTer
 			term.Path,
 			b.ctx.Config.GetString(fmt.Sprintf("taxonomies.%s.term_paginate_path", term.Taxonomy.Name)),
 		) {
-			b.write(ctx, por.Path, tpl, map[string]any{
+			if err := b.write(ctx, por.Path, tpl, map[string]any{
 				"term":          term,
 				"pages":         term.Pages,
 				"taxonomy":      term.Taxonomy,
 				"paginator":     por,
 				"current_path":  por.Path,
 				"current_index": por.PageNum,
-			})
+			}); err != nil {
+				return err
+			}
 		}
 	}
 	for _, format := range term.Formats {
 		if tpl := b.tplset.Lookup(format.Template); tpl != nil {
-			b.write(ctx, format.Path, tpl, map[string]any{
+			if err := b.write(ctx, format.Path, tpl, map[string]any{
 				"term":     term,
 				"pages":    term.Pages,
 				"taxonomy": term.Taxonomy,
-			})
+			}); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -251,16 +257,29 @@ func (b *Builder) Build(ctx context.Context) error {
 	b.ctx.Logger.Infof("%d taxonomies", len(taxonomies))
 
 	for _, page := range pages {
+		fmt.Println("page", page.File.Path, page.Path)
 		b.writePage(ctx, page)
-		break
 	}
 	for _, section := range sections {
+		fmt.Println("section", section.File.Path, section.Path)
 		b.writeSection(ctx, section)
 	}
 	for _, taxonomy := range taxonomies {
+		fmt.Println("taxonomy", taxonomy.Name, taxonomy.Path)
 		b.writeTaxonomy(ctx, taxonomy)
+
+		for _, term := range taxonomy.Terms {
+			fmt.Println("taxonomy", term.Name, term.Path)
+			b.writeTaxonomyTerm(ctx, term)
+		}
 	}
 	return nil
+}
+
+func WithHook(h types.Hook) BuilderOption {
+	return func(b *Builder) {
+		b.hook = h
+	}
 }
 
 func WithLoader(l types.Loader) BuilderOption {
@@ -298,7 +317,11 @@ func New(ctx *core.Context, opts ...BuilderOption) (*Builder, error) {
 		b.loader = loader.New(ctx)
 	}
 	if b.tplset == nil {
-		b.tplset = template.NewSet(ctx, ctx.Theme)
+		tplset, err := template.NewSet(ctx)
+		if err != nil {
+			return nil, err
+		}
+		b.tplset = tplset
 	}
 	return b, nil
 }

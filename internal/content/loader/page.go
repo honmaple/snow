@@ -44,12 +44,12 @@ func (d *DiskLoader) getPagePath(page *types.Page, customPath string) string {
 }
 
 func (d *DiskLoader) insertPage(fullpath string, isBundle bool) error {
-	result, err := d.parser.Parse(fullpath)
+	file, err := d.loadFile(fullpath)
 	if err != nil {
 		return err
 	}
 
-	file, err := d.loadFile(fullpath)
+	result, err := d.parser.Parse(fullpath)
 	if err != nil {
 		return err
 	}
@@ -61,9 +61,13 @@ func (d *DiskLoader) insertPage(fullpath string, isBundle bool) error {
 			lang = strings.TrimPrefix(langExt, ".")
 		}
 	}
-	if lang == "" || !d.ctx.IsValidLanguage(lang) {
+	if lang == "" {
 		lang = d.ctx.GetDefaultLanguage()
+	} else if !d.ctx.IsValidLanguage(lang) {
+		lang = d.ctx.GetDefaultLanguage()
+		d.ctx.Logger.Warnf("Get useless lang %s: %s", lang, fullpath)
 	}
+
 	if ext := "." + lang; strings.HasSuffix(file.BaseName, ext) {
 		file.BaseName = strings.TrimSuffix(file.BaseName, ext)
 		file.LanguageName = lang

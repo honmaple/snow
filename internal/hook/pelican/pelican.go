@@ -35,8 +35,8 @@ func (h *pelican) HandlePage(page *content.Page) *content.Page {
 	return page
 }
 
-func New(ctx *core.Context) hook.Hook {
-	return &pelican{ctx: ctx}
+func New(ctx *core.Context) (hook.Hook, error) {
+	return &pelican{ctx: ctx}, nil
 }
 
 func init() {

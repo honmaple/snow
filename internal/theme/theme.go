@@ -34,6 +34,9 @@ func (t *Theme) Open(file string) (fs.File, error) {
 }
 
 func (t *Theme) ReadDir(file string) ([]fs.DirEntry, error) {
+	if strings.HasPrefix(file, "internal") {
+		return internalFS.ReadDir(file)
+	}
 	return t.root.ReadDir(file)
 }
 

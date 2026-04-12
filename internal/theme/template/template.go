@@ -3,6 +3,7 @@ package template
 import (
 	"io/fs"
 	"maps"
+	"os"
 	"sync"
 
 	"github.com/flosch/pongo2/v7"
@@ -13,6 +14,7 @@ type (
 	Template interface {
 		Name() string
 		Execute(*core.Context, map[string]any) (string, error)
+		ExecuteRaw(*core.Context, map[string]any) (string, error)
 	}
 	templateImpl struct {
 		n   string
@@ -28,7 +30,7 @@ func (t *templateImpl) Execute(ctx *core.Context, vars map[string]any) (string, 
 	nvars := make(map[string]any)
 	maps.Copy(nvars, vars)
 
-	for k, v := range TransientVariables {
+	for k, v := range TransientVars {
 		if _, ok := nvars[k]; !ok {
 			nvars[k] = v
 		}
@@ -42,28 +44,25 @@ func (t *templateImpl) Execute(ctx *core.Context, vars map[string]any) (string, 
 	return t.tpl.Execute(nvars)
 }
 
+func (t *templateImpl) ExecuteRaw(ctx *core.Context, vars map[string]any) (string, error) {
+	nvars := make(map[string]any)
+	maps.Copy(nvars, vars)
+
+	return t.tpl.Execute(nvars)
+}
+
 type (
 	TemplateSet interface {
 		Lookup(...string) Template
+		FromFile(string) (Template, error)
+		FromBytes(string, []byte) (Template, error)
+		FromString(string, string) (Template, error)
 	}
 	templateSet struct {
 		cache  sync.Map
 		tplset *pongo2.TemplateSet
-		loader *loader
 	}
 )
-
-func (set *templateSet) lookup(name string) (Template, error) {
-	buf, err := set.loader.GetBytes(name)
-	if err != nil {
-		return nil, err
-	}
-	tpl, err := set.tplset.FromBytes(buf)
-	if err != nil {
-		return nil, err
-	}
-	return &templateImpl{n: name, tpl: tpl}, nil
-}
 
 func (set *templateSet) Lookup(names ...string) Template {
 	for _, name := range names {
@@ -75,7 +74,7 @@ func (set *templateSet) Lookup(names ...string) Template {
 			return v.(Template)
 		}
 		// 模版未找到不输出日志, 编译模版有问题才输出
-		template, err := set.lookup(name)
+		template, err := set.FromFile(name)
 		if err != nil {
 			continue
 		}
@@ -85,10 +84,46 @@ func (set *templateSet) Lookup(names ...string) Template {
 	return nil
 }
 
-func NewSet(ctx *core.Context, theme fs.FS) TemplateSet {
-	loader := newLoader(theme)
+func (set *templateSet) FromFile(name string) (Template, error) {
+	tpl, err := set.tplset.FromFile(name)
+	if err != nil {
+		return nil, err
+	}
+	return &templateImpl{n: name, tpl: tpl}, nil
+}
 
-	set := pongo2.NewSet("app", loader)
+func (set *templateSet) FromBytes(name string, b []byte) (Template, error) {
+	tpl, err := set.tplset.FromBytes(b)
+	if err != nil {
+		return nil, err
+	}
+	return &templateImpl{n: name, tpl: tpl}, nil
+}
+
+func (set *templateSet) FromString(name string, b string) (Template, error) {
+	tpl, err := set.tplset.FromString(b)
+	if err != nil {
+		return nil, err
+	}
+	return &templateImpl{n: name, tpl: tpl}, nil
+}
+
+func NewSet(ctx *core.Context) (TemplateSet, error) {
+	tplFS, err := fs.Sub(ctx.Theme, "templates")
+	if err != nil {
+		return nil, err
+	}
+
+	internalFS, err := fs.Sub(ctx.Theme, "internal/templates")
+	if err != nil {
+		return nil, err
+	}
+
+	set := pongo2.NewSet("app",
+		pongo2.NewFSLoader(os.DirFS("templates")),
+		pongo2.NewFSLoader(tplFS),
+		pongo2.NewFSLoader(internalFS),
+	)
 
 	set.Globals["dict"] = dict
 	set.Globals["slice"] = slice
@@ -99,7 +134,7 @@ func NewSet(ctx *core.Context, theme fs.FS) TemplateSet {
 	set.RegisterFilter("slient", slient)
 	set.RegisterFilter("jsonify", jsonify)
 
-	for k, v := range GlobalVariables {
+	for k, v := range GlobalVars {
 		set.Globals[k] = v
 	}
 
@@ -116,6 +151,5 @@ func NewSet(ctx *core.Context, theme fs.FS) TemplateSet {
 	}
 	return &templateSet{
 		tplset: set,
-		loader: loader,
-	}
+	}, nil
 }

@@ -2,43 +2,27 @@ package shortcode
 
 import (
 	"bytes"
-	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
+	stdpath "path"
+	"slices"
 	"strings"
 
 	"github.com/honmaple/snow/internal/content"
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/hook"
 	"github.com/honmaple/snow/internal/theme/template"
-	"github.com/honmaple/snow/internal/utils"
 	"golang.org/x/net/html"
 )
 
-type shortcode struct {
+type shortcodeHook struct {
 	hook.HookImpl
 	ctx    *core.Context
-	tpls   map[string]func(map[string]any) string
+	tpls   map[string]template.Template
 	tplset template.TemplateSet
 }
 
-func (h *shortcode) lookupTemplate(lookups ...string) (func(map[string]any) string, error) {
-	tpl := h.tplset.Lookup(lookups...)
-	if tpl == nil {
-		return nil, fmt.Errorf("Lookup %s but not found or some error happen", lookups)
-	}
-	return func(vars map[string]any) string {
-		out, err := tpl.Execute(h.ctx, vars)
-		if err != nil {
-			h.ctx.Logger.Error(err.Error())
-			return ""
-		}
-		return out
-	}, nil
-}
-
-func (h *shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Tokenizer, startToken *html.Token, counter map[string]int) bool {
+func (h *shortcodeHook) renderNext(page *content.Page, w *bytes.Buffer, z *html.Tokenizer, startToken *html.Token, counter map[string]int) bool {
 	for {
 		next := z.Next()
 		if next == html.ErrorToken {
@@ -61,7 +45,7 @@ func (h *shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Toke
 					break
 				}
 			}
-			shortcode, ok := h.tpls[name]
+			tpl, ok := h.tpls[name]
 			if ok {
 				attrs := make(map[string]any)
 				for _, attr := range token.Attr {
@@ -89,7 +73,13 @@ func (h *shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Toke
 					}
 					vars["body"] = buf.String()
 				}
-				w.WriteString(shortcode(vars))
+
+				result, err := tpl.ExecuteRaw(h.ctx, vars)
+				if err != nil {
+					w.WriteString("")
+				} else {
+					w.WriteString(result)
+				}
 				continue
 			}
 		case html.EndTagToken:
@@ -101,7 +91,7 @@ func (h *shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Toke
 	}
 }
 
-func (h *shortcode) render(page *content.Page, content string) string {
+func (h *shortcodeHook) render(page *content.Page, content string) string {
 	var (
 		w       bytes.Buffer
 		z       = html.NewTokenizer(strings.NewReader(content))
@@ -111,7 +101,7 @@ func (h *shortcode) render(page *content.Page, content string) string {
 	return w.String()
 }
 
-func (h *shortcode) HandlePage(page *content.Page) *content.Page {
+func (h *shortcodeHook) HandlePage(page *content.Page) *content.Page {
 	if len(h.tpls) == 0 {
 		return page
 	}
@@ -120,99 +110,79 @@ func (h *shortcode) HandlePage(page *content.Page) *content.Page {
 	return page
 }
 
-func (h *shortcode) load() error {
-	if err := fs.WalkDir(h.ctx.Theme, "internal/templates/shortcodes", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if path == "internal/templates/shortcodes" {
-			return nil
+func (h *shortcodeHook) load() error {
+	exts := []string{".tpl", ".html"}
+
+	sub1, _ := fs.Sub(os.DirFS("."), "templates")
+	sub2, _ := fs.Sub(h.ctx.Theme, "templates")
+	sub3, _ := fs.Sub(h.ctx.Theme, "internal/templates")
+	for _, subFS := range []fs.FS{sub1, sub2, sub3} {
+		if subFS == nil {
+			continue
 		}
 
-		lookups := []string{path}
-		if d.IsDir() {
-			lookups = []string{
-				filepath.Join(path, "index.tpl"),
-				filepath.Join(path, "index.html"),
+		files, err := fs.ReadDir(subFS, "shortcodes")
+		if err != nil {
+			continue
+		}
+		for _, file := range files {
+			name := file.Name()
+
+			if !file.IsDir() && !slices.Contains(exts, stdpath.Ext(name)) {
+				continue
+			}
+
+			basename := strings.TrimSuffix(name, stdpath.Ext(name))
+			if _, ok := h.tpls[basename]; ok {
+				continue
+			}
+
+			tplFiles := make([]string, 0)
+			if file.IsDir() {
+				for _, ext := range exts {
+					tplFiles = append(tplFiles, stdpath.Join("shortcodes", name, "index"+ext))
+				}
+			} else {
+				tplFiles = []string{
+					stdpath.Join("shortcodes", name),
+				}
+			}
+
+			for _, tplFile := range tplFiles {
+				if _, err := fs.Stat(subFS, tplFile); err != nil {
+					continue
+				}
+
+				buf, err := fs.ReadFile(subFS, tplFile)
+				if err != nil {
+					continue
+				}
+				tpl, err := h.tplset.FromBytes("", buf)
+				if err != nil {
+					continue
+				}
+				h.tpls[basename] = tpl
 			}
 		}
-
-		tpl, err := h.lookupTemplate(lookups...)
-		if err != nil {
-			h.ctx.Logger.Errorln(path, err.Error())
-			return nil
-		}
-		h.tpls[utils.FileBaseName(path)] = tpl
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	if err := fs.WalkDir(h.ctx.Theme, "templates/shortcodes", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if path == "templates/shortcodes" {
-			return nil
-		}
-
-		lookups := []string{path}
-		if d.IsDir() {
-			lookups = []string{
-				filepath.Join(path, "index.tpl"),
-				filepath.Join(path, "index.html"),
-			}
-		}
-
-		tpl, err := h.lookupTemplate(lookups...)
-		if err != nil {
-			h.ctx.Logger.Errorln(path, err.Error())
-			return nil
-		}
-		h.tpls[utils.FileBaseName(path)] = tpl
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	if err := fs.WalkDir(os.DirFS("."), "templates/shortcodes", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if path == "templates/shortcodes" {
-			return nil
-		}
-
-		lookups := []string{path}
-		if d.IsDir() {
-			lookups = []string{
-				filepath.Join(path, "index.tpl"),
-				filepath.Join(path, "index.html"),
-			}
-		}
-
-		tpl, err := h.lookupTemplate(lookups...)
-		if err != nil {
-			h.ctx.Logger.Errorln(path, err.Error())
-			return nil
-		}
-		h.tpls[utils.FileBaseName(path)] = tpl
-		return nil
-	}); err != nil {
-		return err
 	}
 	return nil
 }
 
-func New(ctx *core.Context) hook.Hook {
-	h := &shortcode{
-		ctx:    ctx,
-		tpls:   make(map[string]func(map[string]any) string),
-		tplset: template.NewSet(ctx, ctx.Theme),
+func New(ctx *core.Context) (hook.Hook, error) {
+	h := &shortcodeHook{
+		ctx:  ctx,
+		tpls: make(map[string]template.Template),
 	}
+	tplset, err := template.NewSet(ctx)
+	if err != nil {
+		return nil, err
+	}
+	h.tplset = tplset
 
-	h.load()
-	return h
+	if err := h.load(); err != nil {
+		return nil, err
+	}
+	return h, nil
 }
 
 func init() {

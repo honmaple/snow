@@ -11,7 +11,7 @@ import (
 	"github.com/honmaple/snow/internal/content/types"
 )
 
-func (d *DiskLoader) isIgnoredContent(path string, isDir bool) bool {
+func (d *DiskLoader) isIgnored(path string, isDir bool) bool {
 	// 忽略以.或者_开头的文件或目录，不要忽略_index.md
 	if basename := filepath.Base(path); !strings.HasPrefix(basename, "_index.") && (strings.HasPrefix(basename, "_") || strings.HasPrefix(basename, ".")) {
 		return true
@@ -111,7 +111,7 @@ func (d *DiskLoader) Load() (types.Store, error) {
 			return nil
 		}
 		// 忽略指定的文件
-		if d.isIgnoredContent(path, info.IsDir()) {
+		if d.isIgnored(path, info.IsDir()) {
 			if info.IsDir() {
 				return fs.SkipDir
 			}
@@ -132,6 +132,10 @@ func (d *DiskLoader) Load() (types.Store, error) {
 				}
 				return nil
 			}
+			return nil
+		}
+		// 忽略_index.md文件
+		if basename := filepath.Base(path); strings.HasPrefix(basename, "_") {
 			return nil
 		}
 

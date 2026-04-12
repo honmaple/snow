@@ -1,8 +1,11 @@
 package cli
 
 import (
+	"sync"
+
 	"github.com/honmaple/snow/internal/content"
 	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/hook"
 	"github.com/honmaple/snow/internal/static"
 	"github.com/honmaple/snow/internal/utils"
 	"github.com/honmaple/snow/internal/writer"
@@ -80,14 +83,36 @@ func buildAction(clx *cli.Context) error {
 }
 
 func build(ctx *core.Context, w core.Writer) error {
+	h, err := hook.New(ctx)
+	if err != nil {
+		return err
+	}
+
 	staticBuilder, err := static.New(ctx, static.WithWriter(w))
 	if err != nil {
 		return err
 	}
 
-	contentBuilder, err := content.New(ctx, content.WithWriter(w))
+	contentBuilder, err := content.New(ctx, content.WithWriter(w), content.WithHook(h))
 	if err != nil {
 		return err
 	}
-	return core.Build(ctx, staticBuilder, contentBuilder)
+
+	bs := []core.Builder{
+		staticBuilder,
+		contentBuilder,
+	}
+
+	var wg sync.WaitGroup
+	for _, b := range bs {
+		wg.Add(1)
+		go func(builder core.Builder) {
+			defer wg.Done()
+			if err := builder.Build(ctx); err != nil {
+				ctx.Logger.Errorf("build err: %s", err.Error())
+			}
+		}(b)
+	}
+	wg.Wait()
+	return nil
 }

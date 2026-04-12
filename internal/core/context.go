@@ -54,10 +54,6 @@ func (ctx *Context) For(lang string) *Context {
 	return ctx
 }
 
-func (ctx *Context) IsHome(path string) bool {
-	return ctx.Config.GetString("content_dir") == path
-}
-
 func (ctx *Context) IsValidLanguage(lang string) bool {
 	return ctx.GetDefaultLanguage() == lang || ctx.Config.IsSet("languages."+lang)
 }
@@ -71,6 +67,10 @@ func (ctx *Context) GetConfigMap(lang string) map[string]any {
 		return ctx.Config.AllSettings()
 	}
 	return locale.Config.AllSettings()
+}
+
+func (ctx *Context) GetHighlightStyle() string {
+	return ctx.Config.GetString("content_highlight_style")
 }
 
 func (ctx *Context) GetSummary(content string) string {
@@ -98,6 +98,22 @@ func (ctx *Context) GetPathSlug(path string) string {
 	return path
 }
 
+func (ctx *Context) GetDefaultLanguage() string {
+	return ctx.Config.GetString("site.language")
+}
+
+func (ctx *Context) GetThemeDir() string {
+	return ctx.Config.GetString("theme_dir")
+}
+
+func (ctx *Context) GetStaticDir() string {
+	return ctx.Config.GetString("static_dir")
+}
+
+func (ctx *Context) GetContentDir() string {
+	return ctx.Config.GetString("content_dir")
+}
+
 func (ctx *Context) GetURL(path string) string {
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		return path
@@ -118,38 +134,6 @@ func (ctx *Context) GetRelURL(path string) string {
 	return path
 }
 
-func (ctx *Context) GetDefaultLanguage() string {
-	return ctx.Config.GetString("site.language")
-}
-
-func (ctx *Context) GetStaticDir() string {
-	return ctx.Config.GetString("static_dir")
-}
-
-func (ctx *Context) GetContentDir() string {
-	return ctx.Config.GetString("content_dir")
-}
-
-func (ctx *Context) GetStaticConfig(dir string, keyName string) string {
-	currentDir := dir
-	for {
-		if currentDir == "@theme" || currentDir == "" || currentDir == "." {
-			break
-		}
-		sectionKey := "statics." + currentDir
-		if ctx.Config.IsSet(sectionKey) {
-			section := ctx.Config.Sub(sectionKey)
-			if section != nil && section.IsSet(keyName) {
-				if val := section.GetString(keyName); val != "" {
-					return val
-				}
-			}
-		}
-		currentDir = stdpath.Dir(currentDir)
-	}
-	return ctx.Config.GetString("statics._default." + keyName)
-}
-
 func (ctx *Context) GetSectionConfig(dir string, keyName string) string {
 	currentDir := dir
 	for {
@@ -168,10 +152,6 @@ func (ctx *Context) GetSectionConfig(dir string, keyName string) string {
 		currentDir = stdpath.Dir(currentDir)
 	}
 	return ctx.Config.GetString("sections._default." + keyName)
-}
-
-func (ctx *Context) GetHighlightStyle() string {
-	return ctx.Config.GetString("content_highlight_style")
 }
 
 func WithLogger(log Logger) ContextOption {

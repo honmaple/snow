@@ -3,7 +3,7 @@ package i18n
 import (
 	"io/fs"
 	"os"
-	"path/filepath"
+	stdpath "path"
 	"reflect"
 	"strings"
 
@@ -52,13 +52,13 @@ func (i *I18n) LoadTranslations(ctx *core.Context) error {
 				continue
 			}
 
-			name := filepath.Base(entry.Name())
-			lang := name[:len(name)-len(filepath.Ext(name))]
+			name := stdpath.Base(entry.Name())
+			lang := name[:len(name)-len(stdpath.Ext(name))]
 			if _, ok := trans[lang]; !ok {
 				trans[lang] = make(map[string]*Translation)
 			}
 
-			buf, err := fs.ReadFile(dir, filepath.Join("i18n", entry.Name()))
+			buf, err := fs.ReadFile(dir, stdpath.Join("i18n", entry.Name()))
 			if err != nil {
 				return err
 			}

@@ -91,7 +91,7 @@ func (r *Registry) HandleTaxonomies(results content.Taxonomies) content.Taxonomi
 	return results
 }
 
-func New(ctx *core.Context) *Registry {
+func New(ctx *core.Context) (*Registry, error) {
 	names := ctx.Config.GetStringSlice("registered_hooks")
 	if len(names) == 0 {
 		names = make([]string, 0)
@@ -110,13 +110,18 @@ func New(ctx *core.Context) *Registry {
 
 	hooks := make([]Hook, 0)
 	for _, name := range names {
-		if factory, ok := factories[name]; ok {
-			hooks = append(hooks, factory(ctx))
-		} else {
+		factory, ok := factories[name]
+		if !ok {
 			ctx.Logger.Warnf("The hook %s not found", name)
+			continue
 		}
+		h, err := factory(ctx)
+		if err != nil {
+			return nil, err
+		}
+		hooks = append(hooks, h)
 	}
-	return &Registry{hooks: hooks}
+	return &Registry{hooks: hooks}, nil
 }
 
 func NewEmpty() *Registry {
@@ -139,7 +144,7 @@ func Register(name string, c Factory) {
 	factories[name] = c
 }
 
-type Factory func(*core.Context) Hook
+type Factory func(*core.Context) (Hook, error)
 
 var factories map[string]Factory
 

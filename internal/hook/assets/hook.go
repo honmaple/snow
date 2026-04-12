@@ -27,14 +27,14 @@ func (h *assets) AfterBuild() error {
 	return nil
 }
 
-func New(ctx *core.Context) hook.Hook {
+func New(ctx *core.Context) (hook.Hook, error) {
 	h := &assets{
 		ctx:       ctx,
 		collector: NewAssetsCollector(ctx),
 	}
 
-	template.Register("__assets_collector", h.collector)
-	return h
+	template.RegisterTransient("__assets_collector", h.collector)
+	return h, nil
 }
 
 func init() {

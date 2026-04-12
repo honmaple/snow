@@ -33,10 +33,10 @@ func (h *filterHook) HandlePage(page *content.Page) *content.Page {
 	return nil
 }
 
-func New(ctx *core.Context) hook.Hook {
+func New(ctx *core.Context) (hook.Hook, error) {
 	return &filterHook{
 		ctx: ctx,
-	}
+	}, nil
 }
 
 func init() {

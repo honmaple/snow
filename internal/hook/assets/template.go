@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/flosch/pongo2/v7"
-	"github.com/honmaple/snow/internal/theme/template"
 	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/theme/template"
 	"github.com/spf13/cast"
 )
 
@@ -36,7 +36,7 @@ func (n *assetNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Template
 				asset.Files = strings.Split(val.String(), ",")
 			case "filters":
 				asset.Filters = make([]map[string]map[string]any, 0)
-				for _, name := range strings.Split(val.String(), ",") {
+				for name := range strings.SplitSeq(val.String(), ",") {
 					asset.Filters = append(asset.Filters, map[string]map[string]any{
 						name: nil,
 					})

@@ -81,20 +81,22 @@ func (conf *Config) Reset(m map[string]any) {
 		}
 		conf.Set(k, v)
 	}
-	for _, k := range conf.AllKeys() {
-		conf.Set(k, conf.Get(k))
-	}
 }
 
-func (conf *Config) LoadFromFile(path string) error {
-	if path != "" && utils.FileExists(path) {
-		content, err := os.ReadFile(path)
+func (conf *Config) LoadFromFile(file string) error {
+	if file != "" && utils.FileExists(file) {
+		content, err := os.ReadFile(file)
 		if err != nil {
 			return err
 		}
-		conf.SetConfigFile(path)
-		if err := conf.ReadConfig(strings.NewReader(os.ExpandEnv(string(content)))); err != nil {
+		v := viper.New()
+		v.SetConfigFile(file)
+
+		if err := v.ReadConfig(strings.NewReader(os.ExpandEnv(string(content)))); err != nil {
 			return err
+		}
+		for _, k := range v.AllKeys() {
+			conf.Set(k, v.Get(k))
 		}
 	}
 
@@ -141,14 +143,12 @@ var (
 		"site.url":      "http://127.0.0.1:8000",
 		"site.title":    "snow",
 		"site.subtitle": "snow is a static site generator.",
-		"site.author":   "snow",
+		"site.author":   "honmaple",
 		"site.language": "en",
-		// "theme.config":   "theme.yaml",
-		// "theme.override": "templates",
-		"static_dir":  "static",
-		"output_dir":  "output",
-		"content_dir": "content",
-		"themes_dir":  "themes",
+		"theme_dir":     "theme",
+		"static_dir":    "static",
+		"output_dir":    "output",
+		"content_dir":   "content",
 	}
 )
 

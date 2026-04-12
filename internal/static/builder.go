@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/honmaple/snow/internal/core"
 )
@@ -14,7 +13,6 @@ import (
 type (
 	Builder struct {
 		ctx    *core.Context
-		once   sync.Once
 		writer core.Writer
 	}
 	BuilderOption func(*Builder)

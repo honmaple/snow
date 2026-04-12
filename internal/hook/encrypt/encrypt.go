@@ -76,11 +76,11 @@ func (e *Encrypt) HandlePage(page *content.Page) *content.Page {
 	return page
 }
 
-func New(ctx *core.Context) hook.Hook {
+func New(ctx *core.Context) (hook.Hook, error) {
 	e := &Encrypt{
 		ctx: ctx,
 	}
-	return e
+	return e, nil
 }
 
 func init() {
