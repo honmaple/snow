@@ -54,10 +54,6 @@ func (ctx *Context) For(lang string) *Context {
 	return ctx
 }
 
-func (ctx *Context) IsValidLanguage(lang string) bool {
-	return ctx.GetDefaultLanguage() == lang || ctx.Config.IsSet("languages."+lang)
-}
-
 func (ctx *Context) GetConfigMap(lang string) map[string]any {
 	if lang == "" {
 		return ctx.Config.AllSettings()
@@ -96,6 +92,16 @@ func (ctx *Context) GetPathSlug(path string) string {
 		return strings.Join(slugs, "/")
 	}
 	return path
+}
+
+func (ctx *Context) GetAllLanguages() []string {
+	langs := []string{
+		ctx.GetDefaultLanguage(),
+	}
+	for lang := range ctx.Locales {
+		langs = append(langs, lang)
+	}
+	return langs
 }
 
 func (ctx *Context) GetDefaultLanguage() string {
@@ -171,6 +177,8 @@ func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 		Context: context.TODO(),
 		Config:  conf,
 		Locales: make(map[string]*Context),
+
+		cache: utils.NewCache[string, string](),
 	}
 
 	for _, opt := range opts {

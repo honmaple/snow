@@ -21,7 +21,7 @@ func (h *assets) BeforeBuild() error {
 
 // 写入收集的文件
 func (h *assets) AfterBuild() error {
-	for _, asset := range h.collector.assets.Iter() {
+	for _, asset := range h.collector.assets {
 		fmt.Println(asset.Output)
 	}
 	return nil

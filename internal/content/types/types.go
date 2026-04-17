@@ -6,19 +6,19 @@ import (
 
 type (
 	Store interface {
-		Pages() Pages
-		GetPage(string) *Page
-		GetPageURL(string) string
+		Pages(string) Pages
+		GetPage(string, string) *Page
+		GetPageURL(string, string) string
 
-		Sections() Sections
-		GetSection(string) *Section
-		GetSectionURL(string) string
+		Sections(string) Sections
+		GetSection(string, string) *Section
+		GetSectionURL(string, string) string
 
-		Taxonomies() Taxonomies
-		GetTaxonomy(string) *Taxonomy
-		GetTaxonomyURL(string) string
-		GetTaxonomyTerm(string, string) *TaxonomyTerm
-		GetTaxonomyTermURL(string, string) string
+		Taxonomies(string) Taxonomies
+		GetTaxonomy(string, string) *Taxonomy
+		GetTaxonomyURL(string, string) string
+		GetTaxonomyTerm(string, string, string) *TaxonomyTerm
+		GetTaxonomyTermURL(string, string, string) string
 	}
 	Loader interface {
 		Load() (Store, error)
@@ -26,21 +26,24 @@ type (
 )
 
 type (
+	Node struct {
+		File        *File
+		FrontMatter *FrontMatter
+
+		Lang        string
+		Slug        string
+		Title       string
+		Description string
+		Summary     string
+		Content     string
+		RawContent  string
+	}
 	Asset struct {
 		File      string
 		Path      string
 		Permalink string
 	}
 	Assets []*Asset
-)
-
-type (
-	Static struct {
-		File      string
-		Path      string
-		Permalink string
-	}
-	Statics []*Static
 )
 
 type (

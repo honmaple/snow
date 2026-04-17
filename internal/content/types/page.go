@@ -11,37 +11,23 @@ import (
 
 type (
 	Page struct {
-		File        *File
-		FrontMatter *FrontMatter
+		*Node
 
-		Lang     string
-		Date     time.Time
-		Modified time.Time
-
-		Title       string
-		Description string
-		Summary     string
-		Content     string
-		RawContent  string
-
-		Slug         string
-		Path         string
-		Permalink    string
-		RelPermalink string
-
+		IsBundle  bool
 		Draft     bool
 		WordCount int64
 
+		Date     time.Time
+		Modified time.Time
+
+		Path      string
+		Permalink string
+
 		Assets     Assets
 		Formats    Formats
-		Taxonomies Taxonomies
 	}
 	Pages []*Page
 )
-
-func (page *Page) IsBundle() bool {
-	return page.File != nil && page.File.BaseName == "index"
-}
 
 func (pages Pages) Filter(filter string) Pages {
 	if filter == "" {
@@ -102,13 +88,13 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 		}
 	}
 
-	root := &TaxonomyTerm{
-		Children: make(TaxonomyTerms, 0),
-	}
+	results := make(TaxonomyTerms, 0)
 	for _, page := range pages {
 		for _, name := range groupf(page) {
-			currentTerm := root
-			currentName := ""
+			var (
+				currentTerm *TaxonomyTerm
+				currentName string
+			)
 			for part := range strings.SplitSeq(strings.Trim(name, "/"), "/") {
 				part = strings.TrimSpace(part)
 				if part == "" {
@@ -123,11 +109,15 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 				child := currentTerm.FindChild(part)
 				if child == nil {
 					child = &TaxonomyTerm{
-						FullName: currentName,
 						Name:     part,
+						Parent:   currentTerm,
 						Children: make(TaxonomyTerms, 0),
 					}
-					currentTerm.Children = append(currentTerm.Children, child)
+					if currentTerm == nil {
+						results = append(results, child)
+					} else {
+						currentTerm.Children = append(currentTerm.Children, child)
+					}
 				}
 				child.Pages = append(child.Pages, page)
 
@@ -135,7 +125,7 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 			}
 		}
 	}
-	return root.Children
+	return results
 }
 
 func (pages Pages) Paginate(number int, path string, paginatePath string) []*Paginator[*Page] {

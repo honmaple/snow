@@ -2,27 +2,15 @@ package types
 
 type (
 	Section struct {
-		File        *File
-		FrontMatter *FrontMatter
+		*Node
 
-		Lang string
+		Path      string
+		Permalink string
 
-		Title       string
-		Description string
-		Summary     string
-		Content     string
-		RawContent  string
-
-		Slug         string
-		Path         string
-		Permalink    string
-		RelPermalink string
-
-		Draft     bool
-		Assets    []*Asset
-		Pages     Pages
-		WordCount int64
-		Formats   Formats
+		Pages    Pages
+		Assets   Assets
+		Formats  Formats
+		Children Sections
 	}
 	Sections []*Section
 )

@@ -5,31 +5,38 @@ import (
 	"os"
 	stdpath "path"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/honmaple/snow/internal/content/types"
 	"github.com/honmaple/snow/internal/utils"
 )
 
-func (d *DiskLoader) Pages() types.Pages {
-	return d.pages.List()
+func (d *Loader) Pages(lang string) types.Pages {
+	set, ok := d.pages[lang]
+	if !ok {
+		return nil
+	}
+	return set.List()
 }
 
-func (d *DiskLoader) GetPage(path string) *types.Page {
-	result, _ := d.pages.Find(path)
+func (d *Loader) GetPage(path string, lang string) *types.Page {
+	set, ok := d.pages[lang]
+	if !ok {
+		return nil
+	}
+	result, _ := set.Find(path)
 	return result
 }
 
-func (d *DiskLoader) GetPageURL(path string) string {
-	result, ok := d.pages.Find(path)
-	if !ok {
+func (d *Loader) GetPageURL(path string, lang string) string {
+	result := d.GetPage(path, lang)
+	if result == nil {
 		return ""
 	}
 	return result.Permalink
 }
 
-func (d *DiskLoader) getPagePath(page *types.Page, customPath string) string {
+func (d *Loader) parsePagePath(page *types.Page, customPath string) string {
 	lctx := d.ctx.For(page.Lang)
 	return utils.StringReplace(customPath, map[string]string{
 		"{date:%Y}":   page.Date.Format("2006"),
@@ -43,66 +50,19 @@ func (d *DiskLoader) getPagePath(page *types.Page, customPath string) string {
 	})
 }
 
-func (d *DiskLoader) insertPage(fullpath string, isBundle bool) error {
-	file, err := d.loadFile(fullpath)
+func (d *Loader) parsePage(fullpath string, isBundle bool) (*types.Page, error) {
+	node, err := d.parseNode(fullpath)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	result, err := d.parser.Parse(fullpath)
-	if err != nil {
-		return err
-	}
-	meta := types.NewFrontMatter(result.FrontMatter)
-
-	lang := meta.GetString("lang")
-	if lang == "" {
-		if langExt := stdpath.Ext(file.BaseName); langExt != "" {
-			lang = strings.TrimPrefix(langExt, ".")
-		}
-	}
-	if lang == "" {
-		lang = d.ctx.GetDefaultLanguage()
-	} else if !d.ctx.IsValidLanguage(lang) {
-		lang = d.ctx.GetDefaultLanguage()
-		d.ctx.Logger.Warnf("Get useless lang %s: %s", lang, fullpath)
-	}
-
-	if ext := "." + lang; strings.HasSuffix(file.BaseName, ext) {
-		file.BaseName = strings.TrimSuffix(file.BaseName, ext)
-		file.LanguageName = lang
-	}
-	lctx := d.ctx.For(lang)
-
-	sectionPath := file.Dir
-	if isBundle {
-		sectionPath = stdpath.Dir(sectionPath)
-	}
-
-	customPath := meta.GetString("path")
-	if customPath == "" {
-		// 查找顺序: posts/linux/emacs -> posts/linux -> posts -> _default
-		customPath = lctx.GetSectionConfig(sectionPath, "page_path")
-	}
-	if customPath == "" || customPath == "none" {
-		return nil
-	}
+	lctx := d.ctx.For(node.Lang)
 
 	page := &types.Page{
-		FrontMatter: meta,
-		File:        file,
-		Lang:        lang,
-		Title:       meta.GetString("title"),
-		Summary:     meta.GetString("summary"),
-		Content:     result.Content,
-		RawContent:  result.RawContent,
-		Slug:        meta.GetString("slug"),
-		Draft:       meta.GetBool("draft"),
-		Date:        meta.GetTime("date"),
-		Modified:    meta.GetTime("modified"),
-	}
-	if page.Summary == "" {
-		page.Summary = lctx.GetSummary(result.Content)
+		Node:     node,
+		Draft:    node.FrontMatter.GetBool("draft"),
+		Date:     node.FrontMatter.GetTime("date"),
+		Modified: node.FrontMatter.GetTime("modified"),
+		IsBundle: isBundle,
 	}
 	if page.Title == "" {
 		if isBundle && page.File.Dir != "" {
@@ -128,33 +88,34 @@ func (d *DiskLoader) insertPage(fullpath string, isBundle bool) error {
 
 	// 添加附属资源
 	if isBundle {
-		assets, err := d.loadPageAssets(fullpath, page)
+		assets, err := d.parsePageAssets(fullpath, page)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		page.Assets = assets
 	}
-	page.Path = lctx.GetRelURL(d.getPagePath(page, customPath))
-	page.Permalink = lctx.GetURL(page.Path)
-	page.RelPermalink = page.Path
-	page.Formats = d.loadPageFormats(page)
 
-	section := d.findSection(sectionPath)
-	section.Pages = append(section.Pages, page)
-
-	if d.hook != nil {
-		page = d.hook.HandlePage(page)
-		if page == nil {
-			return nil
-		}
+	sectionPath := page.File.Dir
+	if isBundle {
+		sectionPath = stdpath.Dir(sectionPath)
 	}
-	d.insertTaxonomies(page)
 
-	d.pages.Add(page.File.Path, page)
-	return nil
+	customPath := page.FrontMatter.GetString("path")
+	if customPath == "" {
+		// 查找顺序: posts/linux/emacs -> posts/linux -> posts -> _default
+		customPath = lctx.GetSectionConfig(sectionPath, "page_path")
+	}
+
+	page.Path = lctx.GetRelURL(d.parsePagePath(page, customPath))
+	page.Permalink = lctx.GetURL(page.Path)
+	page.Formats = d.parsePageFormats(page)
+
+	section := d.findSection(sectionPath, page.Lang)
+	section.Pages = append(section.Pages, page)
+	return page, nil
 }
 
-func (d *DiskLoader) loadPageAssets(fullpath string, page *types.Page) (types.Assets, error) {
+func (d *Loader) parsePageAssets(fullpath string, page *types.Page) (types.Assets, error) {
 	lctx := d.ctx.For(page.Lang)
 
 	customPath := page.FrontMatter.GetString("asset_path")
@@ -183,10 +144,10 @@ func (d *DiskLoader) loadPageAssets(fullpath string, page *types.Page) (types.As
 			"{date:%m}":   page.Date.Format("01"),
 			"{date:%d}":   page.Date.Format("02"),
 			"{date:%H}":   page.Date.Format("15"),
-			"{slug}":      page.Slug,
-			"{filename}":  page.File.BaseName,
 			"{path}":      page.File.Dir,
 			"{path:slug}": lctx.GetPathSlug(page.File.Dir),
+			"{slug}":      page.Slug,
+			"{filename}":  page.File.BaseName,
 		})
 
 		asset.Path = lctx.GetRelURL(outputPath)
@@ -200,7 +161,7 @@ func (d *DiskLoader) loadPageAssets(fullpath string, page *types.Page) (types.As
 	return assets, nil
 }
 
-func (d *DiskLoader) loadPageFormats(page *types.Page) types.Formats {
+func (d *Loader) parsePageFormats(page *types.Page) types.Formats {
 	lctx := d.ctx.For(page.Lang)
 
 	formats := make(types.Formats, 0)
@@ -220,7 +181,7 @@ func (d *DiskLoader) loadPageFormats(page *types.Page) types.Formats {
 			Template: customTemplate,
 		}
 
-		outputPath := d.getPagePath(page, customPath)
+		outputPath := d.parsePagePath(page, customPath)
 
 		format.Path = lctx.GetRelURL(outputPath)
 		format.Permalink = lctx.GetRelURL(format.Path)
@@ -228,4 +189,24 @@ func (d *DiskLoader) loadPageFormats(page *types.Page) types.Formats {
 		formats = append(formats, format)
 	}
 	return formats
+}
+
+func (d *Loader) insertPage(page *types.Page) {
+	set, ok := d.pages[page.Lang]
+	if !ok {
+		set = newSet[*types.Page]()
+		d.pages[page.Lang] = set
+	}
+	set.Add(page.File.Path, page)
+
+	d.insertTaxonomies(page)
+}
+
+func (d *Loader) insertPageByPath(fullpath string, isBundle bool) {
+	page, err := d.parsePage(fullpath, isBundle)
+	if err != nil {
+		d.ctx.Logger.Warnf("parse page %s err: %s", fullpath, err.Error())
+		return
+	}
+	d.insertPage(page)
 }

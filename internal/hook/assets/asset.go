@@ -3,16 +3,14 @@ package assets
 import (
 	"bytes"
 	"crypto/md5"
+	"fmt"
 	"io"
-	"strings"
-
 	"io/fs"
 	"os"
+	"strings"
 
-	"fmt"
 	"github.com/bep/golibsass/libsass"
 	"github.com/honmaple/snow/internal/core"
-	"github.com/honmaple/snow/internal/utils"
 	"github.com/spf13/cast"
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
@@ -182,16 +180,16 @@ func (n *Asset) Execute(ctx *core.Context) error {
 
 // 资源收集器，先收集再写入
 type AssetsCollector struct {
-	assets *utils.Slice[*Asset]
+	assets   []*Asset
+	assetMap map[string]bool
 }
 
 func (c *AssetsCollector) Collect(asset *Asset) error {
-	c.assets.Add("", asset)
 	return nil
 }
 
 func (c *AssetsCollector) Build() error {
-	for _, asset := range c.assets.Iter() {
+	for _, asset := range c.assets {
 		fmt.Println(asset)
 	}
 	return nil

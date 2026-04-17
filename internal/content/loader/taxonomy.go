@@ -9,51 +9,64 @@ import (
 	"github.com/spf13/viper"
 )
 
-func (d *DiskLoader) Taxonomies() types.Taxonomies {
-	return d.taxonomies.List()
-}
-
-func (d *DiskLoader) GetTaxonomy(name string) *types.Taxonomy {
-	result, _ := d.taxonomies.Find(name)
-	return result
-}
-
-func (d *DiskLoader) GetTaxonomyURL(name string) string {
-	result, ok := d.taxonomies.Find(name)
-	if !ok {
-		return ""
-	}
-	return result.Permalink
-}
-
-func (d *DiskLoader) GetTaxonomyTerms(name string) types.TaxonomyTerms {
-	result, ok := d.taxonomies.Find(name)
+func (d *Loader) Taxonomies(lang string) types.Taxonomies {
+	set, ok := d.taxonomies[lang]
 	if !ok {
 		return nil
 	}
-	return result.Terms
+	return set.List()
 }
 
-func (d *DiskLoader) GetTaxonomyTerm(taxonomyName string, name string) *types.TaxonomyTerm {
-	result, _ := d.taxonomyTermMap[fmt.Sprintf("%s:%s", taxonomyName, name)]
+func (d *Loader) GetTaxonomy(name string, lang string) *types.Taxonomy {
+	set, ok := d.taxonomies[lang]
+	if !ok {
+		return nil
+	}
+	result, _ := set.Find(name)
 	return result
 }
 
-func (d *DiskLoader) GetTaxonomyTermURL(taxonomyName string, name string) string {
-	result := d.GetTaxonomyTerm(taxonomyName, name)
+func (d *Loader) GetTaxonomyURL(name string, lang string) string {
+	result := d.GetTaxonomy(name, lang)
 	if result == nil {
 		return ""
 	}
 	return result.Permalink
 }
 
-func (d *DiskLoader) insertTaxonomies(page *types.Page) error {
+func (d *Loader) GetTaxonomyTerms(name string, lang string) types.TaxonomyTerms {
+	taxonomy := d.GetTaxonomy(name, lang)
+	if taxonomy == nil {
+		return nil
+	}
+	return taxonomy.Terms
+}
+
+func (d *Loader) GetTaxonomyTerm(taxonomyName string, name string, lang string) *types.TaxonomyTerm {
+	set, ok := d.taxonomyTerms[lang]
+	if !ok {
+		return nil
+	}
+	result, _ := set.Find(fmt.Sprintf("%s:%s", taxonomyName, name))
+	return result
+}
+
+func (d *Loader) GetTaxonomyTermURL(taxonomyName string, name string, lang string) string {
+	result := d.GetTaxonomyTerm(taxonomyName, name, lang)
+	if result == nil {
+		return ""
+	}
+	return result.Permalink
+}
+
+func (d *Loader) insertTaxonomies(page *types.Page) error {
 	lctx := d.ctx.For(page.Lang)
-	for taxonomyName := range d.ctx.Config.GetStringMap("taxonomies") {
+
+	for taxonomyName := range lctx.Config.GetStringMap("taxonomies") {
 		if taxonomyName == "_default" {
 			continue
 		}
-		taxonomy := d.GetTaxonomy(taxonomyName)
+		taxonomy := d.GetTaxonomy(taxonomyName, page.Lang)
 		if taxonomy == nil {
 			taxonomy = &types.Taxonomy{
 				Name:  taxonomyName,
@@ -69,16 +82,30 @@ func (d *DiskLoader) insertTaxonomies(page *types.Page) error {
 
 			taxonomy.Path = lctx.GetRelURL(outputPath)
 			taxonomy.Permalink = lctx.GetURL(taxonomy.Path)
-			d.taxonomies.Add(taxonomyName, taxonomy)
+
+			d.insertTaxonomy(taxonomy, page.Lang)
 		}
-		d.insertTaxonomyTerm(page, taxonomy)
+		d.insertTaxonomyTerms(taxonomy, page)
 	}
 	return nil
 }
 
-func (d *DiskLoader) insertTaxonomyTerm(page *types.Page, taxonomy *types.Taxonomy) error {
+func (d *Loader) insertTaxonomyTerms(taxonomy *types.Taxonomy, page *types.Page) error {
 	lctx := d.ctx.For(page.Lang)
-	for _, name := range page.FrontMatter.GetStringSlice(taxonomy.Name) {
+
+	var names []string
+	if strings.HasPrefix(taxonomy.Name, "date:") {
+		names = []string{page.Date.Format(taxonomy.Name[5:])}
+	} else if result := page.FrontMatter.Get(taxonomy.Name); result != nil {
+		switch value := result.(type) {
+		case string:
+			names = []string{value}
+		case []string:
+			names = value
+		}
+	}
+
+	for _, name := range names {
 		var (
 			currentName string
 			currentTerm *types.TaxonomyTerm
@@ -94,17 +121,19 @@ func (d *DiskLoader) insertTaxonomyTerm(page *types.Page, taxonomy *types.Taxono
 				currentName += "/" + part
 			}
 
-			// get_taxonomy("categories", "tech")
-			// get_taxonomy("categories", "tech/develop")
-			// get_taxonomy("categories", "tech/develop/go")
-			term := d.GetTaxonomyTerm(taxonomy.Name, currentName)
+			// get_taxonomy_term("categories", "tech")
+			// get_taxonomy_term("categories", "tech/develop")
+			// get_taxonomy_term("categories", "tech/develop/go")
+			term := d.GetTaxonomyTerm(taxonomy.Name, currentName, page.Lang)
 			if term == nil {
 				term = &types.TaxonomyTerm{
-					Name:     name,
+					Name:     part,
+					Slug:     lctx.GetSlug(part),
 					Pages:    make(types.Pages, 0),
 					Parent:   currentTerm,
 					Taxonomy: taxonomy,
 				}
+
 				customPath := lctx.Config.GetString(fmt.Sprintf("taxonomies.%s.term_path", taxonomy.Name))
 				if customPath == "" {
 					customPath = lctx.Config.GetString("taxonomies._default.term_path")
@@ -112,20 +141,21 @@ func (d *DiskLoader) insertTaxonomyTerm(page *types.Page, taxonomy *types.Taxono
 
 				outputPath := utils.StringReplace(customPath, map[string]string{
 					"{taxonomy}":  taxonomy.Name,
-					"{term}":      term.Name,
-					"{term:slug}": term.Slug,
+					"{term}":      currentName,
+					"{term:slug}": lctx.GetPathSlug(currentName),
 				})
-				term.Slug = lctx.GetSlug(name)
+				term.Slug = lctx.GetSlug(part)
 				term.Path = lctx.GetRelURL(outputPath)
 				term.Permalink = lctx.GetURL(term.Path)
-				term.Formats = d.loadTaxonomyTermFormats(term, page.Lang)
+				term.Formats = d.parseTaxonomyTermFormats(term, page.Lang)
 
-				if currentTerm != nil {
-					currentTerm.Children = append(currentTerm.Children, term)
+				if currentTerm == nil {
 					// 只插入第一个分类值
 					taxonomy.Terms = append(taxonomy.Terms, term)
+				} else {
+					currentTerm.Children = append(currentTerm.Children, term)
 				}
-				d.taxonomyTermMap[fmt.Sprintf("%s:%s", taxonomy.Name, term.FullName)] = term
+				d.insertTaxonomyTerm(term, page.Lang)
 			}
 			term.Pages = append(term.Pages, page)
 			currentTerm = term
@@ -134,7 +164,7 @@ func (d *DiskLoader) insertTaxonomyTerm(page *types.Page, taxonomy *types.Taxono
 	return nil
 }
 
-func (d *DiskLoader) loadTaxonomyTermFormats(term *types.TaxonomyTerm, lang string) types.Formats {
+func (d *Loader) parseTaxonomyTermFormats(term *types.TaxonomyTerm, lang string) types.Formats {
 	lctx := d.ctx.For(lang)
 
 	customFormats := lctx.Config.GetStringMap(fmt.Sprintf("taxonomies.%s.formats", term.Taxonomy.Name))
@@ -172,4 +202,22 @@ func (d *DiskLoader) loadTaxonomyTermFormats(term *types.TaxonomyTerm, lang stri
 		formats = append(formats, format)
 	}
 	return formats
+}
+
+func (d *Loader) insertTaxonomy(taxonomy *types.Taxonomy, lang string) {
+	set, ok := d.taxonomies[lang]
+	if !ok {
+		set = newSet[*types.Taxonomy]()
+		d.taxonomies[lang] = set
+	}
+	set.Add(taxonomy.Name, taxonomy)
+}
+
+func (d *Loader) insertTaxonomyTerm(term *types.TaxonomyTerm, lang string) {
+	set, ok := d.taxonomyTerms[lang]
+	if !ok {
+		set = newSet[*types.TaxonomyTerm]()
+		d.taxonomyTerms[lang] = set
+	}
+	set.Add(fmt.Sprintf("%s:%s", term.Taxonomy.Name, term.GetFullName()), term)
 }

@@ -12,8 +12,7 @@ type (
 
 type (
 	TaxonomyTerm struct {
-		FullName string
-		Name     string
+		Name string
 
 		Slug      string
 		Path      string
@@ -28,6 +27,23 @@ type (
 	}
 	TaxonomyTerms []*TaxonomyTerm
 )
+
+func (term *TaxonomyTerm) GetFullName() string {
+	currentTerm := term
+	currentName := ""
+	for {
+		if currentTerm == nil {
+			break
+		}
+		if currentName == "" {
+			currentName = currentTerm.Name
+		} else {
+			currentName = currentTerm.Name + "/" + currentName
+		}
+		currentTerm = currentTerm.Parent
+	}
+	return currentName
+}
 
 func (term *TaxonomyTerm) FindChild(name string) *TaxonomyTerm {
 	for _, child := range term.Children {

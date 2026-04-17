@@ -37,10 +37,12 @@ func (b *Builder) write(ctx context.Context, path string, tpl template.Template,
 		path = path + "index.html"
 	}
 
+	lang := b.ctx.GetDefaultLanguage()
+
 	commonVars := map[string]any{
-		"pages":                 b.store.Pages(),
-		"sections":              b.store.Sections(),
-		"taxonomies":            b.store.Taxonomies(),
+		"pages":                 b.store.Pages(lang),
+		"sections":              b.store.Sections(lang),
+		"taxonomies":            b.store.Taxonomies(lang),
 		"get_page":              b.store.GetPage,
 		"get_page_url":          b.store.GetPageURL,
 		"get_section":           b.store.GetSection,
@@ -87,34 +89,48 @@ func (b *Builder) writeAsset(ctx context.Context, asset *types.Asset) error {
 
 func (b *Builder) writeSection(ctx context.Context, section *types.Section) error {
 	customTemplate := section.FrontMatter.GetString("template")
-	if customTemplate == "" {
-		customTemplate = b.ctx.Config.GetString(fmt.Sprintf("sections.%s.template", section.File))
+
+	lookups := []string{
+		customTemplate,
+		"section.html",
+	}
+	// 首页content/_index.md
+	if section.File.Dir == "" {
+		lookups = []string{
+			customTemplate,
+			"index.html",
+			"section.html",
+		}
 	}
 
-	if tpl := b.tplset.Lookup(customTemplate, "section.html"); tpl != nil {
+	if tpl := b.tplset.Lookup(lookups...); tpl != nil {
 		paginators := section.Pages.Paginate(
 			section.FrontMatter.GetInt("paginate"),
 			section.Path,
 			section.FrontMatter.GetString("paginate_path"),
 		)
 		for _, por := range paginators {
-			b.write(ctx, por.Path, tpl, map[string]any{
+			if err := b.write(ctx, por.Path, tpl, map[string]any{
 				"section":       section,
 				"paginator":     por,
 				"pages":         section.Pages,
 				"current_lang":  section.Lang,
-				"current_path":  por.Path,
 				"current_index": por.PageNum,
-			})
+			}); err != nil {
+				return err
+			}
 		}
 	}
+
 	for _, format := range section.Formats {
 		if tpl := b.tplset.Lookup(format.Template); tpl != nil {
-			b.write(ctx, format.Path, tpl, map[string]any{
+			if err := b.write(ctx, format.Path, tpl, map[string]any{
 				"section":      section,
 				"pages":        section.Pages,
 				"current_lang": section.Lang,
-			})
+			}); err != nil {
+				return err
+			}
 		}
 	}
 	for _, asset := range section.Assets {
@@ -248,29 +264,36 @@ func (b *Builder) Build(ctx context.Context) error {
 		b.store = store
 	})
 
-	pages := b.hook.HandlePages(store.Pages())
-	sections := b.hook.HandleSections(store.Sections())
-	taxonomies := b.hook.HandleTaxonomies(store.Taxonomies())
+	for _, lang := range b.ctx.GetAllLanguages() {
+		pages := b.hook.HandlePages(store.Pages(lang))
+		sections := b.hook.HandleSections(store.Sections(lang))
+		taxonomies := b.hook.HandleTaxonomies(store.Taxonomies(lang))
 
-	b.ctx.Logger.Infof("%d pages", len(pages))
-	b.ctx.Logger.Infof("%d sections", len(sections))
-	b.ctx.Logger.Infof("%d taxonomies", len(taxonomies))
+		b.ctx.Logger.Infof("%d pages for %s", len(pages), lang)
+		b.ctx.Logger.Infof("%d sections for %s", len(sections), lang)
+		b.ctx.Logger.Infof("%d taxonomies for %s", len(taxonomies), lang)
 
-	for _, page := range pages {
-		fmt.Println("page", page.File.Path, page.Path)
-		b.writePage(ctx, page)
-	}
-	for _, section := range sections {
-		fmt.Println("section", section.File.Path, section.Path)
-		b.writeSection(ctx, section)
-	}
-	for _, taxonomy := range taxonomies {
-		fmt.Println("taxonomy", taxonomy.Name, taxonomy.Path)
-		b.writeTaxonomy(ctx, taxonomy)
+		for _, page := range pages {
+			fmt.Println("page", page.File.Path, page.Path)
+			b.writePage(ctx, page)
+		}
+		for _, section := range sections {
+			fmt.Println("section", section.File.Path, section.Path)
+			b.writeSection(ctx, section)
+		}
+		for _, taxonomy := range taxonomies {
+			fmt.Println("taxonomy", taxonomy.Name, taxonomy.Path)
+			b.writeTaxonomy(ctx, taxonomy)
 
-		for _, term := range taxonomy.Terms {
-			fmt.Println("taxonomy", term.Name, term.Path)
-			b.writeTaxonomyTerm(ctx, term)
+			for _, term := range taxonomy.Terms {
+				fmt.Println("term", term.Name, term.Path)
+				b.writeTaxonomyTerm(ctx, term)
+
+				for _, child := range term.Children {
+					fmt.Println("term child", child.Name, child.Path)
+					b.writeTaxonomyTerm(ctx, child)
+				}
+			}
 		}
 	}
 	return nil
@@ -314,7 +337,7 @@ func New(ctx *core.Context, opts ...BuilderOption) (*Builder, error) {
 		return nil, errors.New("static writer is required")
 	}
 	if b.loader == nil {
-		b.loader = loader.New(ctx)
+		b.loader = loader.New(ctx, loader.WithHook(b.hook))
 	}
 	if b.tplset == nil {
 		tplset, err := template.NewSet(ctx)
