@@ -55,8 +55,8 @@ type (
 	TemplateSet interface {
 		Lookup(...string) Template
 		FromFile(string) (Template, error)
-		FromBytes(string, []byte) (Template, error)
-		FromString(string, string) (Template, error)
+		FromBytes([]byte) (Template, error)
+		FromString(string) (Template, error)
 	}
 	templateSet struct {
 		cache  sync.Map
@@ -92,20 +92,20 @@ func (set *templateSet) FromFile(name string) (Template, error) {
 	return &templateImpl{n: name, tpl: tpl}, nil
 }
 
-func (set *templateSet) FromBytes(name string, b []byte) (Template, error) {
+func (set *templateSet) FromBytes(b []byte) (Template, error) {
 	tpl, err := set.tplset.FromBytes(b)
 	if err != nil {
 		return nil, err
 	}
-	return &templateImpl{n: name, tpl: tpl}, nil
+	return &templateImpl{tpl: tpl}, nil
 }
 
-func (set *templateSet) FromString(name string, b string) (Template, error) {
+func (set *templateSet) FromString(b string) (Template, error) {
 	tpl, err := set.tplset.FromString(b)
 	if err != nil {
 		return nil, err
 	}
-	return &templateImpl{n: name, tpl: tpl}, nil
+	return &templateImpl{tpl: tpl}, nil
 }
 
 func NewSet(ctx *core.Context) (TemplateSet, error) {

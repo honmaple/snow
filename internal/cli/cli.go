@@ -13,6 +13,7 @@ import (
 
 	_ "github.com/honmaple/snow/internal/hook/assets"
 	_ "github.com/honmaple/snow/internal/hook/encrypt"
+	_ "github.com/honmaple/snow/internal/hook/filter"
 	_ "github.com/honmaple/snow/internal/hook/i18n"
 	_ "github.com/honmaple/snow/internal/hook/pelican"
 	_ "github.com/honmaple/snow/internal/hook/shortcode"

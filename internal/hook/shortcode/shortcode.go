@@ -157,7 +157,7 @@ func (h *shortcodeHook) load() error {
 				if err != nil {
 					continue
 				}
-				tpl, err := h.tplset.FromBytes("", buf)
+				tpl, err := h.tplset.FromBytes(buf)
 				if err != nil {
 					continue
 				}
