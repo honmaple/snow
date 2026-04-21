@@ -1,12 +1,9 @@
 package cli
 
 import (
-	"sync"
-
-	"github.com/honmaple/snow/internal/content"
 	"github.com/honmaple/snow/internal/core"
-	"github.com/honmaple/snow/internal/hook"
-	"github.com/honmaple/snow/internal/static"
+	"github.com/honmaple/snow/internal/site"
+	"github.com/honmaple/snow/internal/site/hook"
 	"github.com/honmaple/snow/internal/utils"
 	"github.com/honmaple/snow/internal/writer"
 	"github.com/urfave/cli/v2"
@@ -16,17 +13,17 @@ var (
 	buildCommand = &cli.Command{
 		Name:  "build",
 		Usage: "build site",
-		Flags: []cli.Flag{
+		Flags: append([]cli.Flag{
 			&cli.BoolFlag{
 				Name:  "hooks",
 				Usage: "List all hooks",
 			},
-			&cli.StringFlag{
-				Name:    "mode",
-				Aliases: []string{"m"},
-				Value:   "",
-				Usage:   "Build site with special mode",
-			},
+			// &cli.StringFlag{
+			//	Name:    "mode",
+			//	Aliases: []string{"m"},
+			//	Value:   "",
+			//	Usage:   "Build site with special mode",
+			// },
 			&cli.StringFlag{
 				Name:    "output",
 				Aliases: []string{"o"},
@@ -39,12 +36,12 @@ var (
 				Value:   false,
 				Usage:   "Clean output content",
 			},
-			&cli.StringFlag{
-				Name:    "filter",
-				Aliases: []string{"F"},
-				Value:   "",
-				Usage:   "Filter when build",
-			},
+			// &cli.StringFlag{
+			//	Name:    "filter",
+			//	Aliases: []string{"F"},
+			//	Value:   "",
+			//	Usage:   "Filter when build",
+			// },
 			&cli.BoolFlag{
 				Name:  "drafts",
 				Usage: "Build with drafts",
@@ -53,7 +50,7 @@ var (
 				Name:  "dry-run",
 				Usage: "dry run",
 			},
-		},
+		}, flags...),
 		Action: buildAction,
 	}
 )
@@ -88,31 +85,12 @@ func build(ctx *core.Context, w core.Writer) error {
 		return err
 	}
 
-	staticBuilder, err := static.New(ctx, static.WithWriter(w))
+	site, err := site.New(ctx, site.WithHook(h), site.WithWriter(w))
 	if err != nil {
 		return err
 	}
-
-	contentBuilder, err := content.New(ctx, content.WithWriter(w), content.WithHook(h))
-	if err != nil {
+	if err := site.Load(); err != nil {
 		return err
 	}
-
-	bs := []core.Builder{
-		staticBuilder,
-		contentBuilder,
-	}
-
-	var wg sync.WaitGroup
-	for _, b := range bs {
-		wg.Add(1)
-		go func(builder core.Builder) {
-			defer wg.Done()
-			if err := builder.Build(ctx); err != nil {
-				ctx.Logger.Errorf("build err: %s", err.Error())
-			}
-		}(b)
-	}
-	wg.Wait()
-	return nil
+	return site.Build()
 }

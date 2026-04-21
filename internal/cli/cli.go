@@ -7,16 +7,16 @@ import (
 	"github.com/honmaple/snow/internal/core"
 	"github.com/urfave/cli/v2"
 
-	_ "github.com/honmaple/snow/internal/content/parser/html"
-	_ "github.com/honmaple/snow/internal/content/parser/markdown"
-	_ "github.com/honmaple/snow/internal/content/parser/orgmode"
+	_ "github.com/honmaple/snow/internal/site/content/parser/html"
+	_ "github.com/honmaple/snow/internal/site/content/parser/markdown"
+	_ "github.com/honmaple/snow/internal/site/content/parser/orgmode"
 
-	_ "github.com/honmaple/snow/internal/hook/assets"
-	_ "github.com/honmaple/snow/internal/hook/encrypt"
-	_ "github.com/honmaple/snow/internal/hook/filter"
-	_ "github.com/honmaple/snow/internal/hook/i18n"
-	_ "github.com/honmaple/snow/internal/hook/pelican"
-	_ "github.com/honmaple/snow/internal/hook/shortcode"
+	_ "github.com/honmaple/snow/internal/site/hook/assets"
+	_ "github.com/honmaple/snow/internal/site/hook/encrypt"
+	_ "github.com/honmaple/snow/internal/site/hook/filter"
+	_ "github.com/honmaple/snow/internal/site/hook/i18n"
+	_ "github.com/honmaple/snow/internal/site/hook/pelican"
+	_ "github.com/honmaple/snow/internal/site/hook/shortcode"
 )
 
 const (

@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	//go:embed internal
+	//go:embed static templates
 	internalFS embed.FS
 )
 
@@ -23,19 +23,16 @@ func (t *Theme) Name() string {
 	return t.name
 }
 
-// @theme/statics/css/main.css
-// @theme/templates/page.html
-// @theme/shortcodes/img/index.html
 func (t *Theme) Open(file string) (fs.File, error) {
-	if strings.HasPrefix(file, "internal") {
-		return internalFS.Open(file)
+	if strings.HasPrefix(file, "internal/") {
+		return internalFS.Open(file[9:])
 	}
 	return t.root.Open(file)
 }
 
 func (t *Theme) ReadDir(file string) ([]fs.DirEntry, error) {
-	if strings.HasPrefix(file, "internal") {
-		return internalFS.ReadDir(file)
+	if strings.HasPrefix(file, "internal/") {
+		return internalFS.ReadDir(file[9:])
 	}
 	return t.root.ReadDir(file)
 }
@@ -45,7 +42,7 @@ func New(name string) (*Theme, error) {
 		root fs.FS
 	)
 	if name == "" {
-		root, _ = fs.Sub(internalFS, "internal")
+		root = internalFS
 	} else {
 		path := filepath.Join("themes", name)
 		_, err := os.Stat(path)

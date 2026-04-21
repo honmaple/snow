@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"reflect"
 	"strings"
@@ -107,6 +108,38 @@ func (conf *Config) LoadFromFile(file string) error {
 	return nil
 }
 
+func (conf *Config) MergeFromThemeConfig(theme fs.FS) error {
+	var themeFile string
+
+	for _, file := range []string{"theme.yaml", "theme.toml", "theme.json"} {
+		if _, err := fs.Stat(theme, file); err == nil {
+			themeFile = file
+			break
+		}
+	}
+	if themeFile == "" {
+		return nil
+	}
+
+	content, err := fs.ReadFile(theme, themeFile)
+	if err != nil {
+		return err
+	}
+	v := viper.New()
+	v.SetConfigFile(themeFile)
+
+	if err := v.ReadConfig(strings.NewReader(os.ExpandEnv(string(content)))); err != nil {
+		return err
+	}
+	for _, k := range v.AllKeys() {
+		if conf.IsSet(k) {
+			continue
+		}
+		conf.Set(k, v.Get(k))
+	}
+	return nil
+}
+
 var (
 	sectionConfig = map[string]any{
 		"sections._default.path":          "{path:slug}/index.html",
@@ -135,8 +168,8 @@ var (
 		"content_truncate_ellipsis": "...",
 		"content_highlight_style":   "monokai",
 		"slugify":                   true,
-		"formats.rss.template":      "_internal/partials/rss.xml",
-		"formats.atom.template":     "_internal/partials/atom.xml",
+		"formats.rss.template":      "partials/rss.xml",
+		"formats.atom.template":     "partials/atom.xml",
 	}
 	// 默认需要修改的配置
 	siteConfig = map[string]any{
@@ -145,7 +178,7 @@ var (
 		"site.subtitle": "snow is a static site generator.",
 		"site.author":   "honmaple",
 		"site.language": "en",
-		"theme_dir":     "theme",
+		"theme_dir":     "themes",
 		"static_dir":    "static",
 		"output_dir":    "output",
 		"content_dir":   "content",

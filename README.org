@@ -472,10 +472,10 @@
      #+begin_src yaml
      # 设置rss格式的默认值
      formats.rss:
-       template: "_internal/rss.xml"
+       template: "rss.xml"
 
      formats.atom:
-       template: "_internal/atom.xml"
+       template: "atom.xml"
 
      sections:
        _default:
@@ -528,10 +528,10 @@
          # 如果指定的静态文件是一个目录，可以设置忽略文件, 比如忽略static目录下的images子目录
          ignore_files:
            - "^images/"
-       # 以@theme/开头表示主题目录, 以@theme/_internal/开头表示内置的主题目录
+       # 以@theme/开头表示主题目录, 以@theme/开头表示内置的主题目录
        @theme/static:
          path: "static"
-       @theme/_internal/static:
+       @theme/static:
          path: "static"
        # 同样可以指定任意静态文件或目录
        content/pages/css:
@@ -685,8 +685,8 @@
       import (
           "fmt"
 
-          "github.com/honmaple/snow/internal/hook"
-          "github.com/honmaple/snow/internal/content"
+          "github.com/honmaple/snow/internal/site/hook"
+          "github.com/honmaple/snow/internal/site/content"
           "github.com/honmaple/snow/internal/theme"
           "github.com/honmaple/snow/config"
       )

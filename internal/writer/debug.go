@@ -3,7 +3,7 @@ package writer
 import (
 	"context"
 	"io"
-	"path/filepath"
+	// "path/filepath"
 
 	"github.com/honmaple/snow/internal/core"
 )
@@ -16,9 +16,9 @@ func (w *DebugWriter) Write(ctx context.Context, file string, r io.Reader) error
 	if file == "" {
 		return nil
 	}
-	output := filepath.Join(w.ctx.Config.GetString("output_dir"), file)
+	// output := filepath.Join(w.ctx.Config.GetString("output_dir"), file)
 
-	w.ctx.Logger.Infoln("Writing", output)
+	// w.ctx.Logger.Infoln("Writing", output)
 	return nil
 }
 

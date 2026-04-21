@@ -1,163 +1,42 @@
 package core
 
 import (
-	"context"
 	"io/fs"
 	"os"
-	stdpath "path"
-	"strings"
 
-	"github.com/gosimple/slug"
 	"github.com/honmaple/snow/internal/theme"
-	"github.com/honmaple/snow/internal/utils"
 	"github.com/sirupsen/logrus"
 )
 
 type (
-	Logger interface {
-		Debug(...any)
-		Debugf(string, ...any)
-		Debugln(...any)
-		Info(...any)
-		Infof(string, ...any)
-		Infoln(...any)
-		Warn(...any)
-		Warnf(string, ...any)
-		Warnln(...any)
-		Error(...any)
-		Errorf(string, ...any)
-		Errorln(...any)
-		Fatal(...any)
-		Fatalf(string, ...any)
-		Fatalln(...any)
-	}
 	Context struct {
-		context.Context
-		Theme   fs.FS
-		Logger  Logger
-		Config  *Config
-		Locales map[string]*Context
-
-		cache utils.Cache[string, string]
+		*LocaleContext
+		Theme          fs.FS
+		Logger         Logger
+		OtherLanguages map[string]*LocaleContext
 	}
 	ContextOption func(*Context)
 )
-
-func (ctx *Context) For(lang string) *Context {
-	if lang == ctx.GetDefaultLanguage() {
-		return ctx
-	}
-	lctx, ok := ctx.Locales[lang]
-	if ok {
-		return lctx
-	}
-	return ctx
-}
-
-func (ctx *Context) GetConfigMap(lang string) map[string]any {
-	if lang == "" {
-		return ctx.Config.AllSettings()
-	}
-	locale, ok := ctx.Locales[lang]
-	if !ok {
-		return ctx.Config.AllSettings()
-	}
-	return locale.Config.AllSettings()
-}
-
-func (ctx *Context) GetHighlightStyle() string {
-	return ctx.Config.GetString("content_highlight_style")
-}
-
-func (ctx *Context) GetSummary(content string) string {
-	length := ctx.Config.GetInt("content_truncate_len")
-	ellipsis := ctx.Config.GetString("content_truncate_ellipsis")
-	return utils.TruncateHTML(content, length, ellipsis)
-}
-
-func (ctx *Context) GetSlug(name string) string {
-	if ctx.Config.GetBool("slugify") {
-		return slug.Make(name)
-	}
-	return name
-}
-
-func (ctx *Context) GetPathSlug(path string) string {
-	if ctx.Config.GetBool("slugify") {
-		names := strings.Split(path, "/")
-		slugs := make([]string, len(names))
-		for i, name := range names {
-			slugs[i] = slug.Make(name)
-		}
-		return strings.Join(slugs, "/")
-	}
-	return path
-}
 
 func (ctx *Context) GetAllLanguages() []string {
 	langs := []string{
 		ctx.GetDefaultLanguage(),
 	}
-	for lang := range ctx.Locales {
+	for lang := range ctx.OtherLanguages {
 		langs = append(langs, lang)
 	}
 	return langs
 }
 
-func (ctx *Context) GetDefaultLanguage() string {
-	return ctx.Config.GetString("site.language")
-}
-
-func (ctx *Context) GetThemeDir() string {
-	return ctx.Config.GetString("theme_dir")
-}
-
-func (ctx *Context) GetStaticDir() string {
-	return ctx.Config.GetString("static_dir")
-}
-
-func (ctx *Context) GetContentDir() string {
-	return ctx.Config.GetString("content_dir")
-}
-
-func (ctx *Context) GetURL(path string) string {
-	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		return path
+func (ctx *Context) For(lang string) *LocaleContext {
+	if lang == ctx.GetDefaultLanguage() {
+		return ctx.LocaleContext
 	}
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
+	lctx, ok := ctx.OtherLanguages[lang]
+	if ok {
+		return lctx
 	}
-	return ctx.Config.GetString("site.url") + path
-}
-
-func (ctx *Context) GetRelURL(path string) string {
-	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		return path
-	}
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	return path
-}
-
-func (ctx *Context) GetSectionConfig(dir string, keyName string) string {
-	currentDir := dir
-	for {
-		if currentDir == "" || currentDir == "." {
-			break
-		}
-		sectionKey := "sections." + currentDir
-		if ctx.Config.IsSet(sectionKey) {
-			section := ctx.Config.Sub(sectionKey)
-			if section != nil && section.IsSet(keyName) {
-				if val := section.GetString(keyName); val != "" {
-					return val
-				}
-			}
-		}
-		currentDir = stdpath.Dir(currentDir)
-	}
-	return ctx.Config.GetString("sections._default." + keyName)
+	return ctx.LocaleContext
 }
 
 func WithLogger(log Logger) ContextOption {
@@ -174,11 +53,10 @@ func WithTheme(theme fs.FS) ContextOption {
 
 func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 	ctx := &Context{
-		Context: context.TODO(),
-		Config:  conf,
-		Locales: make(map[string]*Context),
-
-		cache: utils.NewCache[string, string](),
+		LocaleContext: &LocaleContext{
+			Config: conf,
+		},
+		OtherLanguages: make(map[string]*LocaleContext),
 	}
 
 	for _, opt := range opts {
@@ -206,6 +84,10 @@ func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 		ctx.Theme = t
 	}
 
+	if err := conf.MergeFromThemeConfig(ctx.Theme); err != nil {
+		return nil, err
+	}
+
 	defaultLanguage := conf.GetString("site.language")
 	if defaultLanguage == "" {
 		defaultLanguage = "en"
@@ -215,22 +97,14 @@ func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 		if lang == defaultLanguage {
 			continue
 		}
-		lctx := &Context{
-			Context: ctx.Context,
-			Logger:  ctx.Logger,
-			Config:  NewConfig(),
+		lctx := &LocaleContext{
+			Config: NewConfig(),
 		}
 		lctx.Config.MergeConfigMap(conf.AllSettings())
 		lctx.Config.MergeConfigMap(conf.GetStringMap("languages." + lang))
 		lctx.Config.Set("site.language", lang)
 
-		t, err := theme.New(lctx.Config.GetString("theme"))
-		if err != nil {
-			return nil, err
-		}
-		lctx.Theme = t
-
-		ctx.Locales[lang] = lctx
+		ctx.OtherLanguages[lang] = lctx
 	}
 	return ctx, nil
 }
