@@ -131,5 +131,9 @@ func init() {
 	parser.Register(".md", func(ctx *core.Context) parser.MarkupParser {
 		return New(ctx)
 	})
-	template.RegisterContextFilter("markdown", markdownFilter)
+
+	template.Register("markdownParser", func(ctx *core.Context, set template.TemplateSet) error {
+		set.RegisterFilter("org", markdownFilter(ctx))
+		return nil
+	})
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/flosch/pongo2/v7"
 	"github.com/honmaple/org-golang"
 	"github.com/honmaple/org-golang/render"
-	"github.com/honmaple/snow/internal/site/content/parser"
 	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/site/content/parser"
 	"github.com/honmaple/snow/internal/site/template"
 )
 
@@ -129,5 +129,8 @@ func init() {
 	parser.Register(".org", func(ctx *core.Context) parser.MarkupParser {
 		return New(ctx)
 	})
-	template.RegisterContextFilter("org", orgFilter)
+	template.Register("orgParser", func(ctx *core.Context, set template.TemplateSet) error {
+		set.RegisterFilter("org", orgFilter(ctx))
+		return nil
+	})
 }

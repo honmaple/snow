@@ -150,5 +150,8 @@ func assetsTagParser(ctx *core.Context) pongo2.TagParser {
 }
 
 func init() {
-	template.RegisterContextTag("assets", assetsTagParser)
+	template.Register("assets", func(ctx *core.Context, set template.TemplateSet) error {
+		set.RegisterTag("assets", assetsTagParser(ctx))
+		return nil
+	})
 }

@@ -100,7 +100,7 @@ func (d *ContentParser) ParseSection(fullpath string) (*types.Section, error) {
 	customPath := section.FrontMatter.GetString("path")
 	// 如果自定义path为空，则从配置中获取
 	if customPath == "" {
-		customPath = lctx.GetSectionConfig(section.File.Dir, "path")
+		customPath = lctx.GetSectionConfig(section.File.Dir, "path").String()
 	}
 	section.Path = lctx.GetRelURL(d.parseSectionPath(section, customPath))
 	section.Permalink = lctx.GetURL(section.Path)
@@ -117,7 +117,7 @@ func (d *ContentParser) parseSectionAssets(fullpath string, section *types.Secti
 		}
 		customPath := section.FrontMatter.GetString("asset_path")
 		if customPath == "" {
-			customPath = lctx.GetSectionConfig(section.File.Path, "asset_path")
+			customPath = lctx.GetSectionConfig(section.File.Path, "asset_path").String()
 		}
 		outputPath := utils.StringReplace(customPath, map[string]string{
 			"{section}":      section.Title,

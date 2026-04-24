@@ -77,7 +77,7 @@ func (ctx *LocaleContext) GetRelURL(path string) string {
 	return path
 }
 
-func (ctx *LocaleContext) GetSectionConfig(dir string, keyName string) string {
+func (ctx *LocaleContext) GetSectionConfig(dir string, key string) Result {
 	currentDir := dir
 	for {
 		if currentDir == "" || currentDir == "." {
@@ -86,13 +86,30 @@ func (ctx *LocaleContext) GetSectionConfig(dir string, keyName string) string {
 		sectionKey := "sections." + currentDir
 		if ctx.Config.IsSet(sectionKey) {
 			section := ctx.Config.Sub(sectionKey)
-			if section != nil && section.IsSet(keyName) {
-				if val := section.GetString(keyName); val != "" {
-					return val
+			if section != nil && section.IsSet(key) {
+				if val := section.Get(key); val != "" {
+					return Result{value: val}
 				}
 			}
 		}
 		currentDir = stdpath.Dir(currentDir)
 	}
-	return ctx.Config.GetString("sections._default." + keyName)
+	val := ctx.Config.Get("sections._default." + key)
+	return Result{value: val}
+}
+
+func (ctx *LocaleContext) GetTaxonomyConfig(name string, key string) Result {
+	val := ctx.Config.Get("taxonomies.%s.%s" + name + "." + key)
+	if val == "" {
+		val = ctx.Config.Get("taxonomies._default." + key)
+	}
+	return Result{value: val}
+}
+
+func (ctx *LocaleContext) GetFormatConfig(name string, key string) Result {
+	val := ctx.Config.Get("formats.%s.%s" + name + "." + key)
+	if val == "" {
+		val = ctx.Config.Get("formats._default." + key)
+	}
+	return Result{value: val}
 }

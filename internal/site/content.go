@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"os"
 	stdpath "path"
 	"path/filepath"
 	"strings"
@@ -14,7 +13,7 @@ import (
 	"github.com/honmaple/snow/internal/site/template"
 )
 
-func (site *Site) writeTemplate(lctx *core.LocaleContext, path string, tpl template.Template, vars map[string]any) error {
+func (site *Site) writeTemplate(path string, tpl template.Template, vars map[string]any) error {
 	if path == "" {
 		return nil
 	}
@@ -23,7 +22,11 @@ func (site *Site) writeTemplate(lctx *core.LocaleContext, path string, tpl templ
 		path = path + "index.html"
 	}
 
-	lang := lctx.GetDefaultLanguage()
+	lang := site.ctx.GetDefaultLanguage()
+	if l, ok := vars["current_lang"]; ok {
+		lang = l.(string)
+	}
+	lctx := site.ctx.For(lang)
 
 	commonVars := map[string]any{
 		"pages":                 site.store.Pages(lang),
@@ -48,7 +51,7 @@ func (site *Site) writeTemplate(lctx *core.LocaleContext, path string, tpl templ
 		}
 	}
 
-	result, err := tpl.Execute(site.ctx, vars)
+	result, err := tpl.Execute(vars)
 	if err != nil {
 		return &core.Error{
 			Op:   "execute tpl",
@@ -67,17 +70,18 @@ func (site *Site) writeTemplate(lctx *core.LocaleContext, path string, tpl templ
 }
 
 func (site *Site) writeAsset(asset *types.Asset) error {
-	dst := asset.Path
-	if strings.HasSuffix(dst, "/") {
-		dst = stdpath.Join(dst, stdpath.Base(asset.File))
-	}
-	srcFile, err := os.Open(asset.File)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
+	return nil
+	// dst := asset.Path
+	// if strings.HasSuffix(dst, "/") {
+	//	dst = stdpath.Join(dst, stdpath.Base(asset.File))
+	// }
+	// srcFile, err := os.Open(asset.File)
+	// if err != nil {
+	//	return err
+	// }
+	// defer srcFile.Close()
 
-	return site.writer.Write(nil, dst, srcFile)
+	// return site.writer.Write(nil, dst, srcFile)
 }
 
 func (site *Site) writePage(page *types.Page) error {
@@ -94,15 +98,15 @@ func (site *Site) writePage(page *types.Page) error {
 
 	customTemplate := page.FrontMatter.GetString("template")
 	if customTemplate == "" {
-		if page.File.BaseName == "index" {
-			customTemplate = lctx.GetSectionConfig(stdpath.Dir(page.File.Dir), "page_template")
+		if page.IsBundle {
+			customTemplate = lctx.GetSectionConfig(stdpath.Dir(page.File.Dir), "page_template").String()
 		} else {
-			customTemplate = lctx.GetSectionConfig(page.File.Dir, "page_template")
+			customTemplate = lctx.GetSectionConfig(page.File.Dir, "page_template").String()
 		}
 	}
 
 	if tpl := site.tplset.Lookup(customTemplate, "page.html"); tpl != nil {
-		if err := site.writeTemplate(lctx, page.Path, tpl, vars); err != nil {
+		if err := site.writeTemplate(page.Path, tpl, vars); err != nil {
 			return err
 		}
 	}
@@ -115,14 +119,14 @@ func (site *Site) writePage(page *types.Page) error {
 					alias = stdpath.Join(stdpath.Dir(page.Path), alias)
 				}
 			}
-			if err := site.writeTemplate(lctx, alias, tpl, vars); err != nil {
+			if err := site.writeTemplate(alias, tpl, vars); err != nil {
 				return err
 			}
 		}
 	}
 	for _, format := range page.Formats {
 		if tpl := site.tplset.Lookup(format.Template); tpl != nil {
-			if err := site.writeTemplate(lctx, format.Path, tpl, map[string]any{
+			if err := site.writeTemplate(format.Path, tpl, map[string]any{
 				"page":         page,
 				"current_lang": page.Lang,
 				"current_url":  format.Permalink,
@@ -142,8 +146,6 @@ func (site *Site) writePage(page *types.Page) error {
 
 func (site *Site) writeSection(section *types.Section) error {
 	site.ctx.Logger.Debugf("write section [%s] -> %s", section.File.Path, section.Path)
-
-	lctx := site.ctx.For(section.Lang)
 
 	customTemplate := section.FrontMatter.GetString("template")
 
@@ -167,7 +169,7 @@ func (site *Site) writeSection(section *types.Section) error {
 			section.FrontMatter.GetString("paginate_path"),
 		)
 		for _, por := range paginators {
-			if err := site.writeTemplate(lctx, por.Path, tpl, map[string]any{
+			if err := site.writeTemplate(por.Path, tpl, map[string]any{
 				"section":       section,
 				"paginator":     por,
 				"pages":         section.Pages,
@@ -181,7 +183,7 @@ func (site *Site) writeSection(section *types.Section) error {
 
 	for _, format := range section.Formats {
 		if tpl := site.tplset.Lookup(format.Template); tpl != nil {
-			if err := site.writeTemplate(lctx, format.Path, tpl, map[string]any{
+			if err := site.writeTemplate(format.Path, tpl, map[string]any{
 				"section":      section,
 				"pages":        section.Pages,
 				"current_lang": section.Lang,
@@ -203,7 +205,7 @@ func (site *Site) writeTaxonomy(taxonomy *types.Taxonomy) error {
 
 	lctx := site.ctx.For(taxonomy.Lang)
 
-	customTemplate := lctx.Config.GetString(fmt.Sprintf("taxonomies.%s.template", taxonomy.Name))
+	customTemplate := lctx.GetTaxonomyConfig(taxonomy.Name, "template").String()
 
 	lookups := []string{
 		customTemplate,
@@ -212,8 +214,9 @@ func (site *Site) writeTaxonomy(taxonomy *types.Taxonomy) error {
 	}
 	if tpl := site.tplset.Lookup(lookups...); tpl != nil {
 		// example.com/tags/index.html
-		if err := site.writeTemplate(lctx, taxonomy.Path, tpl, map[string]any{
-			"taxonomy": taxonomy,
+		if err := site.writeTemplate(taxonomy.Path, tpl, map[string]any{
+			"taxonomy":     taxonomy,
+			"current_lang": taxonomy.Lang,
 		}); err != nil {
 			return err
 		}
@@ -232,7 +235,7 @@ func (site *Site) writeTaxonomyTerm(term *types.TaxonomyTerm) error {
 
 	lctx := site.ctx.For(term.Taxonomy.Lang)
 
-	customTemplate := lctx.Config.GetString(fmt.Sprintf("taxonomies.%s.term_template", term.Taxonomy.Name))
+	customTemplate := lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term_template").String()
 
 	lookups := []string{
 		customTemplate,
@@ -241,17 +244,18 @@ func (site *Site) writeTaxonomyTerm(term *types.TaxonomyTerm) error {
 	}
 	if tpl := site.tplset.Lookup(lookups...); tpl != nil {
 		for _, por := range term.Pages.Paginate(
-			lctx.Config.GetInt(fmt.Sprintf("taxonomies.%s.term_paginate", term.Taxonomy.Name)),
+			lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term_paginate").Int(),
 			term.Path,
-			lctx.Config.GetString(fmt.Sprintf("taxonomies.%s.term_paginate_path", term.Taxonomy.Name)),
+			lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term_paginate_path").String(),
 		) {
-			if err := site.writeTemplate(lctx, por.Path, tpl, map[string]any{
+			if err := site.writeTemplate(por.Path, tpl, map[string]any{
 				"term":          term,
 				"pages":         term.Pages,
 				"taxonomy":      term.Taxonomy,
 				"paginator":     por,
 				"current_path":  por.Path,
 				"current_index": por.PageNum,
+				"current_lang":  term.Taxonomy.Lang,
 			}); err != nil {
 				return err
 			}
@@ -259,10 +263,11 @@ func (site *Site) writeTaxonomyTerm(term *types.TaxonomyTerm) error {
 	}
 	for _, format := range term.Formats {
 		if tpl := site.tplset.Lookup(format.Template); tpl != nil {
-			if err := site.writeTemplate(lctx, format.Path, tpl, map[string]any{
-				"term":     term,
-				"pages":    term.Pages,
-				"taxonomy": term.Taxonomy,
+			if err := site.writeTemplate(format.Path, tpl, map[string]any{
+				"term":         term,
+				"pages":        term.Pages,
+				"taxonomy":     term.Taxonomy,
+				"current_lang": term.Taxonomy.Lang,
 			}); err != nil {
 				return err
 			}

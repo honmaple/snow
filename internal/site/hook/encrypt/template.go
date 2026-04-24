@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/flosch/pongo2/v7"
-	"github.com/honmaple/snow/internal/site/template"
 	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/site/template"
 )
 
 func encryptFilter(ctx *core.Context) pongo2.FilterFunction {
@@ -46,5 +46,8 @@ func encryptFilter(ctx *core.Context) pongo2.FilterFunction {
 }
 
 func init() {
-	template.RegisterContextFilter("encrypt", encryptFilter)
+	template.Register("encrypt", func(ctx *core.Context, set template.TemplateSet) error {
+		set.RegisterFilter("encrypt", encryptFilter(ctx))
+		return nil
+	})
 }

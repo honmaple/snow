@@ -43,6 +43,9 @@ func (i *I18n) LoadTranslations(ctx *core.Context) error {
 
 	// 加载主题下以及当前目录下的的翻译文件
 	for _, dir := range []fs.FS{ctx.Theme, os.DirFS(".")} {
+		if _, err := fs.Stat(dir, "i18n"); err != nil {
+			continue
+		}
 		entries, err := fs.ReadDir(dir, "i18n")
 		if err != nil {
 			return err
@@ -123,4 +126,16 @@ func (i *I18n) LoadTranslations(ctx *core.Context) error {
 	}
 	i.translations = trans
 	return nil
+}
+
+func New(ctx *core.Context) (*I18n, error) {
+	i18n := &I18n{}
+	if err := i18n.LoadTranslations(ctx); err != nil {
+		return nil, &core.Error{
+			Op:   "load i18n translations",
+			Path: "i18n",
+			Err:  err,
+		}
+	}
+	return i18n, nil
 }

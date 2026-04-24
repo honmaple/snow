@@ -1,6 +1,7 @@
 package template
 
 import (
+	"fmt"
 	"io/fs"
 	"maps"
 	"os"
@@ -13,12 +14,13 @@ import (
 type (
 	Template interface {
 		Name() string
-		Execute(*core.Context, map[string]any) (string, error)
-		ExecuteRaw(*core.Context, map[string]any) (string, error)
+		Execute(map[string]any) (string, error)
+		ExecuteRaw(map[string]any) (string, error)
 	}
 	templateImpl struct {
-		n   string
-		tpl *pongo2.Template
+		n      string
+		tpl    *pongo2.Template
+		tplset *templateSet
 	}
 )
 
@@ -26,25 +28,23 @@ func (t *templateImpl) Name() string {
 	return t.n
 }
 
-func (t *templateImpl) Execute(ctx *core.Context, vars map[string]any) (string, error) {
+func (t *templateImpl) Execute(vars map[string]any) (string, error) {
 	nvars := make(map[string]any)
 	maps.Copy(nvars, vars)
 
-	for k, v := range TransientVars {
+	for k, fn := range t.tplset.funcs {
 		if _, ok := nvars[k]; !ok {
-			nvars[k] = v
+			nvars[k] = fn(vars)
 		}
 	}
 
-	for k, f := range TransientFuncs {
-		if _, ok := nvars[k]; !ok {
-			nvars[k] = f(ctx, vars)
-		}
+	for k, fn := range t.tplset.filters {
+		t.tplset.ReplaceFilter(k, fn(vars))
 	}
 	return t.tpl.Execute(nvars)
 }
 
-func (t *templateImpl) ExecuteRaw(ctx *core.Context, vars map[string]any) (string, error) {
+func (t *templateImpl) ExecuteRaw(vars map[string]any) (string, error) {
 	nvars := make(map[string]any)
 	maps.Copy(nvars, vars)
 
@@ -57,12 +57,23 @@ type (
 		FromFile(string) (Template, error)
 		FromBytes([]byte) (Template, error)
 		FromString(string) (Template, error)
+
+		Register(string, any) error
+		RegisterTag(string, pongo2.TagParser) error
+		RegisterFilter(string, pongo2.FilterFunction) error
+		RegisterTransient(string, TransientFunction) error
+		RegisterTransientFilter(string, TransientFilterFunction) error
 	}
 	templateSet struct {
 		ctx    *core.Context
 		cache  sync.Map
 		tplset *pongo2.TemplateSet
+		// 依赖于ctx上下文的变量
+		funcs   map[string]TransientFunction
+		filters map[string]TransientFilterFunction
 	}
+	TransientFunction       func(map[string]any) any
+	TransientFilterFunction func(map[string]any) pongo2.FilterFunction
 )
 
 func (set *templateSet) Lookup(names ...string) Template {
@@ -91,7 +102,7 @@ func (set *templateSet) FromFile(name string) (Template, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &templateImpl{n: name, tpl: tpl}, nil
+	return &templateImpl{n: name, tpl: tpl, tplset: set}, nil
 }
 
 func (set *templateSet) FromBytes(b []byte) (Template, error) {
@@ -99,7 +110,7 @@ func (set *templateSet) FromBytes(b []byte) (Template, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &templateImpl{tpl: tpl}, nil
+	return &templateImpl{tpl: tpl, tplset: set}, nil
 }
 
 func (set *templateSet) FromString(b string) (Template, error) {
@@ -107,7 +118,41 @@ func (set *templateSet) FromString(b string) (Template, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &templateImpl{tpl: tpl}, nil
+	return &templateImpl{tpl: tpl, tplset: set}, nil
+}
+
+func (set *templateSet) Register(name string, val any) error {
+	set.tplset.Globals[name] = val
+	return nil
+}
+
+func (set *templateSet) RegisterTag(name string, fn pongo2.TagParser) error {
+	return set.tplset.RegisterTag(name, fn)
+}
+
+func (set *templateSet) RegisterFilter(name string, fn pongo2.FilterFunction) error {
+	return set.tplset.RegisterFilter(name, fn)
+}
+
+func (set *templateSet) ReplaceFilter(name string, fn pongo2.FilterFunction) error {
+	if set.tplset.FilterExists(name) {
+		return set.tplset.ReplaceFilter(name, fn)
+	}
+	return set.tplset.RegisterFilter(name, fn)
+}
+
+func (set *templateSet) RegisterTransient(name string, fn TransientFunction) error {
+	if _, ok := set.funcs[name]; !ok {
+		set.funcs[name] = fn
+	}
+	return nil
+}
+
+func (set *templateSet) RegisterTransientFilter(name string, fn TransientFilterFunction) error {
+	if _, ok := set.filters[name]; !ok {
+		set.filters[name] = fn
+	}
+	return nil
 }
 
 func NewSet(ctx *core.Context) (TemplateSet, error) {
@@ -121,38 +166,40 @@ func NewSet(ctx *core.Context) (TemplateSet, error) {
 		return nil, err
 	}
 
-	set := pongo2.NewSet("app",
+	tplset := pongo2.NewSet("app",
 		newLoader(os.DirFS("templates")),
 		newLoader(tplFS),
 		newLoader(internalFS),
 	)
 
-	set.Globals["dict"] = dict
-	set.Globals["slice"] = slice
-	set.Globals["scratch"] = newScratch
-	set.Globals["newScratch"] = newScratchFunc
-
-	set.RegisterFilter("parser", parser)
-	set.RegisterFilter("slient", slient)
-	set.RegisterFilter("jsonify", jsonify)
-
-	for k, v := range GlobalVars {
-		set.Globals[k] = v
+	set := &templateSet{
+		ctx:     ctx,
+		tplset:  tplset,
+		funcs:   make(map[string]TransientFunction),
+		filters: make(map[string]TransientFilterFunction),
 	}
-
-	for k, f := range GlobalFuncs {
-		set.Globals[k] = f(ctx)
+	for _, fc := range factories {
+		if err := fc(ctx, set); err != nil {
+			return nil, err
+		}
 	}
-
-	for k, f := range GlobalTags {
-		set.RegisterTag(k, f(ctx))
-	}
-
-	for k, f := range GlobalFilters {
-		set.RegisterFilter(k, f(ctx))
-	}
-	return &templateSet{
-		ctx:    ctx,
-		tplset: set,
-	}, nil
+	return set, nil
 }
+
+type Factory func(*core.Context, TemplateSet) error
+
+func Register(name string, fc Factory) {
+	factoriesOnce.Do(func() {
+		factories = make(map[string]Factory)
+	})
+
+	if _, ok := factories[name]; ok {
+		panic(fmt.Errorf("factory with name '%s' is already registered", name))
+	}
+	factories[name] = fc
+}
+
+var (
+	factories     map[string]Factory
+	factoriesOnce sync.Once
+)

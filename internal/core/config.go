@@ -12,6 +12,38 @@ import (
 	"github.com/spf13/viper"
 )
 
+type Result struct {
+	value any
+}
+
+func (r Result) Int() int {
+	return cast.ToInt(r.value)
+}
+
+func (r Result) Int32() int32 {
+	return cast.ToInt32(r.value)
+}
+
+func (r Result) Int64() int64 {
+	return cast.ToInt64(r.value)
+}
+
+func (r Result) Bool() bool {
+	return cast.ToBool(r.value)
+}
+
+func (r Result) String() string {
+	return cast.ToString(r.value)
+}
+
+func (r Result) StringMap() map[string]any {
+	return cast.ToStringMap(r.value)
+}
+
+func (r Result) StringSlice() []string {
+	return cast.ToStringSlice(r.value)
+}
+
 type Config struct {
 	*viper.Viper
 }

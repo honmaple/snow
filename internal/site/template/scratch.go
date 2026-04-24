@@ -93,3 +93,11 @@ func newScratchFunc(ctx *core.Context, vars map[string]any) any {
 		return &scratch{}
 	}
 }
+
+func init() {
+	Register("scratch", func(ctx *core.Context, set TemplateSet) error {
+		set.Register("scratch", newScratch)
+		set.Register("newScratch", newScratchFunc)
+		return nil
+	})
+}

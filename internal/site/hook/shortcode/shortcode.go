@@ -8,21 +8,19 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/core"
-	"github.com/honmaple/snow/internal/site/hook"
+	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/site/template"
 	"golang.org/x/net/html"
 )
 
-type shortcodeHook struct {
-	hook.HookImpl
+type shortcode struct {
 	ctx    *core.Context
 	tpls   map[string]template.Template
 	tplset template.TemplateSet
 }
 
-func (h *shortcodeHook) renderNext(page *content.Page, w *bytes.Buffer, z *html.Tokenizer, startToken *html.Token, counter map[string]int) bool {
+func (h *shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Tokenizer, startToken *html.Token, counter map[string]int) bool {
 	for {
 		next := z.Next()
 		if next == html.ErrorToken {
@@ -60,7 +58,7 @@ func (h *shortcodeHook) renderNext(page *content.Page, w *bytes.Buffer, z *html.
 					"_name":    name,
 					"_counter": counter[name],
 					"_shortcode": func(s string) string {
-						return h.render(page, s)
+						return h.Render(page, s)
 					},
 				}
 				counter[name]++
@@ -74,7 +72,7 @@ func (h *shortcodeHook) renderNext(page *content.Page, w *bytes.Buffer, z *html.
 					vars["body"] = buf.String()
 				}
 
-				result, err := tpl.ExecuteRaw(h.ctx, vars)
+				result, err := tpl.ExecuteRaw(vars)
 				if err != nil {
 					w.WriteString("")
 				} else {
@@ -91,7 +89,11 @@ func (h *shortcodeHook) renderNext(page *content.Page, w *bytes.Buffer, z *html.
 	}
 }
 
-func (h *shortcodeHook) render(page *content.Page, content string) string {
+func (h *shortcode) Render(page *content.Page, content string) string {
+	if len(h.tpls) == 0 {
+		return content
+	}
+
 	var (
 		w       bytes.Buffer
 		z       = html.NewTokenizer(strings.NewReader(content))
@@ -101,16 +103,7 @@ func (h *shortcodeHook) render(page *content.Page, content string) string {
 	return w.String()
 }
 
-func (h *shortcodeHook) HandlePage(page *content.Page) *content.Page {
-	if len(h.tpls) == 0 {
-		return page
-	}
-	page.Summary = h.render(page, page.Summary)
-	page.Content = h.render(page, page.Content)
-	return page
-}
-
-func (h *shortcodeHook) load() error {
+func (h *shortcode) Load() error {
 	exts := []string{".tpl", ".html"}
 
 	sub1, _ := fs.Sub(os.DirFS("."), "templates")
@@ -168,8 +161,8 @@ func (h *shortcodeHook) load() error {
 	return nil
 }
 
-func New(ctx *core.Context) (hook.Hook, error) {
-	h := &shortcodeHook{
+func NewShortcode(ctx *core.Context) (*shortcode, error) {
+	h := &shortcode{
 		ctx:  ctx,
 		tpls: make(map[string]template.Template),
 	}
@@ -179,12 +172,8 @@ func New(ctx *core.Context) (hook.Hook, error) {
 	}
 	h.tplset = tplset
 
-	if err := h.load(); err != nil {
+	if err := h.Load(); err != nil {
 		return nil, err
 	}
 	return h, nil
-}
-
-func init() {
-	hook.Register("shortcode", New)
 }

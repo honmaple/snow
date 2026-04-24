@@ -81,7 +81,7 @@ func (d *ContentParser) ParsePage(fullpath string, isBundle bool) (*types.Page, 
 	customPath := page.FrontMatter.GetString("path")
 	if customPath == "" {
 		// 查找顺序: posts/linux/emacs -> posts/linux -> posts -> _default
-		customPath = lctx.GetSectionConfig(sectionPath, "page_path")
+		customPath = lctx.GetSectionConfig(sectionPath, "page_path").String()
 	}
 
 	page.Path = lctx.GetRelURL(d.parsePagePath(page, customPath))
@@ -95,7 +95,7 @@ func (d *ContentParser) parsePageAssets(fullpath string, page *types.Page) (type
 
 	customPath := page.FrontMatter.GetString("asset_path")
 	if customPath == "" {
-		customPath = lctx.GetSectionConfig(stdpath.Dir(page.File.Dir), "page_asset_path")
+		customPath = lctx.GetSectionConfig(stdpath.Dir(page.File.Dir), "page_asset_path").String()
 	}
 	if customPath == "" || customPath == "none" {
 		return nil, nil
