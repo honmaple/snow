@@ -2,6 +2,7 @@ package template
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"os"
@@ -65,9 +66,10 @@ type (
 		RegisterTransientFilter(string, TransientFilterFunction) error
 	}
 	templateSet struct {
-		ctx    *core.Context
-		cache  sync.Map
-		tplset *pongo2.TemplateSet
+		ctx     *core.Context
+		cache   sync.Map
+		tplset  *pongo2.TemplateSet
+		loaders []pongo2.TemplateLoader
 		// 依赖于ctx上下文的变量
 		funcs   map[string]TransientFunction
 		filters map[string]TransientFilterFunction
@@ -86,15 +88,37 @@ func (set *templateSet) Lookup(names ...string) Template {
 			return v.(Template)
 		}
 		// 模版未找到不输出日志, 编译模版有问题才输出
-		template, err := set.FromFile(name)
+		template, err := set.fromFile(name)
 		if err != nil {
-			// set.ctx.Logger.Warnf("parse template %s err: %s", name, err.Error())
+			set.ctx.Logger.Warnf("parse template %s err: %s", name, err.Error())
+			continue
+		}
+		if template == nil {
 			continue
 		}
 		set.cache.Store(name, template)
 		return template
 	}
 	return nil
+}
+
+func (set *templateSet) fromFile(name string) (Template, error) {
+	for _, loader := range set.loaders {
+		r, err := loader.Get(name)
+		if err != nil {
+			continue
+		}
+		buf, err := io.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+		tpl, err := set.tplset.FromBytes(buf)
+		if err != nil {
+			return nil, err
+		}
+		return &templateImpl{n: name, tpl: tpl, tplset: set}, nil
+	}
+	return nil, nil
 }
 
 func (set *templateSet) FromFile(name string) (Template, error) {
@@ -166,15 +190,17 @@ func NewSet(ctx *core.Context) (TemplateSet, error) {
 		return nil, err
 	}
 
-	tplset := pongo2.NewSet("app",
+	loaders := []pongo2.TemplateLoader{
 		newLoader(os.DirFS("templates")),
 		newLoader(tplFS),
 		newLoader(internalFS),
-	)
+	}
+	tplset := pongo2.NewSet("app", loaders...)
 
 	set := &templateSet{
 		ctx:     ctx,
 		tplset:  tplset,
+		loaders: loaders,
 		funcs:   make(map[string]TransientFunction),
 		filters: make(map[string]TransientFilterFunction),
 	}

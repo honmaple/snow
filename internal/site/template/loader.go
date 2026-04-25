@@ -1,6 +1,7 @@
 package template
 
 import (
+	"bytes"
 	"io"
 	"io/fs"
 	"path/filepath"
@@ -19,7 +20,17 @@ func (l *loader) Abs(base, name string) string {
 }
 
 func (l *loader) Get(path string) (io.Reader, error) {
-	return l.fs.Open(path)
+	fr, err := l.fs.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer fr.Close()
+
+	buf, err := io.ReadAll(fr)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewBuffer(buf), nil
 }
 
 func newLoader(fs fs.FS) *loader {
