@@ -3,7 +3,6 @@ package site
 import (
 	"fmt"
 	stdpath "path"
-	"sort"
 
 	"github.com/honmaple/snow/internal/site/content/types"
 )
@@ -146,40 +145,6 @@ func (d *Store) GetTaxonomyTermURL(taxonomyName string, name string, lang string
 	return result.Permalink
 }
 
-func (d *Store) sort() {
-	for _, set := range d.sections {
-		list := set.List()
-		sort.SliceStable(list, func(i, j int) bool {
-			return list[i].File.Path > list[j].File.Path
-		})
-
-		for _, section := range list {
-			section.Pages.Sort("date")
-		}
-	}
-
-	for _, set := range d.pages {
-		if ps := set.List(); len(ps) > 0 {
-			types.Pages(ps).Sort("date")
-		}
-	}
-}
-
-func (d *Store) findSection(dir string, lang string) *types.Section {
-	currentDir := dir
-	for {
-		if currentDir == "" || currentDir == "." {
-			break
-		}
-		result := d.GetSection(currentDir, lang)
-		if result != nil {
-			return result
-		}
-		currentDir = stdpath.Dir(currentDir)
-	}
-	return d.GetSection("/", lang)
-}
-
 func (d *Store) insertSection(section *types.Section) {
 	set, ok := d.sections[section.Lang]
 	if !ok {
@@ -218,8 +183,9 @@ func (d *Store) insertPage(page *types.Page) {
 		}
 		currentDir = stdpath.Dir(currentDir)
 	}
-	root := d.GetSection("/", page.Lang)
-	root.Pages = append(root.Pages, page)
+	if root := d.GetSection("/", page.Lang); root != nil {
+		root.Pages = append(root.Pages, page)
+	}
 }
 
 func (d *Store) insertTaxonomy(taxonomy *types.Taxonomy) {

@@ -1,7 +1,6 @@
 package content
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/honmaple/snow/internal/site/content/types"
@@ -28,10 +27,7 @@ func (d *ContentParser) ParseTaxonomies(pages types.Pages, lang string) types.Ta
 			Lang: lang,
 			Name: taxonomyName,
 		}
-		customPath := lctx.Config.GetString(fmt.Sprintf("taxonomies.%s.path", taxonomyName))
-		if customPath == "" {
-			customPath = lctx.Config.GetString("taxonomies._default.path")
-		}
+		customPath := lctx.GetTaxonomyConfig(taxonomyName, "path").String()
 		outputPath := utils.StringReplace(customPath, map[string]string{
 			"{taxonomy}": taxonomy.Name,
 		})
@@ -42,6 +38,7 @@ func (d *ContentParser) ParseTaxonomies(pages types.Pages, lang string) types.Ta
 
 		taxonomies = append(taxonomies, taxonomy)
 	}
+	types.SortTaxonomies(taxonomies, "weight desc")
 	return taxonomies
 }
 
@@ -98,10 +95,7 @@ func (d *ContentParser) ParseTaxonomyTerms(taxonomy *types.Taxonomy, pages types
 						Taxonomy: taxonomy,
 					}
 
-					customPath := lctx.Config.GetString(fmt.Sprintf("taxonomies.%s.term_path", taxonomy.Name))
-					if customPath == "" {
-						customPath = lctx.Config.GetString("taxonomies._default.term_path")
-					}
+					customPath := lctx.GetTaxonomyConfig(taxonomy.Name, "term.path").String()
 					outputPath := utils.StringReplace(customPath, map[string]string{
 						"{taxonomy}":  taxonomy.Name,
 						"{term}":      currentName,
@@ -127,16 +121,14 @@ func (d *ContentParser) ParseTaxonomyTerms(taxonomy *types.Taxonomy, pages types
 			}
 		}
 	}
+	types.SortTaxonomyTerms(results, lctx.GetTaxonomyConfig(taxonomy.Name, "sort_by").String())
 	return results
 }
 
 func (d *ContentParser) ParseTaxonomyTermFormats(term *types.TaxonomyTerm, lang string) types.Formats {
 	lctx := d.ctx.For(lang)
 
-	customFormats := lctx.Config.GetStringMap(fmt.Sprintf("taxonomies.%s.formats", term.Taxonomy.Name))
-	if len(customFormats) == 0 {
-		customFormats = lctx.Config.GetStringMap("taxonomies._default.formats")
-	}
+	customFormats := lctx.GetTaxonomyConfig(term.Taxonomy.Name, "formats").StringMap()
 
 	v := viper.New()
 	v.MergeConfigMap(customFormats)

@@ -11,6 +11,7 @@ type (
 	Taxonomy struct {
 		Lang      string
 		Name      string
+		Weight    int
 		Path      string
 		Permalink string
 		Terms     TaxonomyTerms
@@ -66,21 +67,39 @@ func (terms TaxonomyTerms) OrderBy(key string) TaxonomyTerms {
 	newTerms := make(TaxonomyTerms, len(terms))
 	copy(newTerms, terms)
 
-	sort.SliceStable(newTerms, utils.Sort(key, func(k string, i int, j int) int {
+	SortTaxonomyTerms(newTerms, key)
+	return newTerms
+}
+
+func SortTaxonomies(taxonomies Taxonomies, key string) {
+	sort.SliceStable(taxonomies, utils.Sort(key, func(k string, i int, j int) int {
 		switch k {
 		case "-":
-			return 0 - strings.Compare(newTerms[i].Name, newTerms[j].Name)
+			return 0 - strings.Compare(taxonomies[i].Name, taxonomies[j].Name)
 		case "name":
-			return strings.Compare(newTerms[i].Name, newTerms[j].Name)
-		case "count":
-			return utils.Compare(len(newTerms[i].Pages), len(newTerms[j].Pages))
+			return strings.Compare(taxonomies[i].Name, taxonomies[j].Name)
+		case "weigt":
+			return utils.Compare(taxonomies[i].Weight, taxonomies[j].Weight)
 		default:
 			return 0
 		}
 	}))
+}
 
+func SortTaxonomyTerms(terms TaxonomyTerms, key string) {
+	sort.SliceStable(terms, utils.Sort(key, func(k string, i int, j int) int {
+		switch k {
+		case "-":
+			return 0 - strings.Compare(terms[i].Name, terms[j].Name)
+		case "name":
+			return strings.Compare(terms[i].Name, terms[j].Name)
+		case "count":
+			return utils.Compare(len(terms[i].Pages), len(terms[j].Pages))
+		default:
+			return 0
+		}
+	}))
 	for _, term := range terms {
-		term.Children = term.Children.OrderBy(key)
+		SortTaxonomyTerms(term.Children, key)
 	}
-	return newTerms
 }

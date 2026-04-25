@@ -6,9 +6,11 @@ import (
 	"io/fs"
 	stdpath "path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/site/content/types"
 	"github.com/honmaple/snow/internal/site/template"
 )
@@ -87,25 +89,13 @@ func (site *Site) writeAsset(asset *types.Asset) error {
 func (site *Site) writePage(page *types.Page) error {
 	site.ctx.Logger.Debugf("write page [%s] -> %s", page.File.Path, page.Path)
 
-	lctx := site.ctx.For(page.Lang)
-
 	vars := map[string]any{
 		"page":         page,
 		"current_url":  page.Permalink,
 		"current_path": page.Path,
 		"current_lang": page.Lang,
 	}
-
-	customTemplate := page.FrontMatter.GetString("template")
-	if customTemplate == "" {
-		if page.IsBundle {
-			customTemplate = lctx.GetSectionConfig(stdpath.Dir(page.File.Dir), "page_template").String()
-		} else {
-			customTemplate = lctx.GetSectionConfig(page.File.Dir, "page_template").String()
-		}
-	}
-
-	if tpl := site.tplset.Lookup(customTemplate, "page.html"); tpl != nil {
+	if tpl := site.tplset.Lookup(page.FrontMatter.GetString("template"), "page.html"); tpl != nil {
 		if err := site.writeTemplate(page.Path, tpl, vars); err != nil {
 			return err
 		}
@@ -163,12 +153,15 @@ func (site *Site) writeSection(section *types.Section) error {
 	}
 
 	if tpl := site.tplset.Lookup(lookups...); tpl != nil {
-		paginators := section.Pages.Paginate(
-			section.FrontMatter.GetInt("paginate"),
-			section.Path,
-			section.FrontMatter.GetString("paginate_path"),
-		)
-		for _, por := range paginators {
+		for _, por := range section.Pages.
+			Filter(
+				section.FrontMatter.GetString("paginate_filter"),
+			).
+			Paginate(
+				section.FrontMatter.GetInt("paginate"),
+				section.Path,
+				section.FrontMatter.GetString("paginate_path"),
+			) {
 			if err := site.writeTemplate(por.Path, tpl, map[string]any{
 				"section":       section,
 				"paginator":     por,
@@ -205,10 +198,8 @@ func (site *Site) writeTaxonomy(taxonomy *types.Taxonomy) error {
 
 	lctx := site.ctx.For(taxonomy.Lang)
 
-	customTemplate := lctx.GetTaxonomyConfig(taxonomy.Name, "template").String()
-
 	lookups := []string{
-		customTemplate,
+		lctx.GetTaxonomyConfig(taxonomy.Name, "template").String(),
 		fmt.Sprintf("%s/taxonomy.html", taxonomy.Name),
 		"taxonomy.html",
 	}
@@ -235,19 +226,21 @@ func (site *Site) writeTaxonomyTerm(term *types.TaxonomyTerm) error {
 
 	lctx := site.ctx.For(term.Taxonomy.Lang)
 
-	customTemplate := lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term_template").String()
-
 	lookups := []string{
-		customTemplate,
+		lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.template").String(),
 		fmt.Sprintf("%s/taxonomy.terms.html", term.Taxonomy.Name),
 		"taxonomy.terms.html",
 	}
 	if tpl := site.tplset.Lookup(lookups...); tpl != nil {
-		for _, por := range term.Pages.Paginate(
-			lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term_paginate").Int(),
-			term.Path,
-			lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term_paginate_path").String(),
-		) {
+		for _, por := range term.Pages.
+			Filter(
+				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate_filter").String(),
+			).
+			Paginate(
+				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate").Int(),
+				term.Path,
+				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate_path").String(),
+			) {
 			if err := site.writeTemplate(por.Path, tpl, map[string]any{
 				"term":          term,
 				"pages":         term.Pages,
@@ -284,6 +277,8 @@ func (site *Site) writeTaxonomyTerm(term *types.TaxonomyTerm) error {
 
 func (site *Site) buildContent(ctx context.Context) error {
 	for _, lang := range site.ctx.GetAllLanguages() {
+		site.ctx.Logger.Debugf("write %s site", lang)
+
 		for _, section := range site.store.Sections(lang) {
 			if err := site.writeSection(section); err != nil {
 				site.ctx.Logger.Error(err.Error())
@@ -401,15 +396,29 @@ func (site *Site) loadContent() error {
 		return err
 	}
 
+	for _, sections := range site.store.AllSections() {
+		sort.SliceStable(sections, func(i, j int) bool {
+			return sections[i].File.Path > sections[j].File.Path
+		})
+
+		for _, section := range sections {
+			content.SortPages(section.Pages, section.FrontMatter.GetString("sort_by"))
+		}
+	}
+
 	for lang, pages := range site.store.AllPages() {
+		sort.SliceStable(pages, func(i, j int) bool {
+			return pages[i].Date.After(pages[j].Date)
+		})
+
 		taxonomies := site.contentParser.ParseTaxonomies(pages, lang)
+
 		for _, taxonomy := range taxonomies {
-			site.store.insertTaxonomy(taxonomy)
 			for _, term := range taxonomy.Terms {
 				site.store.insertTaxonomyTerm(term)
 			}
+			site.store.insertTaxonomy(taxonomy)
 		}
 	}
-	site.store.sort()
 	return nil
 }

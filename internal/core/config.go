@@ -107,9 +107,9 @@ func (conf *Config) SetMode(mode string) {
 	}
 }
 
-func (conf *Config) Reset(m map[string]any) {
+func (conf *Config) Reset(m map[string]any, force bool) {
 	for k, v := range m {
-		if conf.IsSet(k) {
+		if !force && conf.IsSet(k) {
 			continue
 		}
 		conf.Set(k, v)
@@ -133,10 +133,10 @@ func (conf *Config) LoadFromFile(file string) error {
 		}
 	}
 
-	conf.Reset(siteConfig)
-	conf.Reset(otherConfig)
-	conf.Reset(sectionConfig)
-	conf.Reset(taxonomyConfig)
+	conf.Reset(siteConfig, false)
+	conf.Reset(pageConfig, false)
+	conf.Reset(sectionConfig, false)
+	conf.Reset(taxonomyConfig, false)
 	return nil
 }
 
@@ -173,47 +173,40 @@ func (conf *Config) MergeFromThemeConfig(theme fs.FS) error {
 }
 
 var (
-	sectionConfig = map[string]any{
-		"sections._default.path":          "{path:slug}/index.html",
-		"sections._default.orderby":       "weight",
-		"sections._default.template":      "section.html",
-		"sections._default.paginate":      10,
-		"sections._default.paginate_path": "{name}{number}{extension}",
-		"sections._default.page_path":     "{path:slug}/{slug}/index.html",
-		"sections._default.page_orderby":  "date desc",
-		"sections._default.page_template": "page.html",
-	}
-	taxonomyConfig = map[string]any{
-		"taxonomies._default.path":               "{taxonomy}/index.html",
-		"taxonomies._default.orderby":            "name",
-		"taxonomies._default.term_path":          "{taxonomy}/{term:slug}/index.html",
-		"taxonomies._default.term_paginate_path": "{name}{number}{extension}",
-		"taxonomies._default.term_orderby":       "date desc",
-
-		"taxonomies.categories.weight": 1,
-		"taxonomies.tags.weight":       2,
-		"taxonomies.authors.weight":    3,
-	}
-	// 默认不需要修改的配置
-	otherConfig = map[string]any{
+	siteConfig = map[string]any{
+		"site.url":                  "http://127.0.0.1:8000",
+		"site.title":                "snow",
+		"site.subtitle":             "snow is a static site generator.",
+		"site.author":               "honmaple",
+		"site.language":             "en",
+		"theme_dir":                 "themes",
+		"static_dir":                "static",
+		"output_dir":                "output",
+		"content_dir":               "content",
+		"slugify":                   true,
 		"content_truncate_len":      49,
 		"content_truncate_ellipsis": "...",
 		"content_highlight_style":   "monokai",
-		"slugify":                   true,
 		"formats.rss.template":      "partials/rss.xml",
 		"formats.atom.template":     "partials/atom.xml",
 	}
-	// 默认需要修改的配置
-	siteConfig = map[string]any{
-		"site.url":      "http://127.0.0.1:8000",
-		"site.title":    "snow",
-		"site.subtitle": "snow is a static site generator.",
-		"site.author":   "honmaple",
-		"site.language": "en",
-		"theme_dir":     "themes",
-		"static_dir":    "static",
-		"output_dir":    "output",
-		"content_dir":   "content",
+	pageConfig = map[string]any{
+		"pages._default.path":     "{path:slug}/{slug}/",
+		"pages._default.template": "page.html",
+	}
+	sectionConfig = map[string]any{
+		"sections._default.path":          "{path:slug}/",
+		"sections._default.template":      "section.html",
+		"sections._default.sort_by":       "date desc",
+		"sections._default.paginate":      10,
+		"sections._default.paginate_path": "{name}{number}{extension}",
+	}
+	taxonomyConfig = map[string]any{
+		"taxonomies._default.path":               "{taxonomy}/",
+		"taxonomies._default.sort_by":            "name",
+		"taxonomies._default.term.path":          "{taxonomy}/{term:slug}/",
+		"taxonomies._default.term.sort_by":       "date desc",
+		"taxonomies._default.term.paginate_path": "{name}{number}{extension}",
 	}
 )
 
@@ -227,9 +220,9 @@ func DefaultConfig() *Config {
 	conf := &Config{
 		Viper: viper.New(),
 	}
-	conf.Reset(siteConfig)
-	conf.Reset(otherConfig)
-	conf.Reset(sectionConfig)
-	conf.Reset(taxonomyConfig)
+	conf.Reset(siteConfig, true)
+	conf.Reset(pageConfig, true)
+	conf.Reset(sectionConfig, true)
+	conf.Reset(taxonomyConfig, true)
 	return conf
 }

@@ -28,6 +28,17 @@ func (ctx *Context) GetAllLanguages() []string {
 	return langs
 }
 
+func (ctx *Context) VerifyLanguage(lang string) bool {
+	if lang == "" {
+		return false
+	}
+	if lang == ctx.GetDefaultLanguage() {
+		return true
+	}
+	_, ok := ctx.OtherLanguages[lang]
+	return ok
+}
+
 func (ctx *Context) For(lang string) *LocaleContext {
 	if lang == ctx.GetDefaultLanguage() {
 		return ctx.LocaleContext

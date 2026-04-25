@@ -18,24 +18,39 @@ sections:
   _default:
     path: ""
     templates: "posts.html"
-    page_template: "page.html"
+    page.template: "page.html"
   posts:
     path: "posts/index.html"
-    paginate_filter: ""
-    page_path: "articles/{date:%Y}/{date:%m}/{slug}.html"
-    # page_template: "post.html"
+    paginate_path: ""
+    page.path: "articles/{date:%Y}/{date:%m}/{slug}.html"
+    page.template: "post.html"
   pages:
-    path: ""
-    page_path: "pages/{slug}.html"
+    page.path: "pages/{slug}.html"
+    page.hidden: true
+
+pages:
+  _default:
+    path: "articles/{date:%Y}/{date:%m}/{slug}.html"
+    templates: "post.html"
+  en:
+    lang: "en"
+  pages:
+    path: "pages/{slug}.html"
+    template: "page.html"
     hidden: true
+  drafts:
+    draft: true
 
 taxonomies:
+  _defualt:
+    template: "{taxonomy}/list.html"
+    term.template: "{taxonomy}/single.html"
   tags:
     template: "tags/list.html"
-    term_template: "tags/single.html"
+    term.template: "tags/single.html"
   authors:
     template: "tags/list.html"
-    term_template: "tags/single.html"
+    term.template: "tags/single.html"
 
 output_dir: "output"
 content_dir: "content"

@@ -79,7 +79,7 @@ func (d *ContentParser) parseFile(fullpath string) (*types.File, error) {
 	}, nil
 }
 
-func (d *ContentParser) parseNode(fullpath string) (*types.Node, error) {
+func (d *ContentParser) parseNode(fullpath string, isPage bool) (*types.Node, error) {
 	file, err := d.parseFile(fullpath)
 	if err != nil {
 		return nil, err
@@ -91,6 +91,12 @@ func (d *ContentParser) parseNode(fullpath string) (*types.Node, error) {
 	}
 
 	meta := types.NewFrontMatter(result.FrontMatter)
+	// 合并配置
+	if isPage {
+		meta.MergeFrom(d.ctx.GetPageConfig(file.Dir))
+	} else {
+		meta.MergeFrom(d.ctx.GetSectionConfig(file.Dir))
+	}
 
 	lang := meta.GetString("lang")
 	if lang == "" {
@@ -99,7 +105,7 @@ func (d *ContentParser) parseNode(fullpath string) (*types.Node, error) {
 			lang = strings.TrimPrefix(langExt, ".")
 		}
 	}
-	if lang == "" || (lang != d.ctx.GetDefaultLanguage() && !d.ctx.Config.IsSet("languages."+lang)) {
+	if !d.ctx.VerifyLanguage(lang) {
 		lang = d.ctx.GetDefaultLanguage()
 	}
 
@@ -107,7 +113,6 @@ func (d *ContentParser) parseNode(fullpath string) (*types.Node, error) {
 		file.BaseName = strings.TrimSuffix(file.BaseName, ext)
 		file.LanguageName = lang
 	}
-	lctx := d.ctx.For(lang)
 
 	node := &types.Node{
 		FrontMatter: meta,
@@ -119,6 +124,7 @@ func (d *ContentParser) parseNode(fullpath string) (*types.Node, error) {
 		Content:     result.Content,
 		Summary:     meta.GetString("summary"),
 	}
+	lctx := d.ctx.For(lang)
 	if node.Summary == "" {
 		node.Summary = lctx.GetSummary(result.Content)
 	}

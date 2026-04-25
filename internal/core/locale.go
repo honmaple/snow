@@ -1,11 +1,13 @@
 package core
 
 import (
+	"fmt"
 	stdpath "path"
 	"strings"
 
 	"github.com/gosimple/slug"
 	"github.com/honmaple/snow/internal/utils"
+	"github.com/spf13/viper"
 )
 
 type LocaleContext struct {
@@ -77,39 +79,76 @@ func (ctx *LocaleContext) GetRelURL(path string) string {
 	return path
 }
 
-func (ctx *LocaleContext) GetSectionConfig(dir string, key string) Result {
+func (ctx *LocaleContext) GetPageConfig(dir string) map[string]any {
+	config := viper.New()
+
 	currentDir := dir
 	for {
 		if currentDir == "" || currentDir == "." {
 			break
 		}
-		sectionKey := "sections." + currentDir
-		if ctx.Config.IsSet(sectionKey) {
-			section := ctx.Config.Sub(sectionKey)
-			if section != nil && section.IsSet(key) {
-				if val := section.Get(key); val != "" {
-					return Result{value: val}
-				}
+		for k, v := range ctx.Config.GetStringMap("pages." + currentDir) {
+			if config.IsSet(k) {
+				continue
 			}
+			config.Set(k, v)
 		}
 		currentDir = stdpath.Dir(currentDir)
 	}
-	val := ctx.Config.Get("sections._default." + key)
-	return Result{value: val}
+	for k, v := range ctx.Config.GetStringMap("pages._default") {
+		if config.IsSet(k) {
+			continue
+		}
+		config.Set(k, v)
+	}
+	return config.AllSettings()
 }
 
-func (ctx *LocaleContext) GetTaxonomyConfig(name string, key string) Result {
-	val := ctx.Config.Get("taxonomies.%s.%s" + name + "." + key)
-	if val == "" {
-		val = ctx.Config.Get("taxonomies._default." + key)
+func (ctx *LocaleContext) GetSectionConfig(dir string) map[string]any {
+	config := viper.New()
+
+	currentDir := dir
+	for {
+		if currentDir == "" || currentDir == "." {
+			break
+		}
+		for k, v := range ctx.Config.GetStringMap("sections." + currentDir) {
+			if config.IsSet(k) {
+				continue
+			}
+			config.Set(k, v)
+		}
+		currentDir = stdpath.Dir(currentDir)
+	}
+	for k, v := range ctx.Config.GetStringMap("sections._default") {
+		if config.IsSet(k) {
+			continue
+		}
+		config.Set(k, v)
+	}
+	return config.AllSettings()
+}
+
+func (ctx *LocaleContext) GetTaxonomyConfig(name string, keyName string) Result {
+	var val any
+
+	if key := fmt.Sprintf("taxonomies.%s.%s", name, keyName); ctx.Config.IsSet(key) {
+		val = ctx.Config.Get(key)
+	}
+	if val == nil || val == "" {
+		val = ctx.Config.Get("taxonomies._default." + keyName)
 	}
 	return Result{value: val}
 }
 
-func (ctx *LocaleContext) GetFormatConfig(name string, key string) Result {
-	val := ctx.Config.Get("formats.%s.%s" + name + "." + key)
-	if val == "" {
-		val = ctx.Config.Get("formats._default." + key)
+func (ctx *LocaleContext) GetFormatConfig(name string, keyName string) Result {
+	var val any
+
+	if key := fmt.Sprintf("formats.%s.%s", name, keyName); ctx.Config.IsSet(key) {
+		val = ctx.Config.Get(key)
+	}
+	if val == nil || val == "" {
+		val = ctx.Config.Get("formats._default." + keyName)
 	}
 	return Result{value: val}
 }

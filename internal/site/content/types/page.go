@@ -61,29 +61,11 @@ func (pages Pages) Filter(filter string) Pages {
 	return npages
 }
 
-func (pages Pages) Sort(key string) {
-	sort.SliceStable(pages, utils.Sort(key, func(k string, i int, j int) int {
-		switch k {
-		case "-":
-			// "-"表示默认排序, 避免时间相同时排序混乱
-			return 0 - strings.Compare(pages[i].Title, pages[j].Title)
-		case "title":
-			return strings.Compare(pages[i].Title, pages[j].Title)
-		case "date":
-			return utils.Compare(pages[i].Date, pages[j].Date)
-		case "modified":
-			return utils.Compare(pages[i].Modified, pages[j].Modified)
-		default:
-			return utils.Compare(pages[i].FrontMatter.Get(k), pages[j].FrontMatter.Get(k))
-		}
-	}))
-}
-
 func (pages Pages) OrderBy(key string) Pages {
 	newPs := make(Pages, len(pages))
 	copy(newPs, pages)
 
-	newPs.Sort(key)
+	SortPages(pages, key)
 	return newPs
 }
 
@@ -170,4 +152,22 @@ func FilterExpr(filter string) func(*Page) bool {
 		result, err := tpl.Execute(args)
 		return err == nil && result == "True"
 	}
+}
+
+func SortPages(pages Pages, key string) {
+	sort.SliceStable(pages, utils.Sort(key, func(k string, i int, j int) int {
+		switch k {
+		case "-":
+			// "-"表示默认排序, 避免时间相同时排序混乱
+			return 0 - strings.Compare(pages[i].Title, pages[j].Title)
+		case "title":
+			return strings.Compare(pages[i].Title, pages[j].Title)
+		case "date":
+			return utils.Compare(pages[i].Date, pages[j].Date)
+		case "modified":
+			return utils.Compare(pages[i].Modified, pages[j].Modified)
+		default:
+			return utils.Compare(pages[i].FrontMatter.Get(k), pages[j].FrontMatter.Get(k))
+		}
+	}))
 }

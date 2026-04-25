@@ -16,6 +16,10 @@ type (
 	Pages = types.Pages
 )
 
+var (
+	SortPages = types.SortPages
+)
+
 func (d *ContentParser) IsPage(fullpath string) bool {
 	return d.parserExts[filepath.Ext(fullpath)]
 }
@@ -29,7 +33,7 @@ func (d *ContentParser) IsPageBundle(fullpath string) ([]string, bool) {
 }
 
 func (d *ContentParser) ParsePage(fullpath string, isBundle bool) (*types.Page, error) {
-	node, err := d.parseNode(fullpath)
+	node, err := d.parseNode(fullpath, true)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +70,7 @@ func (d *ContentParser) ParsePage(fullpath string, isBundle bool) (*types.Page, 
 
 	// 添加附属资源
 	if isBundle {
-		assets, err := d.parsePageAssets(fullpath, page)
+		assets, err := d.ParsePageAssets(fullpath, page)
 		if err != nil {
 			return nil, err
 		}
@@ -78,25 +82,18 @@ func (d *ContentParser) ParsePage(fullpath string, isBundle bool) (*types.Page, 
 		sectionPath = stdpath.Dir(sectionPath)
 	}
 
-	customPath := page.FrontMatter.GetString("path")
-	if customPath == "" {
-		// 查找顺序: posts/linux/emacs -> posts/linux -> posts -> _default
-		customPath = lctx.GetSectionConfig(sectionPath, "page_path").String()
-	}
+	customPath := d.resolvePagePath(page, page.FrontMatter.GetString("path"))
 
-	page.Path = lctx.GetRelURL(d.parsePagePath(page, customPath))
+	page.Path = lctx.GetRelURL(customPath)
 	page.Permalink = lctx.GetURL(page.Path)
 	page.Formats = d.ParsePageFormats(page)
 	return page, nil
 }
 
-func (d *ContentParser) parsePageAssets(fullpath string, page *types.Page) (types.Assets, error) {
+func (d *ContentParser) ParsePageAssets(fullpath string, page *types.Page) (types.Assets, error) {
 	lctx := d.ctx.For(page.Lang)
 
 	customPath := page.FrontMatter.GetString("asset_path")
-	if customPath == "" {
-		customPath = lctx.GetSectionConfig(stdpath.Dir(page.File.Dir), "page_asset_path").String()
-	}
 	if customPath == "" || customPath == "none" {
 		return nil, nil
 	}
@@ -114,16 +111,7 @@ func (d *ContentParser) parsePageAssets(fullpath string, page *types.Page) (type
 		asset := &types.Asset{
 			File: path,
 		}
-		outputPath := utils.StringReplace(customPath, map[string]string{
-			"{date:%Y}":   page.Date.Format("2006"),
-			"{date:%m}":   page.Date.Format("01"),
-			"{date:%d}":   page.Date.Format("02"),
-			"{date:%H}":   page.Date.Format("15"),
-			"{path}":      page.File.Dir,
-			"{path:slug}": lctx.GetPathSlug(page.File.Dir),
-			"{slug}":      page.Slug,
-			"{filename}":  page.File.BaseName,
-		})
+		outputPath := d.resolvePagePath(page, customPath)
 
 		asset.Path = lctx.GetRelURL(outputPath)
 		asset.Permalink = lctx.GetURL(asset.Path)
@@ -155,8 +143,7 @@ func (d *ContentParser) ParsePageFormats(page *types.Page) types.Formats {
 			Name:     name,
 			Template: customTemplate,
 		}
-
-		outputPath := d.parsePagePath(page, customPath)
+		outputPath := d.resolvePagePath(page, customPath)
 
 		format.Path = lctx.GetRelURL(outputPath)
 		format.Permalink = lctx.GetRelURL(format.Path)
@@ -166,16 +153,18 @@ func (d *ContentParser) ParsePageFormats(page *types.Page) types.Formats {
 	return formats
 }
 
-func (d *ContentParser) parsePagePath(page *types.Page, customPath string) string {
+func (d *ContentParser) resolvePagePath(page *types.Page, customPath string) string {
 	lctx := d.ctx.For(page.Lang)
+
 	return utils.StringReplace(customPath, map[string]string{
+		"{lang}":      page.Lang,
 		"{date:%Y}":   page.Date.Format("2006"),
 		"{date:%m}":   page.Date.Format("01"),
 		"{date:%d}":   page.Date.Format("02"),
 		"{date:%H}":   page.Date.Format("15"),
-		"{slug}":      page.Slug,
-		"{filename}":  page.File.BaseName,
 		"{path}":      page.File.Dir,
 		"{path:slug}": lctx.GetPathSlug(page.File.Dir),
+		"{slug}":      page.Slug,
+		"{title}":     page.Title,
 	})
 }
