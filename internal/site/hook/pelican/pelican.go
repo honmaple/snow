@@ -1,20 +1,20 @@
 package pelican
 
 import (
-	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/site/hook"
 	"github.com/honmaple/snow/internal/utils"
 )
 
 type (
-	pelican struct {
+	PelicanHook struct {
 		hook.HookImpl
 		ctx *core.Context
 	}
 )
 
-func (h *pelican) HandlePage(page *content.Page) *content.Page {
+func (h *PelicanHook) HandlePage(page *content.Page) *content.Page {
 	if v := page.FrontMatter.Get("tag"); v != nil {
 		page.FrontMatter.Set("tag", nil)
 		page.FrontMatter.Set("tags", utils.SplitTrim(v.(string), ","))
@@ -36,7 +36,7 @@ func (h *pelican) HandlePage(page *content.Page) *content.Page {
 }
 
 func New(ctx *core.Context) (hook.Hook, error) {
-	return &pelican{ctx: ctx}, nil
+	return &PelicanHook{ctx: ctx}, nil
 }
 
 func init() {

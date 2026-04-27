@@ -133,10 +133,7 @@ func (conf *Config) LoadFromFile(file string) error {
 		}
 	}
 
-	conf.Reset(siteConfig, false)
-	conf.Reset(pageConfig, false)
-	conf.Reset(sectionConfig, false)
-	conf.Reset(taxonomyConfig, false)
+	conf.MergeFromDefaultConfig(false)
 	return nil
 }
 
@@ -170,6 +167,14 @@ func (conf *Config) MergeFromThemeConfig(theme fs.FS) error {
 		conf.Set(k, v.Get(k))
 	}
 	return nil
+}
+
+func (conf *Config) MergeFromDefaultConfig(force bool) {
+	conf.Reset(siteConfig, force)
+	conf.Reset(pageConfig, force)
+	conf.Reset(sectionConfig, force)
+	conf.Reset(taxonomyConfig, force)
+	conf.Reset(hookConfig, force)
 }
 
 var (
@@ -208,6 +213,11 @@ var (
 		"taxonomies._default.term.sort_by":       "date desc",
 		"taxonomies._default.term.paginate_path": "{name}{number}{extension}",
 	}
+	hookConfig = map[string]any{
+		"hooks.assets.enabled":    true,
+		"hooks.encrypt.enabled":   true,
+		"hooks.shortcode.enabled": true,
+	}
 )
 
 func NewConfig() *Config {
@@ -220,9 +230,6 @@ func DefaultConfig() *Config {
 	conf := &Config{
 		Viper: viper.New(),
 	}
-	conf.Reset(siteConfig, true)
-	conf.Reset(pageConfig, true)
-	conf.Reset(sectionConfig, true)
-	conf.Reset(taxonomyConfig, true)
+	conf.MergeFromDefaultConfig(true)
 	return conf
 }

@@ -88,36 +88,20 @@ func (r *registry) parser(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value,
 	return pongo2.AsValue(conf.AllSettings()), nil
 }
 
-func (r *registry) absURL(vars map[string]any) pongo2.FilterFunction {
-	lang := r.ctx.GetDefaultLanguage()
-	if v, ok := vars["current_lang"]; ok {
-		lang = v.(string)
+func (r *registry) absURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err error) {
+	v, ok := in.Interface().(string)
+	if !ok {
+		return nil, newError("absURL", errors.New("filter input argument must be of type 'string'"))
 	}
-
-	lctx := r.ctx.For(lang)
-	return func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err error) {
-		v, ok := in.Interface().(string)
-		if !ok {
-			return nil, newError("absURL", errors.New("filter input argument must be of type 'string'"))
-		}
-		return pongo2.AsValue(lctx.GetURL(v)), nil
-	}
+	return pongo2.AsValue(r.ctx.GetURL(v)), nil
 }
 
-func (r *registry) relURL(vars map[string]any) pongo2.FilterFunction {
-	lang := r.ctx.GetDefaultLanguage()
-	if v, ok := vars["current_lang"]; ok {
-		lang = v.(string)
+func (r *registry) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err error) {
+	v, ok := in.Interface().(string)
+	if !ok {
+		return nil, newError("relURL", errors.New("filter input argument must be of type 'string'"))
 	}
-
-	lctx := r.ctx.For(lang)
-	return func(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err error) {
-		v, ok := in.Interface().(string)
-		if !ok {
-			return nil, newError("relURL", errors.New("filter input argument must be of type 'string'"))
-		}
-		return pongo2.AsValue(lctx.GetRelURL(v)), nil
-	}
+	return pongo2.AsValue(r.ctx.GetRelURL(v)), nil
 }
 
 func (r *registry) config(vars map[string]any) any {
@@ -138,10 +122,10 @@ func init() {
 		set.RegisterFilter("parser", r.parser)
 		set.RegisterFilter("slient", r.slient)
 		set.RegisterFilter("jsonify", r.jsonify)
+		set.RegisterFilter("absURL", r.absURL)
+		set.RegisterFilter("relURL", r.relURL)
 
 		set.RegisterTransient("config", r.config)
-		set.RegisterTransientFilter("absURL", r.absURL)
-		set.RegisterTransientFilter("relURL", r.relURL)
 		return nil
 	})
 }

@@ -2,20 +2,22 @@ package filter
 
 import (
 	"github.com/flosch/pongo2/v7"
-	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/site/hook"
 )
 
 type (
-	filterHook struct {
+	Option struct {
+	}
+	FilterHook struct {
 		hook.HookImpl
 		ctx *core.Context
 	}
 )
 
-func (h *filterHook) HandlePage(page *content.Page) *content.Page {
-	expr := h.ctx.Config.GetString("hooks.filter.page_filter")
+func (h *FilterHook) HandlePage(page *content.Page) *content.Page {
+	expr := h.ctx.Config.GetString("hooks.filter.option.page_filter")
 	if expr == "" {
 		return page
 	}
@@ -34,7 +36,7 @@ func (h *filterHook) HandlePage(page *content.Page) *content.Page {
 }
 
 func New(ctx *core.Context) (hook.Hook, error) {
-	return &filterHook{
+	return &FilterHook{
 		ctx: ctx,
 	}, nil
 }

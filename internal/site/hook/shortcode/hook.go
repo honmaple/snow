@@ -4,28 +4,33 @@ import (
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/site/hook"
+	"github.com/honmaple/snow/internal/site/template"
 )
 
-type shortcodeHook struct {
+type ShortcodeHook struct {
 	hook.HookImpl
-	ctx       *core.Context
-	shortcode *shortcode
+	sc  *Shortcode
+	ctx *core.Context
 }
 
-func (h *shortcodeHook) HandlePage(page *content.Page) *content.Page {
-	page.Summary = h.shortcode.Render(page, page.Summary)
-	page.Content = h.shortcode.Render(page, page.Content)
+func (h *ShortcodeHook) HandlePage(page *content.Page) *content.Page {
+	page.Summary = h.sc.Render(page, page.Summary)
+	page.Content = h.sc.Render(page, page.Content)
 	return page
 }
 
-func New(ctx *core.Context) (hook.Hook, error) {
-	sc, err := NewShortcode(ctx)
+func (h *ShortcodeHook) HandleInit(set template.TemplateSet) error {
+	sc, err := NewShortcode(h.ctx, set)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	h := &shortcodeHook{
-		ctx:       ctx,
-		shortcode: sc,
+	h.sc = sc
+	return nil
+}
+
+func New(ctx *core.Context) (hook.Hook, error) {
+	h := &ShortcodeHook{
+		ctx: ctx,
 	}
 	return h, nil
 }

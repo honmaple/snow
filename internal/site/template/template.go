@@ -33,14 +33,10 @@ func (t *templateImpl) Execute(vars map[string]any) (string, error) {
 	nvars := make(map[string]any)
 	maps.Copy(nvars, vars)
 
-	for k, fn := range t.tplset.funcs {
-		if _, ok := nvars[k]; !ok {
-			nvars[k] = fn(vars)
+	for name, fn := range t.tplset.funcs {
+		if _, ok := nvars[name]; !ok {
+			nvars[name] = fn(vars)
 		}
-	}
-
-	for k, fn := range t.tplset.filters {
-		t.tplset.ReplaceFilter(k, fn(vars))
 	}
 	return t.tpl.Execute(nvars)
 }
@@ -63,7 +59,6 @@ type (
 		RegisterTag(string, pongo2.TagParser) error
 		RegisterFilter(string, pongo2.FilterFunction) error
 		RegisterTransient(string, TransientFunction) error
-		RegisterTransientFilter(string, TransientFilterFunction) error
 	}
 	templateSet struct {
 		ctx     *core.Context
@@ -71,8 +66,7 @@ type (
 		tplset  *pongo2.TemplateSet
 		loaders []pongo2.TemplateLoader
 		// 依赖于ctx上下文的变量
-		funcs   map[string]TransientFunction
-		filters map[string]TransientFilterFunction
+		funcs map[string]TransientFunction
 	}
 	TransientFunction       func(map[string]any) any
 	TransientFilterFunction func(map[string]any) pongo2.FilterFunction
@@ -90,7 +84,7 @@ func (set *templateSet) Lookup(names ...string) Template {
 		// 模版未找到不输出日志, 编译模版有问题才输出
 		template, err := set.fromFile(name)
 		if err != nil {
-			set.ctx.Logger.Warnf("parse template %s err: %s", name, err.Error())
+			// set.ctx.Logger.Warnf("parse template %s err: %s", name, err.Error())
 			continue
 		}
 		if template == nil {
@@ -158,23 +152,9 @@ func (set *templateSet) RegisterFilter(name string, fn pongo2.FilterFunction) er
 	return set.tplset.RegisterFilter(name, fn)
 }
 
-func (set *templateSet) ReplaceFilter(name string, fn pongo2.FilterFunction) error {
-	if set.tplset.FilterExists(name) {
-		return set.tplset.ReplaceFilter(name, fn)
-	}
-	return set.tplset.RegisterFilter(name, fn)
-}
-
 func (set *templateSet) RegisterTransient(name string, fn TransientFunction) error {
 	if _, ok := set.funcs[name]; !ok {
 		set.funcs[name] = fn
-	}
-	return nil
-}
-
-func (set *templateSet) RegisterTransientFilter(name string, fn TransientFilterFunction) error {
-	if _, ok := set.filters[name]; !ok {
-		set.filters[name] = fn
 	}
 	return nil
 }
@@ -202,7 +182,6 @@ func NewSet(ctx *core.Context) (TemplateSet, error) {
 		tplset:  tplset,
 		loaders: loaders,
 		funcs:   make(map[string]TransientFunction),
-		filters: make(map[string]TransientFilterFunction),
 	}
 	for _, fc := range factories {
 		if err := fc(ctx, set); err != nil {

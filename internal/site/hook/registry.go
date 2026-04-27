@@ -5,8 +5,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/honmaple/snow/internal/site/content"
+	"encoding/json"
 	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/site/content"
+	"github.com/honmaple/snow/internal/site/template"
 )
 
 type Registry struct {
@@ -25,6 +27,15 @@ func (r *Registry) AfterBuild() error {
 func (r *Registry) BeforeBuild() error {
 	for _, hook := range r.hooks {
 		if err := hook.BeforeBuild(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Registry) HandleInit(set template.TemplateSet) error {
+	for _, hook := range r.hooks {
+		if err := hook.HandleInit(set); err != nil {
 			return err
 		}
 	}
@@ -92,21 +103,21 @@ func (r *Registry) HandleTaxonomies(results content.Taxonomies) content.Taxonomi
 }
 
 func New(ctx *core.Context) (*Registry, error) {
-	names := ctx.Config.GetStringSlice("registered_hooks")
-	if len(names) == 0 {
-		names = make([]string, 0)
-		for name := range ctx.Config.GetStringMap("hooks") {
-			names = append(names, name)
+	names := make([]string, 0)
+	for name := range ctx.Config.GetStringMap("hooks") {
+		if !ctx.Config.GetBool(fmt.Sprintf("hooks.%s.enabled", name)) {
+			continue
 		}
-		sort.SliceStable(names, func(i, j int) bool {
-			wi := ctx.Config.GetInt("hooks." + names[i] + ".weight")
-			wj := ctx.Config.GetInt("hooks." + names[j] + ".weight")
-			if wi == wj {
-				return names[i] > names[j]
-			}
-			return wi > wj
-		})
+		names = append(names, name)
 	}
+	sort.SliceStable(names, func(i, j int) bool {
+		wi := ctx.Config.GetInt("hooks." + names[i] + ".weight")
+		wj := ctx.Config.GetInt("hooks." + names[j] + ".weight")
+		if wi == wj {
+			return names[i] > names[j]
+		}
+		return wi > wj
+	})
 
 	hooks := make([]Hook, 0)
 	for _, name := range names {
@@ -115,6 +126,7 @@ func New(ctx *core.Context) (*Registry, error) {
 			ctx.Logger.Warnf("The hook %s not found", name)
 			continue
 		}
+
 		h, err := factory(ctx)
 		if err != nil {
 			return nil, err
@@ -124,8 +136,15 @@ func New(ctx *core.Context) (*Registry, error) {
 	return &Registry{hooks: hooks}, nil
 }
 
-func NewEmpty() *Registry {
-	return &Registry{}
+func Unmarshal(data any, value any) error {
+	if data == nil {
+		return nil
+	}
+	bs, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(bs, value)
 }
 
 func Print() {

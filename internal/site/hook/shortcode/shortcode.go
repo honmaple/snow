@@ -14,13 +14,13 @@ import (
 	"golang.org/x/net/html"
 )
 
-type shortcode struct {
+type Shortcode struct {
 	ctx    *core.Context
 	tpls   map[string]template.Template
 	tplset template.TemplateSet
 }
 
-func (h *shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Tokenizer, startToken *html.Token, counter map[string]int) bool {
+func (h *Shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Tokenizer, startToken *html.Token, counter map[string]int) bool {
 	for {
 		next := z.Next()
 		if next == html.ErrorToken {
@@ -89,7 +89,7 @@ func (h *shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Toke
 	}
 }
 
-func (h *shortcode) Render(page *content.Page, content string) string {
+func (h *Shortcode) Render(page *content.Page, content string) string {
 	if len(h.tpls) == 0 {
 		return content
 	}
@@ -103,7 +103,7 @@ func (h *shortcode) Render(page *content.Page, content string) string {
 	return w.String()
 }
 
-func (h *shortcode) Load() error {
+func (h *Shortcode) Load() error {
 	exts := []string{".tpl", ".html"}
 
 	sub1, _ := fs.Sub(os.DirFS("."), "templates")
@@ -161,16 +161,12 @@ func (h *shortcode) Load() error {
 	return nil
 }
 
-func NewShortcode(ctx *core.Context) (*shortcode, error) {
-	h := &shortcode{
-		ctx:  ctx,
-		tpls: make(map[string]template.Template),
+func NewShortcode(ctx *core.Context, tplset template.TemplateSet) (*Shortcode, error) {
+	h := &Shortcode{
+		ctx:    ctx,
+		tpls:   make(map[string]template.Template),
+		tplset: tplset,
 	}
-	tplset, err := template.NewSet(ctx)
-	if err != nil {
-		return nil, err
-	}
-	h.tplset = tplset
 
 	if err := h.Load(); err != nil {
 		return nil, err

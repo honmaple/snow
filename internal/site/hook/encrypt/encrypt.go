@@ -9,35 +9,37 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/site/hook"
+	"github.com/honmaple/snow/internal/site/template"
 )
 
-type Encrypt struct {
-	hook.HookImpl
-	ctx *core.Context
-	iv  []byte
-}
+type (
+	Option struct {
+		Password    string `json:"password"`
+		Description string `json:"description"`
+	}
+	EncryptHook struct {
+		hook.HookImpl
+		ctx *core.Context
+		opt Option
+		iv  []byte
+	}
+)
 
-func (e *Encrypt) deriveKey(key string) []byte {
-	// return pbkdf2.Key([]byte(key), e.salt, 1000, 32, sha256.New)
+func (e *EncryptHook) deriveKey(key string) []byte {
 	has := md5.Sum([]byte(key))
 	return []byte(fmt.Sprintf("%x", has))
-
-	// h := md5.New()
-	// h.Write([]byte(key))
-	// return h.Sum(nil)
-	// return hex.En(h.Sum(nil))
 }
 
-func (e *Encrypt) pkcs7Padding(data []byte, blockSize int) []byte {
+func (e *EncryptHook) pkcs7Padding(data []byte, blockSize int) []byte {
 	padding := blockSize - len(data)%blockSize
 	padText := bytes.Repeat([]byte{byte(padding)}, padding)
 	return append(data, padText...)
 }
 
-func (e *Encrypt) encrypt(plaintext, key string) (string, error) {
+func (e *EncryptHook) encrypt(plaintext, key string) (string, error) {
 	data := []byte(plaintext)
 	ekey := e.deriveKey(key)
 
@@ -58,12 +60,12 @@ func (e *Encrypt) encrypt(plaintext, key string) (string, error) {
 	return base64.StdEncoding.EncodeToString(encrypted), nil
 }
 
-func (e *Encrypt) HandlePage(page *content.Page) *content.Page {
+func (e *EncryptHook) HandlePage(page *content.Page) *content.Page {
 	password := page.FrontMatter.GetString("password")
 	if password == "" {
 		return page
 	}
-	description := e.ctx.Config.GetString("hooks.encrypt.desc")
+	description := e.opt.Description
 	if v := strings.SplitN(password, ",", 2); len(v) == 2 {
 		password = v[0]
 		description = v[1]
@@ -76,9 +78,20 @@ func (e *Encrypt) HandlePage(page *content.Page) *content.Page {
 	return page
 }
 
+func (e *EncryptHook) HandleTemplate(set template.TemplateSet) error {
+	set.RegisterFilter("encrypt", e.encryptFilter)
+	return nil
+}
+
 func New(ctx *core.Context) (hook.Hook, error) {
-	e := &Encrypt{
+	var opt Option
+	if err := hook.Unmarshal(ctx.Config.Get("hooks.encrypt.option"), &opt); err != nil {
+		return nil, err
+	}
+
+	e := &EncryptHook{
 		ctx: ctx,
+		opt: opt,
 	}
 	return e, nil
 }

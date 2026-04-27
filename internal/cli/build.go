@@ -3,7 +3,6 @@ package cli
 import (
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site"
-	"github.com/honmaple/snow/internal/site/hook"
 	"github.com/honmaple/snow/internal/utils"
 	"github.com/honmaple/snow/internal/writer"
 	"github.com/urfave/cli/v2"
@@ -80,12 +79,7 @@ func buildAction(clx *cli.Context) error {
 }
 
 func build(ctx *core.Context, w core.Writer) error {
-	h, err := hook.New(ctx)
-	if err != nil {
-		return err
-	}
-
-	site, err := site.New(ctx, site.WithHook(h), site.WithWriter(w))
+	site, err := site.New(ctx, site.WithWriter(w))
 	if err != nil {
 		return err
 	}

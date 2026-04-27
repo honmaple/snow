@@ -24,13 +24,17 @@ type (
 
 func (site *Site) Build() error {
 	ctx := context.TODO()
+
+	if err := site.hook.BeforeBuild(); err != nil {
+		return err
+	}
 	// if err := site.buildStatic(ctx); err != nil {
 	//	return err
 	// }
 	if err := site.buildContent(ctx); err != nil {
 		return err
 	}
-	return nil
+	return site.hook.AfterBuild()
 }
 
 func (site *Site) Load() error {
@@ -65,7 +69,11 @@ func New(ctx *core.Context, opts ...SiteOption) (*Site, error) {
 		opt(site)
 	}
 	if site.hook == nil {
-		site.hook = hook.HookImpl{}
+		h, err := hook.New(ctx)
+		if err != nil {
+			return nil, err
+		}
+		site.hook = h
 	}
 	if site.writer == nil {
 		return nil, errors.New("writer is required")
@@ -76,6 +84,10 @@ func New(ctx *core.Context, opts ...SiteOption) (*Site, error) {
 			return nil, err
 		}
 		site.tplset = tplset
+	}
+
+	if err := site.hook.HandleInit(site.tplset); err != nil {
+		return nil, err
 	}
 	return site, nil
 }

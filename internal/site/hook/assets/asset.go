@@ -2,13 +2,10 @@ package assets
 
 import (
 	"bytes"
-	"crypto/md5"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/bep/golibsass/libsass"
 	"github.com/honmaple/snow/internal/core"
@@ -139,62 +136,4 @@ func (n *Asset) Execute(ctx *core.Context) error {
 	//	return "", err
 	// }
 	return nil
-}
-
-// 资源收集器，先收集再写入
-type AssetsCollector struct {
-	hash     sync.Map
-	assets   []*Asset
-	assetMap map[string]bool
-}
-
-func (c *AssetsCollector) getHash(ctx *core.Context, file string, w io.Writer) error {
-	src, err := ctx.Theme.Open(file)
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-
-	if _, err := io.Copy(w, src); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *AssetsCollector) GetHash(ctx *core.Context, asset *Asset) (string, error) {
-	h := md5.New()
-	for _, file := range asset.Files {
-		matchedFiles, err := fs.Glob(ctx.Theme, file)
-		if err != nil {
-			return "", err
-		}
-		for _, matchedFile := range matchedFiles {
-			if err := c.getHash(ctx, matchedFile, h); err != nil {
-				return "", err
-			}
-		}
-	}
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
-}
-
-func (c *AssetsCollector) Collect(ctx *core.Context, asset *Asset) (string, error) {
-	if _, ok := c.assetMap[asset.Output]; !ok {
-		c.assets = append(c.assets, asset)
-		c.assetMap[asset.Output] = true
-	}
-	return "", nil
-}
-
-func (c *AssetsCollector) Build() error {
-	for _, asset := range c.assets {
-		fmt.Println(asset)
-	}
-	return nil
-}
-
-func NewAssetsCollector(ctx *core.Context) *AssetsCollector {
-	return &AssetsCollector{
-		assets:   make([]*Asset, 0),
-		assetMap: make(map[string]bool),
-	}
 }

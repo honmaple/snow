@@ -13,9 +13,11 @@ import (
 
 	_ "github.com/honmaple/snow/internal/site/template/i18n"
 
+	_ "github.com/honmaple/snow/internal/site/hook/assets"
 	_ "github.com/honmaple/snow/internal/site/hook/encrypt"
 	_ "github.com/honmaple/snow/internal/site/hook/filter"
 	_ "github.com/honmaple/snow/internal/site/hook/pelican"
+	_ "github.com/honmaple/snow/internal/site/hook/rewrite"
 	_ "github.com/honmaple/snow/internal/site/hook/shortcode"
 )
 
