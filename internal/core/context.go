@@ -99,7 +99,7 @@ func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 		return nil, err
 	}
 
-	defaultLanguage := conf.GetString("site.language")
+	defaultLanguage := ctx.GetDefaultLanguage()
 	if defaultLanguage == "" {
 		defaultLanguage = "en"
 	}
@@ -113,7 +113,7 @@ func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 		}
 		lctx.Config.MergeConfigMap(conf.AllSettings())
 		lctx.Config.MergeConfigMap(conf.GetStringMap("languages." + lang))
-		lctx.Config.Set("site.language", lang)
+		lctx.Config.Set("language", lang)
 
 		ctx.OtherLanguages[lang] = lctx
 	}

@@ -84,7 +84,7 @@ func (set *templateSet) Lookup(names ...string) Template {
 		// 模版未找到不输出日志, 编译模版有问题才输出
 		template, err := set.fromFile(name)
 		if err != nil {
-			// set.ctx.Logger.Warnf("parse template %s err: %s", name, err.Error())
+			set.ctx.Logger.Warnf("parse template %s err: %s", name, err.Error())
 			continue
 		}
 		if template == nil {

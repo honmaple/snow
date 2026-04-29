@@ -4,7 +4,7 @@
     <meta charset="UTF-8"/>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}{{ config.site.title }}{% if config.site.subtitle %} · {{ config.site.subtitle }}{% endif %}{%endblock%}</title>
+    <title>{% block title %}{{ config.title }}{% if config.description %} · {{ config.description }}{% endif %}{%endblock%}</title>
     {% block css %}
       <style>
        html, body {
@@ -86,9 +86,9 @@
     <div class="wrap">
       <div class="main">
         <div class="header">
-          <h1>{{ config.site.title }}</h1>
-          {% if config.site.subtitle %}
-            <span style="margin-left: 2rem;">{{ config.site.subtitle }}</span>
+          <h1>{{ config.title }}</h1>
+          {% if config.description %}
+            <span style="margin-left: 2rem;">{{ config.description }}</span>
           {% endif %}
         </div>
         <div class="menu">
@@ -101,7 +101,7 @@
       </div>
     </div>
     <div class="footer">
-      © {% now "2006" %} {% if config.site.author %}{{ config.site.author }}{% endif %}
+      © {% now "2006" %} {% if config.author %}{{ config.author }}{% endif %}
     </div>
   </body>
 </html>

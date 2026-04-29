@@ -42,19 +42,19 @@ func initAction(clx *cli.Context) error {
 		},
 		&PromptString{
 			Usage:       "> What will be the title of this web site? ",
-			Value:       c.GetString("site.title"),
+			Value:       c.GetString("title"),
 			Required:    true,
 			Destination: &title,
 		},
 		&PromptString{
 			Usage:       "> Who will be the author of this web site? ",
-			Value:       c.GetString("site.author"),
+			Value:       c.GetString("author"),
 			Required:    true,
 			Destination: &author,
 		},
 		&PromptString{
 			Usage:       "> What is your URL prefix? (no trailing slash) ",
-			Value:       c.GetString("site.url"),
+			Value:       c.GetString("base_url"),
 			Required:    true,
 			Destination: &url,
 		},
@@ -100,8 +100,8 @@ tags: [linux,emacs,snow]
 	}
 
 	c.SetConfigFile(filepath.Join(name, "config.yaml"))
-	c.Set("site.title", title)
-	c.Set("site.author", author)
+	c.Set("title", title)
+	c.Set("author", author)
 	c.Set("mode.publish", map[string]any{
 		"site": map[string]any{"url": url},
 	})

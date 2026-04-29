@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
   <channel>
-    <title>{{ config.site.title }}
+    <title>{{ config.title }}
       {%- if term %} - {{ term.Name }}
       {%- elif section.Title %} - {{ section.Title }}
       {%- endif -%}
@@ -12,9 +12,9 @@
       {{ config.site.url | safe }}
     {%- endif -%}
         </link>
-        <description>{{ config.site.subtitle }}</description>
+        <description>{{ config.description }}</description>
         <generator>Snow</generator>
-        <language>{{ current_lang | default:config.site.language }}</language>
+        <language>{{ current_lang | default:config.language }}</language>
         <atom:link href="{{ current_url }}" rel="self" type="application/rss+xml"/>
         {%- if pages | length > 0 %}
           <lastBuildDate>{{ pages.First().Modified | default:pages.First().Date | date:"Mon, 02 Jan 2006 15:04:05 -0700" }}</lastBuildDate>
@@ -26,8 +26,8 @@
             <author>
               {%- if page.Meta.Get("authors") -%}
                 {{ page.Meta.Get("authors")[0] }}
-              {%- elif config.site.author -%}
-                {{ config.site.author }}
+              {%- elif config.author -%}
+                {{ config.author }}
               {%- else -%}
                 Unknown
               {%- endif -%}

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="{{ current_lang | default:config.site.language }}">
-  <title>{{ config.site.title }}
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="{{ current_lang | default:config.language }}">
+  <title>{{ config.title }}
     {%- if term %} - {{ term.Name }}
     {%- elif section.Title %}{%- if section.Title != "index" %} - {{ section.Title }}{%- endif -%}
     {%- endif -%}
   </title>
-  {%- if config.site.subtitle %}
-    <subtitle>{{ config.site.subtitle }}</subtitle>
+  {%- if config.description %}
+    <subtitle>{{ config.description }}</subtitle>
   {%- endif %}
   <link href="{{ current_url }}" rel="self" type="application/atom+xml"/>
   <link href="
@@ -22,7 +22,7 @@
   {%- endif %}
   <id>{{ config.site.url }}</id>
   {%- for page in pages|slice:":10" %}
-    <entry xml:lang="{{ page.Lang | default:config.site.language }}">
+    <entry xml:lang="{{ page.Lang | default:config.language }}">
       <title>{{ page.Title }}</title>
       <link href="{{ page.Permalink }}" rel="alternate"></link>
       <published>{{ page.Date | date:"Mon, 02 Jan 2006 15:04:05 -0700" }}</published>
@@ -31,8 +31,8 @@
         <name>
           {%- if page.Meta.Get("authors") -%}
             {{ page.Meta.Get("authors")[0] }}
-          {%- elif config.site.author -%}
-            {{ config.site.author }}
+          {%- elif config.author -%}
+            {{ config.author }}
           {%- else -%}
             Unknown
           {%- endif -%}

@@ -12,12 +12,13 @@ import (
 
 type (
 	Site struct {
-		ctx           *core.Context
-		hook          hook.Hook
-		store         *Store
-		writer        core.Writer
-		tplset        template.TemplateSet
-		contentParser *content.ContentParser
+		ctx             *core.Context
+		hook            hook.Hook
+		store           *Store
+		writer          core.Writer
+		tplset          template.TemplateSet
+		contentParser   *content.ContentParser
+		contentRenderer *content.ContentRenderer
 	}
 	SiteOption func(*Site)
 )
@@ -28,9 +29,9 @@ func (site *Site) Build() error {
 	if err := site.hook.BeforeBuild(); err != nil {
 		return err
 	}
-	// if err := site.buildStatic(ctx); err != nil {
-	//	return err
-	// }
+	if err := site.buildStatic(ctx); err != nil {
+		return err
+	}
 	if err := site.buildContent(ctx); err != nil {
 		return err
 	}
@@ -62,9 +63,6 @@ func New(ctx *core.Context, opts ...SiteOption) (*Site, error) {
 	site := &Site{
 		ctx: ctx,
 	}
-	site.store = NewStore()
-	site.contentParser = content.NewContentParser(ctx)
-
 	for _, opt := range opts {
 		opt(site)
 	}
@@ -85,9 +83,12 @@ func New(ctx *core.Context, opts ...SiteOption) (*Site, error) {
 		}
 		site.tplset = tplset
 	}
-
 	if err := site.hook.HandleInit(site.tplset); err != nil {
 		return nil, err
 	}
+
+	site.store = NewStore()
+	site.contentParser = content.NewContentParser(ctx)
+	site.contentRenderer = content.NewRenderer(ctx, site.store, site.tplset, site.writer)
 	return site, nil
 }

@@ -15,7 +15,7 @@ type LocaleContext struct {
 }
 
 func (ctx *LocaleContext) GetDefaultLanguage() string {
-	return ctx.Config.GetString("site.language")
+	return ctx.Config.GetString("language")
 }
 
 func (ctx *LocaleContext) GetThemeDir() string {
@@ -66,7 +66,7 @@ func (ctx *LocaleContext) GetURL(path string) string {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	return ctx.Config.GetString("site.url") + path
+	return ctx.Config.GetString("base_url") + path
 }
 
 func (ctx *LocaleContext) GetRelURL(path string) string {

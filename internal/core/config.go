@@ -179,11 +179,11 @@ func (conf *Config) MergeFromDefaultConfig(force bool) {
 
 var (
 	siteConfig = map[string]any{
-		"site.url":                  "http://127.0.0.1:8000",
-		"site.title":                "snow",
-		"site.subtitle":             "snow is a static site generator.",
-		"site.author":               "honmaple",
-		"site.language":             "en",
+		"base_url":                  "http://127.0.0.1:8000",
+		"title":                     "snow",
+		"description":               "snow is a static site generator.",
+		"author":                    "honmaple",
+		"language":                  "en",
 		"theme_dir":                 "themes",
 		"static_dir":                "static",
 		"output_dir":                "output",

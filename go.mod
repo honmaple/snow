@@ -8,6 +8,7 @@ require (
 	github.com/expr-lang/expr v1.17.8
 	github.com/flosch/pongo2/v7 v7.0.0-alpha.1
 	github.com/fsnotify/fsnotify v1.5.4
+	github.com/go-resty/resty/v2 v2.17.2
 	github.com/gosimple/slug v1.13.1
 	github.com/honmaple/org-golang v0.0.0-20231114033037-6fde0a6c226d
 	github.com/panjf2000/ants/v2 v2.7.1
@@ -18,7 +19,7 @@ require (
 	github.com/stretchr/testify v1.8.3
 	github.com/tdewolff/minify/v2 v2.12.4
 	github.com/urfave/cli/v2 v2.3.0
-	golang.org/x/net v0.10.0
+	golang.org/x/net v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -42,7 +43,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/tdewolff/parse/v2 v2.6.4 // indirect
-	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

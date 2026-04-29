@@ -8,6 +8,7 @@ import (
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content/parser"
+	"github.com/honmaple/snow/internal/site/content/renderer"
 	"github.com/honmaple/snow/internal/site/content/types"
 )
 
@@ -18,6 +19,11 @@ type (
 		parserExts map[string]bool
 	}
 	ContentParserOption func(*ContentParser)
+	ContentRenderer     = renderer.Renderer
+)
+
+var (
+	NewRenderer = renderer.New
 )
 
 func (d *ContentParser) findIndexFiles(fullpath string, prefix string) []string {

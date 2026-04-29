@@ -1,32 +1,17 @@
-site:
-  url: "http://127.0.0.1:8000"
-  title: "snow"
-  language: "zh"
+base_url: "http://127.0.0.1:8000"
+title: "snow"
+language: "zh"
 
 mode.publish:
-  site:
-    url: "https://honmaple.me"
-  languages.en:
-    site.url: "http://honmaple.me/en"
-
-# languages.en:
-#   site:
-#     url: "http://127.0.0.1:8000/en"
-#   output_dir: "output/en"
+  base_url: "https://honmaple.me"
 
 sections:
   _default:
     path: ""
     templates: "posts.html"
-    page.template: "page.html"
   posts:
     path: "posts/index.html"
     paginate_path: ""
-    page.path: "articles/{date:%Y}/{date:%m}/{slug}.html"
-    page.template: "post.html"
-  pages:
-    page.path: "pages/{slug}.html"
-    page.hidden: true
 
 pages:
   _default:

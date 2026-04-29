@@ -85,7 +85,7 @@ func (h *AssetsHook) assetsTagParser(doc *pongo2.Parser, start *pongo2.Token, ar
 	}
 
 	// {% assets css %}
-	//   <link rel="stylesheet" href="{{ config.site.url }}/{{ asset_url }}">
+	//   <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
 	// {% endassets %}
 	if token := arguments.MatchType(pongo2.TokenString); token != nil {
 		node.name = token.Val
@@ -93,7 +93,7 @@ func (h *AssetsHook) assetsTagParser(doc *pongo2.Parser, start *pongo2.Token, ar
 	}
 
 	// {% assets files="css/style.scss" filters="libsass,cssmin" output="css/style.min.css" %}
-	//   <link rel="stylesheet" href="{{ config.site.url }}/{{ asset_url }}">
+	//   <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
 	// {% endassets %}
 	for arguments.Remaining() > 0 {
 		keyToken := arguments.MatchType(pongo2.TokenIdentifier)

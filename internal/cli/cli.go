@@ -11,6 +11,7 @@ import (
 	_ "github.com/honmaple/snow/internal/site/content/parser/markdown"
 	_ "github.com/honmaple/snow/internal/site/content/parser/orgmode"
 
+	_ "github.com/honmaple/snow/internal/site/template/data"
 	_ "github.com/honmaple/snow/internal/site/template/i18n"
 
 	_ "github.com/honmaple/snow/internal/site/hook/assets"
