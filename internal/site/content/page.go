@@ -8,16 +8,11 @@ import (
 	"time"
 
 	"github.com/honmaple/snow/internal/site/content/types"
-	"github.com/honmaple/snow/internal/utils"
 )
 
 type (
 	Page  = types.Page
 	Pages = types.Pages
-)
-
-var (
-	SortPages = types.SortPages
 )
 
 func (d *ContentParser) IsPage(fullpath string) bool {
@@ -42,6 +37,7 @@ func (d *ContentParser) ParsePage(fullpath string, isBundle bool) (*types.Page, 
 	page := &types.Page{
 		Node:     node,
 		Draft:    node.FrontMatter.GetBool("draft"),
+		Hidden:   node.FrontMatter.GetBool("hidden"),
 		Date:     node.FrontMatter.GetTime("date"),
 		Modified: node.FrontMatter.GetTime("modified"),
 		IsBundle: isBundle,
@@ -156,7 +152,7 @@ func (d *ContentParser) ParsePageFormats(page *types.Page) types.Formats {
 func (d *ContentParser) resolvePagePath(page *types.Page, customPath string) string {
 	lctx := d.ctx.For(page.Lang)
 
-	return utils.StringReplace(customPath, map[string]string{
+	vars := map[string]string{
 		"{lang}":      page.Lang,
 		"{date:%Y}":   page.Date.Format("2006"),
 		"{date:%m}":   page.Date.Format("01"),
@@ -166,5 +162,11 @@ func (d *ContentParser) resolvePagePath(page *types.Page, customPath string) str
 		"{path:slug}": lctx.GetPathSlug(page.File.Dir),
 		"{slug}":      page.Slug,
 		"{title}":     page.Title,
-	})
+	}
+	if page.Lang == d.ctx.GetDefaultLanguage() {
+		vars["{lang:optional}"] = ""
+	} else {
+		vars["{lang:optional}"] = page.Lang
+	}
+	return d.resolvePath(customPath, vars)
 }

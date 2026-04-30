@@ -4,7 +4,8 @@ import (
 	"context"
 	"io/fs"
 	"os"
-	"path/filepath"
+
+	"github.com/bmatcuk/doublestar/v4"
 )
 
 func (site *Site) isIgnoredStatic(path string, isDir bool) bool {
@@ -13,7 +14,7 @@ func (site *Site) isIgnoredStatic(path string, isDir bool) bool {
 		matchPath = matchPath + "/"
 	}
 	for _, pattern := range site.ctx.Config.GetStringSlice("ignored_static") {
-		matched, err := filepath.Match(pattern, matchPath)
+		matched, err := doublestar.Match(pattern, matchPath)
 		if err != nil {
 			site.ctx.Logger.Warnf("The pattern %s match %s err: %s", pattern, path, err)
 			continue

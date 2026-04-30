@@ -77,7 +77,7 @@ func (conf *Config) SetOutput(output string) {
 }
 
 func (conf *Config) SetMode(mode string) {
-	key := fmt.Sprintf("mode.%s", mode)
+	key := fmt.Sprintf("modes.%s", mode)
 	if !conf.IsSet(key) {
 		fmt.Printf("The mode %s not found", mode)
 		return
@@ -217,6 +217,10 @@ var (
 		"hooks.assets.enabled":    true,
 		"hooks.encrypt.enabled":   true,
 		"hooks.shortcode.enabled": true,
+
+		// 先encrypt再shortcode
+		"hooks.encrypt.weight":   2,
+		"hooks.shortcode.weight": 1,
 	}
 )
 

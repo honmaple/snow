@@ -57,7 +57,6 @@ func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer, result 
 			if err := cf.ReadConfig(&b); err != nil {
 				return err
 			}
-			// 不要直接使用meta反序列化数据, 否则子元素map类型也会是page.Meta
 			result.FrontMatter = cf.AllSettings()
 			isFormat = false
 			continue
@@ -133,7 +132,7 @@ func init() {
 	})
 
 	template.Register("markdownParser", func(ctx *core.Context, set template.TemplateSet) error {
-		set.RegisterFilter("org", markdownFilter(ctx))
+		set.RegisterFilter("markdown", markdownFilter(ctx))
 		return nil
 	})
 }

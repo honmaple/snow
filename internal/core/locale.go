@@ -14,7 +14,7 @@ type LocaleContext struct {
 	Config *Config
 }
 
-func (ctx *LocaleContext) GetDefaultLanguage() string {
+func (ctx *LocaleContext) GetLanguage() string {
 	return ctx.Config.GetString("language")
 }
 
@@ -28,6 +28,10 @@ func (ctx *LocaleContext) GetStaticDir() string {
 
 func (ctx *LocaleContext) GetContentDir() string {
 	return ctx.Config.GetString("content_dir")
+}
+
+func (ctx *LocaleContext) GetOutputDir() string {
+	return ctx.Config.GetString("output_dir")
 }
 
 func (ctx *LocaleContext) GetHighlightStyle() string {

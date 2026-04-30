@@ -64,16 +64,18 @@ func buildAction(clx *cli.Context) error {
 		return err
 	}
 
-	if out := conf.GetString("output_dir"); out != "" && clx.Bool("clean") {
+	if out := ctx.GetOutputDir(); out != "" && clx.Bool("clean") {
 		ctx.Logger.Infoln("Removing the contents of", out)
-		return utils.RemoveDir(out)
+		if err := utils.RemoveDir(out); err != nil {
+			return err
+		}
 	}
 
 	var w core.Writer
 	if clx.Bool("dry-run") {
 		w = writer.NewDebugWriter(ctx)
 	} else {
-		w = writer.NewDebugWriter(ctx)
+		w = writer.NewDiskWriter(ctx)
 	}
 	return build(ctx, w)
 }

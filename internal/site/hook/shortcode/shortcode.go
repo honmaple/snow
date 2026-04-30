@@ -72,7 +72,7 @@ func (h *Shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Toke
 					vars["body"] = buf.String()
 				}
 
-				result, err := tpl.ExecuteRaw(vars)
+				result, err := tpl.Execute(vars)
 				if err != nil {
 					w.WriteString("")
 				} else {
@@ -119,13 +119,8 @@ func (h *Shortcode) Load() error {
 			continue
 		}
 		for _, file := range files {
-			name := file.Name()
-
-			if !file.IsDir() && !slices.Contains(exts, stdpath.Ext(name)) {
-				continue
-			}
-
-			basename := strings.TrimSuffix(name, stdpath.Ext(name))
+			filename := file.Name()
+			basename := strings.TrimSuffix(filename, stdpath.Ext(filename))
 			if _, ok := h.tpls[basename]; ok {
 				continue
 			}
@@ -133,25 +128,24 @@ func (h *Shortcode) Load() error {
 			tplFiles := make([]string, 0)
 			if file.IsDir() {
 				for _, ext := range exts {
-					tplFiles = append(tplFiles, stdpath.Join("shortcodes", name, "index"+ext))
+					tplFiles = append(tplFiles, stdpath.Join("shortcodes", filename, "index"+ext))
 				}
 			} else {
-				tplFiles = []string{
-					stdpath.Join("shortcodes", name),
+				if slices.Contains(exts, stdpath.Ext(filename)) {
+					tplFiles = []string{
+						stdpath.Join("shortcodes", filename),
+					}
 				}
 			}
 
 			for _, tplFile := range tplFiles {
-				if _, err := fs.Stat(subFS, tplFile); err != nil {
-					continue
-				}
-
 				buf, err := fs.ReadFile(subFS, tplFile)
 				if err != nil {
 					continue
 				}
 				tpl, err := h.tplset.FromBytes(buf)
 				if err != nil {
+					h.ctx.Logger.Warnf("compile tpl %s err: %s", tplFile, err.Error())
 					continue
 				}
 				h.tpls[basename] = tpl

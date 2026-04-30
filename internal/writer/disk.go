@@ -18,9 +18,9 @@ func (w *DiskWriter) Write(ctx context.Context, file string, r io.Reader) error 
 	if file == "" {
 		return nil
 	}
-	output := filepath.Join(w.ctx.Config.GetString("output_dir"), filepath.FromSlash(file))
+	output := filepath.Join(w.ctx.GetOutputDir(), filepath.FromSlash(file))
 
-	w.ctx.Logger.Debugln("Writing", output)
+	// w.ctx.Logger.Debugln("Writing", output)
 	if dir := filepath.Dir(output); !utils.FileExists(output) {
 		os.MkdirAll(dir, 0755)
 	}

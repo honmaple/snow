@@ -9,6 +9,7 @@ import (
 
 type Store struct {
 	pages         map[string]*Set[*types.Page]
+	hiddenPages   map[string]*Set[*types.Page]
 	sections      map[string]*Set[*types.Section]
 	taxonomies    map[string]*Set[*types.Taxonomy]
 	taxonomyTerms map[string]*Set[*types.TaxonomyTerm]
@@ -16,6 +17,7 @@ type Store struct {
 
 func (d *Store) Reset() {
 	d.pages = make(map[string]*Set[*types.Page])
+	d.hiddenPages = make(map[string]*Set[*types.Page])
 	d.sections = make(map[string]*Set[*types.Section])
 	d.taxonomies = make(map[string]*Set[*types.Taxonomy])
 	d.taxonomyTerms = make(map[string]*Set[*types.TaxonomyTerm])
@@ -60,6 +62,14 @@ func (d *Store) AllPages() map[string]types.Pages {
 		results[lang] = set.List()
 	}
 	return results
+}
+
+func (d *Store) HiddenPages(lang string) types.Pages {
+	set, ok := d.hiddenPages[lang]
+	if !ok {
+		return nil
+	}
+	return set.List()
 }
 
 func (d *Store) Pages(lang string) types.Pages {
@@ -160,6 +170,16 @@ func (d *Store) insertSection(section *types.Section) {
 }
 
 func (d *Store) insertPage(page *types.Page) {
+	if page.Hidden {
+		set, ok := d.hiddenPages[page.Lang]
+		if !ok {
+			set = newSet[*types.Page]()
+			d.hiddenPages[page.Lang] = set
+		}
+		set.Add(page.File.Path, page)
+		return
+	}
+
 	set, ok := d.pages[page.Lang]
 	if !ok {
 		set = newSet[*types.Page]()

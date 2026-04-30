@@ -16,7 +16,6 @@ type (
 	Template interface {
 		Name() string
 		Execute(map[string]any) (string, error)
-		ExecuteRaw(map[string]any) (string, error)
 	}
 	templateImpl struct {
 		n      string
@@ -38,13 +37,6 @@ func (t *templateImpl) Execute(vars map[string]any) (string, error) {
 			nvars[name] = fn(vars)
 		}
 	}
-	return t.tpl.Execute(nvars)
-}
-
-func (t *templateImpl) ExecuteRaw(vars map[string]any) (string, error) {
-	nvars := make(map[string]any)
-	maps.Copy(nvars, vars)
-
 	return t.tpl.Execute(nvars)
 }
 

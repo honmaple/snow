@@ -92,9 +92,9 @@
           {% endif %}
         </div>
         <div class="menu">
-          <div><a href="{{ config.site.url }}/posts/index.html">Index</a></div>
+          <div><a href="{{ config.base_url }}/posts/index.html">Index</a></div>
           {% for taxonomy in taxonomies %}
-            <div><a href="{{ config.site.url }}/{{ taxonomy.Name }}/index.html">{{ taxonomy.Name }}</a></div>
+            <div><a href="{{ config.base_url }}/{{ taxonomy.Name }}/index.html">{{ taxonomy.Name }}</a></div>
           {% endfor %}
         </div>
         {% block content %}{% endblock %}

@@ -17,6 +17,7 @@ type (
 		GetSection(string, string) *types.Section
 		GetSectionURL(string, string) string
 
+		HiddenPages(string) types.Pages
 		Pages(string) types.Pages
 		GetPage(string, string) *types.Page
 		GetPageURL(string, string) string
@@ -52,18 +53,20 @@ func (r *Renderer) RenderTemplate(path string, tpl template.Template, vars map[s
 	}
 	lctx := r.ctx.For(lang)
 
+	store := &LocaleStore{lang: lang, store: r.store}
 	commonVars := map[string]any{
-		"pages":                 r.store.Pages(lang),
-		"sections":              r.store.Sections(lang),
-		"taxonomies":            r.store.Taxonomies(lang),
-		"get_page":              r.store.GetPage,
-		"get_page_url":          r.store.GetPageURL,
-		"get_section":           r.store.GetSection,
-		"get_section_url":       r.store.GetSectionURL,
-		"get_taxonomy":          r.store.GetTaxonomy,
-		"get_taxonomy_url":      r.store.GetTaxonomyURL,
-		"get_taxonomy_term":     r.store.GetTaxonomyTerm,
-		"get_taxonomy_term_url": r.store.GetTaxonomyTermURL,
+		"pages":                 store.Pages(),
+		"hidden_pages":          store.Pages(),
+		"sections":              store.Sections(),
+		"taxonomies":            store.Taxonomies(),
+		"get_page":              store.GetPage,
+		"get_page_url":          store.GetPageURL,
+		"get_section":           store.GetSection,
+		"get_section_url":       store.GetSectionURL,
+		"get_taxonomy":          store.GetTaxonomy,
+		"get_taxonomy_url":      store.GetTaxonomyURL,
+		"get_taxonomy_term":     store.GetTaxonomyTerm,
+		"get_taxonomy_term_url": store.GetTaxonomyTermURL,
 		"current_url":           lctx.GetURL(path),
 		"current_path":          path,
 		"current_lang":          lang,
@@ -176,8 +179,8 @@ func (r *Renderer) RenderSection(section *types.Section) error {
 
 	if tpl := r.tplset.Lookup(lookups...); tpl != nil {
 		for _, por := range section.Pages.
-			Filter(
-				section.FrontMatter.GetString("paginate_filter"),
+			FilterBy(
+				section.FrontMatter.GetString("paginate_filter_by"),
 			).
 			Paginate(
 				section.FrontMatter.GetInt("paginate"),
@@ -255,8 +258,8 @@ func (r *Renderer) RenderTaxonomyTerm(term *types.TaxonomyTerm) error {
 	}
 	if tpl := r.tplset.Lookup(lookups...); tpl != nil {
 		for _, por := range term.Pages.
-			Filter(
-				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate_filter").String(),
+			FilterBy(
+				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate_filter_by").String(),
 			).
 			Paginate(
 				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate").Int(),

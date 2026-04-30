@@ -28,6 +28,10 @@ func (ctx *Context) GetAllLanguages() []string {
 	return langs
 }
 
+func (ctx *Context) GetDefaultLanguage() string {
+	return ctx.Config.GetString("language")
+}
+
 func (ctx *Context) VerifyLanguage(lang string) bool {
 	if lang == "" {
 		return false

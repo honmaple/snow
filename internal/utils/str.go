@@ -39,15 +39,6 @@ func StringReplace(s string, vars map[string]string) string {
 	return r.Replace(s)
 }
 
-func CheckInList(f []string, v string) bool {
-	for i := range f {
-		if f[i] == v {
-			return true
-		}
-	}
-	return false
-}
-
 func dropQuote(str string) string {
 	str = strings.TrimSpace(str)
 	if len(str) < 2 || str[0] != '"' || str[len(str)-1] != '"' {

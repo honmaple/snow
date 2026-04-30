@@ -13,14 +13,14 @@
               {%- if section -%}
               {{ section.Permalink }}
               {%- else -%}
-              {{ config.site.url }}
+              {{ config.base_url }}
               {%- endif -%}
               "/>
   <generator uri="https://github.com/honmaple/snow">Snow</generator>
   {%- if pages | length > 0 %}
     <updated>{{ pages.First().Modified | default:pages.First().Date | date:"Mon, 02 Jan 2006 15:04:05 -0700" }}</updated>
   {%- endif %}
-  <id>{{ config.site.url }}</id>
+  <id>{{ config.base_url }}</id>
   {%- for page in pages|slice:":10" %}
     <entry xml:lang="{{ page.Lang | default:config.language }}">
       <title>{{ page.Title }}</title>
@@ -29,8 +29,8 @@
       <updated>{{ page.Modified | default:page.Date | date:"Mon, 02 Jan 2006 15:04:05 -0700" }}</updated>
       <author>
         <name>
-          {%- if page.Meta.Get("authors") -%}
-            {{ page.Meta.Get("authors")[0] }}
+          {%- if page.FrontMatter.Get("authors") -%}
+            {{ page.FrontMatter.Get("authors")[0] }}
           {%- elif config.author -%}
             {{ config.author }}
           {%- else -%}
@@ -42,7 +42,7 @@
       <id>{{ page.Permalink }}</id>
       <summary type="html">{{ page.Summary }}</summary>
       <content type="html">{{ page.Content }}</content>
-      {%- for name in page.Meta.Get("categories") %}
+      {%- for name in page.FrontMatter.Get("categories") %}
         <category term="{{ name }}"></category>
       {%- endfor %}
     </entry>

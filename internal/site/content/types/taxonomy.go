@@ -19,6 +19,21 @@ type (
 	Taxonomies []*Taxonomy
 )
 
+func (ts Taxonomies) SortBy(key string) {
+	sort.SliceStable(ts, utils.Sort(key, func(k string, i int, j int) int {
+		switch k {
+		case "-":
+			return 0 - strings.Compare(ts[i].Name, ts[j].Name)
+		case "name":
+			return strings.Compare(ts[i].Name, ts[j].Name)
+		case "weigt":
+			return utils.Compare(ts[i].Weight, ts[j].Weight)
+		default:
+			return 0
+		}
+	}))
+}
+
 type (
 	TaxonomyTerm struct {
 		Name string
@@ -63,30 +78,7 @@ func (term *TaxonomyTerm) FindChild(name string) *TaxonomyTerm {
 	return nil
 }
 
-func (terms TaxonomyTerms) OrderBy(key string) TaxonomyTerms {
-	newTerms := make(TaxonomyTerms, len(terms))
-	copy(newTerms, terms)
-
-	SortTaxonomyTerms(newTerms, key)
-	return newTerms
-}
-
-func SortTaxonomies(taxonomies Taxonomies, key string) {
-	sort.SliceStable(taxonomies, utils.Sort(key, func(k string, i int, j int) int {
-		switch k {
-		case "-":
-			return 0 - strings.Compare(taxonomies[i].Name, taxonomies[j].Name)
-		case "name":
-			return strings.Compare(taxonomies[i].Name, taxonomies[j].Name)
-		case "weigt":
-			return utils.Compare(taxonomies[i].Weight, taxonomies[j].Weight)
-		default:
-			return 0
-		}
-	}))
-}
-
-func SortTaxonomyTerms(terms TaxonomyTerms, key string) {
+func (terms TaxonomyTerms) SortBy(key string) {
 	sort.SliceStable(terms, utils.Sort(key, func(k string, i int, j int) int {
 		switch k {
 		case "-":
@@ -100,6 +92,14 @@ func SortTaxonomyTerms(terms TaxonomyTerms, key string) {
 		}
 	}))
 	for _, term := range terms {
-		SortTaxonomyTerms(term.Children, key)
+		term.Children.SortBy(key)
 	}
+}
+
+func (terms TaxonomyTerms) OrderBy(key string) TaxonomyTerms {
+	newTerms := make(TaxonomyTerms, len(terms))
+	copy(newTerms, terms)
+
+	newTerms.SortBy(key)
+	return newTerms
 }

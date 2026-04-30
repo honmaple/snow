@@ -308,7 +308,7 @@
      | page.Permalink       | 页面绝对链接         |
      | page.Summary         | 页面简介             |
      | page.Content         | 页面内容             |
-     | page.Meta.xxx        | 自定义的元数据       |
+     | page.FrontMatter.xxx        | 自定义的元数据       |
      | page.Prev            | 上一篇               |
      | page.Next            | 下一篇               |
      | page.HasPrev()       | 是否有上一篇         |
@@ -669,11 +669,11 @@
      #+end_src
      #+begin_src html
      {% assets files="css/style.scss" filters="libsass,cssmin" output="css/style.min.css" %}
-     <link rel="stylesheet" href="{{ config.site.url }}/{{ asset_url }}">
+     <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
      {% endassets %}
 
      {% assets css %}
-     <link rel="stylesheet" href="{{ config.site.url }}/{{ asset_url }}">
+     <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
      {% endassets %}
      #+end_src
 *** sofile

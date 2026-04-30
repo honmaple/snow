@@ -93,6 +93,8 @@ func (m *orgParser) Parse(r io.Reader) (*parser.Result, error) {
 
 	if summary.Len() > 0 {
 		result.Summary = m.HTML(summary.Bytes(), false)
+	} else {
+		result.Summary = m.ctx.GetSummary(m.HTML(content.Bytes(), false))
 	}
 	result.Content = m.HTML(content.Bytes(), true)
 	return result, nil

@@ -5,6 +5,7 @@ go 1.25
 require (
 	github.com/alecthomas/chroma v0.7.3
 	github.com/bep/golibsass v1.1.1
+	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/expr-lang/expr v1.17.8
 	github.com/flosch/pongo2/v7 v7.0.0-alpha.1
 	github.com/fsnotify/fsnotify v1.5.4

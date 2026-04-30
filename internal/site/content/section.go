@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/honmaple/snow/internal/site/content/types"
-	"github.com/honmaple/snow/internal/utils"
 )
 
 type (
@@ -114,11 +113,18 @@ func (d *ContentParser) ParseSectionFormats(section *types.Section) types.Format
 
 func (d *ContentParser) resolveSectionPath(section *types.Section, customPath string) string {
 	lctx := d.ctx.For(section.Lang)
-	return utils.StringReplace(customPath, map[string]string{
+
+	vars := map[string]string{
 		"{lang}":         section.Lang,
 		"{path}":         section.File.Dir,
 		"{path:slug}":    lctx.GetPathSlug(section.File.Dir),
 		"{section}":      section.Title,
 		"{section:slug}": section.Slug,
-	})
+	}
+	if section.Lang == d.ctx.GetDefaultLanguage() {
+		vars["{lang:optional}"] = ""
+	} else {
+		vars["{lang:optional}"] = section.Lang
+	}
+	return d.resolvePath(customPath, vars)
 }

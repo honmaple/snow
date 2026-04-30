@@ -37,12 +37,6 @@ var (
 			Usage:   "Enable debug mode",
 		},
 		&cli.StringFlag{
-			Name:    "filter",
-			Aliases: []string{"F"},
-			Value:   "",
-			Usage:   "Filter when build",
-		},
-		&cli.StringFlag{
 			Name:    "mode",
 			Aliases: []string{"m"},
 			Value:   "",
@@ -62,9 +56,6 @@ func commonAction(clx *cli.Context) error {
 	}
 	if mode := clx.String("mode"); mode != "" {
 		conf.SetMode(mode)
-	}
-	if filter := clx.String("filter"); filter != "" {
-		conf.Set("hooks.filter.page_filter", filter)
 	}
 	if output := clx.String("output"); output != "" {
 		conf.SetOutput(output)

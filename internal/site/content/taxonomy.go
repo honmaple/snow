@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/honmaple/snow/internal/site/content/types"
-	"github.com/honmaple/snow/internal/utils"
 	"github.com/spf13/viper"
 )
 
@@ -14,6 +13,14 @@ type (
 	TaxonomyTerm  = types.TaxonomyTerm
 	TaxonomyTerms = types.TaxonomyTerms
 )
+
+func (d *ContentParser) sortTaxonomyTermsPages(terms types.TaxonomyTerms, key string) {
+	for _, term := range terms {
+		term.Pages.SortBy(key)
+
+		d.sortTaxonomyTermsPages(term.Children, key)
+	}
+}
 
 func (d *ContentParser) ParseTaxonomies(pages types.Pages, lang string) types.Taxonomies {
 	lctx := d.ctx.For(lang)
@@ -28,17 +35,13 @@ func (d *ContentParser) ParseTaxonomies(pages types.Pages, lang string) types.Ta
 			Name: taxonomyName,
 		}
 		customPath := lctx.GetTaxonomyConfig(taxonomyName, "path").String()
-		outputPath := utils.StringReplace(customPath, map[string]string{
-			"{taxonomy}": taxonomy.Name,
-		})
-
-		taxonomy.Path = lctx.GetRelURL(outputPath)
+		taxonomy.Path = lctx.GetRelURL(d.resolveTaxonomyPath(taxonomy, customPath))
 		taxonomy.Permalink = lctx.GetURL(taxonomy.Path)
 		taxonomy.Terms = d.ParseTaxonomyTerms(taxonomy, pages, lang)
 
 		taxonomies = append(taxonomies, taxonomy)
 	}
-	types.SortTaxonomies(taxonomies, "weight desc")
+	taxonomies.SortBy("weight desc")
 	return taxonomies
 }
 
@@ -66,9 +69,14 @@ func (d *ContentParser) ParseTaxonomyTerms(taxonomy *types.Taxonomy, pages types
 
 	lctx := d.ctx.For(lang)
 
+	filter := types.FilterExpr(lctx.GetTaxonomyConfig(taxonomy.Name, "term.filter_by").String())
+
 	results := make(TaxonomyTerms, 0)
 	resultMap := make(map[string]*TaxonomyTerm)
 	for _, page := range pages {
+		if filter != nil && !filter(page) {
+			continue
+		}
 		for _, name := range groupf(page) {
 			var (
 				currentTerm *TaxonomyTerm
@@ -94,16 +102,11 @@ func (d *ContentParser) ParseTaxonomyTerms(taxonomy *types.Taxonomy, pages types
 						Children: make(TaxonomyTerms, 0),
 						Taxonomy: taxonomy,
 					}
+					term.Slug = lctx.GetSlug(part)
 
 					customPath := lctx.GetTaxonomyConfig(taxonomy.Name, "term.path").String()
-					outputPath := utils.StringReplace(customPath, map[string]string{
-						"{taxonomy}":  taxonomy.Name,
-						"{term}":      currentName,
-						"{term:slug}": lctx.GetPathSlug(currentName),
-					})
 
-					term.Slug = lctx.GetSlug(part)
-					term.Path = lctx.GetRelURL(outputPath)
+					term.Path = lctx.GetRelURL(d.resolveTaxonomyTermPath(term, customPath))
 					term.Permalink = lctx.GetURL(term.Path)
 					term.Formats = d.ParseTaxonomyTermFormats(term, page.Lang)
 
@@ -121,14 +124,16 @@ func (d *ContentParser) ParseTaxonomyTerms(taxonomy *types.Taxonomy, pages types
 			}
 		}
 	}
-	types.SortTaxonomyTerms(results, lctx.GetTaxonomyConfig(taxonomy.Name, "sort_by").String())
+	d.sortTaxonomyTermsPages(results, lctx.GetTaxonomyConfig(taxonomy.Name, "term.sort_by").String())
+
+	results.SortBy(lctx.GetTaxonomyConfig(taxonomy.Name, "sort_by").String())
 	return results
 }
 
 func (d *ContentParser) ParseTaxonomyTermFormats(term *types.TaxonomyTerm, lang string) types.Formats {
 	lctx := d.ctx.For(lang)
 
-	customFormats := lctx.GetTaxonomyConfig(term.Taxonomy.Name, "formats").StringMap()
+	customFormats := lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.formats").StringMap()
 
 	v := viper.New()
 	v.MergeConfigMap(customFormats)
@@ -148,16 +153,40 @@ func (d *ContentParser) ParseTaxonomyTermFormats(term *types.TaxonomyTerm, lang 
 			Name:     name,
 			Template: customTemplate,
 		}
-		outputPath := utils.StringReplace(customPath, map[string]string{
-			"{taxonomy}":  term.Taxonomy.Name,
-			"{term}":      term.Name,
-			"{term:slug}": term.Slug,
-		})
 
-		format.Path = lctx.GetRelURL(outputPath)
-		format.Permalink = lctx.GetRelURL(format.Path)
-
+		format.Path = lctx.GetRelURL(d.resolveTaxonomyTermPath(term, customPath))
+		format.Permalink = lctx.GetURL(format.Path)
 		formats = append(formats, format)
 	}
 	return formats
+}
+
+func (d *ContentParser) resolveTaxonomyPath(taxonomy *types.Taxonomy, customPath string) string {
+	vars := map[string]string{
+		"{lang}":     taxonomy.Lang,
+		"{taxonomy}": taxonomy.Name,
+	}
+	if taxonomy.Lang == d.ctx.GetDefaultLanguage() {
+		vars["{lang:optional}"] = ""
+	} else {
+		vars["{lang:optional}"] = taxonomy.Lang
+	}
+	return d.resolvePath(customPath, vars)
+}
+
+func (d *ContentParser) resolveTaxonomyTermPath(term *types.TaxonomyTerm, customPath string) string {
+	lctx := d.ctx.For(term.Taxonomy.Lang)
+
+	vars := map[string]string{
+		"{lang}":      term.Taxonomy.Lang,
+		"{taxonomy}":  term.Taxonomy.Name,
+		"{term}":      term.GetFullName(),
+		"{term:slug}": lctx.GetPathSlug(term.GetFullName()),
+	}
+	if term.Taxonomy.Lang == d.ctx.GetDefaultLanguage() {
+		vars["{lang:optional}"] = ""
+	} else {
+		vars["{lang:optional}"] = term.Taxonomy.Lang
+	}
+	return d.resolvePath(customPath, vars)
 }

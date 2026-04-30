@@ -4,12 +4,17 @@ import (
 	"os"
 	stdpath "path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content/parser"
 	"github.com/honmaple/snow/internal/site/content/renderer"
 	"github.com/honmaple/snow/internal/site/content/types"
+)
+
+var (
+	doubleSlashRe = regexp.MustCompile(`/{2,}`) // 匹配两个或更多的斜杠
 )
 
 type (
@@ -128,13 +133,26 @@ func (d *ContentParser) parseNode(fullpath string, isPage bool) (*types.Node, er
 		Title:       meta.GetString("title"),
 		Description: meta.GetString("desc"),
 		Content:     result.Content,
-		Summary:     meta.GetString("summary"),
+		Summary:     result.Summary,
 	}
 	lctx := d.ctx.For(lang)
 	if node.Summary == "" {
 		node.Summary = lctx.GetSummary(result.Content)
 	}
 	return node, nil
+}
+
+func (d *ContentParser) resolvePath(path string, vars map[string]string) string {
+	if vars == nil || path == "" {
+		return path
+	}
+	args := make([]string, 0)
+	for k, v := range vars {
+		args = append(args, k)
+		args = append(args, v)
+	}
+	r := strings.NewReplacer(args...)
+	return doubleSlashRe.ReplaceAllString(r.Replace(path), "/")
 }
 
 func WithParser(p parser.Parser) ContentParserOption {

@@ -14,6 +14,9 @@ type ShortcodeHook struct {
 }
 
 func (h *ShortcodeHook) HandlePage(page *content.Page) *content.Page {
+	if h.sc == nil {
+		return page
+	}
 	page.Summary = h.sc.Render(page, page.Summary)
 	page.Content = h.sc.Render(page, page.Content)
 	return page

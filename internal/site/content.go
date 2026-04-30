@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/honmaple/snow/internal/site/content"
+	"github.com/bmatcuk/doublestar/v4"
 )
 
 func (site *Site) isIgnoredContent(path string, isDir bool) bool {
@@ -22,7 +22,7 @@ func (site *Site) isIgnoredContent(path string, isDir bool) bool {
 		matchPath = matchPath + "/"
 	}
 	for _, pattern := range site.ctx.Config.GetStringSlice("ignored_content") {
-		matched, err := filepath.Match(pattern, matchPath)
+		matched, err := doublestar.Match(pattern, matchPath)
 		if err != nil {
 			site.ctx.Logger.Warnf("The pattern %s match %s err: %s", pattern, path, err)
 			continue
@@ -69,7 +69,10 @@ func (site *Site) loadContent() error {
 					if err != nil {
 						return err
 					}
-					site.store.insertPage(page)
+					page = site.hook.HandlePage(page)
+					if page != nil && !page.Draft {
+						site.store.insertPage(page)
+					}
 				}
 				return fs.SkipDir
 			}
@@ -99,7 +102,10 @@ func (site *Site) loadContent() error {
 		if err != nil {
 			return err
 		}
-		site.store.insertPage(page)
+		page = site.hook.HandlePage(page)
+		if page != nil && !page.Draft {
+			site.store.insertPage(page)
+		}
 		return nil
 	}
 
@@ -113,17 +119,14 @@ func (site *Site) loadContent() error {
 		})
 
 		for _, section := range sections {
-			content.SortPages(section.Pages, section.FrontMatter.GetString("sort_by"))
+			section.Pages.SortBy(section.FrontMatter.GetString("sort_by"))
 		}
 	}
 
 	for lang, pages := range site.store.AllPages() {
-		sort.SliceStable(pages, func(i, j int) bool {
-			return pages[i].Date.After(pages[j].Date)
-		})
+		pages.SortBy("date desc")
 
 		taxonomies := site.contentParser.ParseTaxonomies(pages, lang)
-
 		for _, taxonomy := range taxonomies {
 			for _, term := range taxonomy.Terms {
 				site.store.insertTaxonomyTerm(term)
@@ -145,6 +148,12 @@ func (site *Site) buildContent(ctx context.Context) error {
 		}
 
 		for _, page := range site.store.Pages(lang) {
+			if err := site.contentRenderer.RenderPage(page); err != nil {
+				site.ctx.Logger.Error(err.Error())
+			}
+		}
+
+		for _, page := range site.store.HiddenPages(lang) {
 			if err := site.contentRenderer.RenderPage(page); err != nil {
 				site.ctx.Logger.Error(err.Error())
 			}

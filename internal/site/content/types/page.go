@@ -3,6 +3,7 @@ package types
 import (
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/flosch/pongo2/v7"
@@ -15,6 +16,7 @@ type (
 
 		IsBundle  bool
 		Draft     bool
+		Hidden    bool
 		WordCount int64
 
 		Date     time.Time
@@ -46,7 +48,11 @@ func (pages Pages) Last() *Page {
 	return nil
 }
 
-func (pages Pages) Filter(filter string) Pages {
+func (pages Pages) Related() *RelatedPages {
+	return &RelatedPages{list: pages}
+}
+
+func (pages Pages) FilterBy(filter string) Pages {
 	if filter == "" {
 		return pages
 	}
@@ -61,11 +67,29 @@ func (pages Pages) Filter(filter string) Pages {
 	return npages
 }
 
+func (pages Pages) SortBy(key string) {
+	sort.SliceStable(pages, utils.Sort(key, func(k string, i int, j int) int {
+		switch k {
+		case "-":
+			// "-"表示默认排序, 避免时间相同时排序混乱
+			return 0 - strings.Compare(pages[i].Title, pages[j].Title)
+		case "title":
+			return strings.Compare(pages[i].Title, pages[j].Title)
+		case "date":
+			return utils.Compare(pages[i].Date, pages[j].Date)
+		case "modified":
+			return utils.Compare(pages[i].Modified, pages[j].Modified)
+		default:
+			return utils.Compare(pages[i].FrontMatter.Get(k), pages[j].FrontMatter.Get(k))
+		}
+	}))
+}
+
 func (pages Pages) OrderBy(key string) Pages {
 	newPs := make(Pages, len(pages))
 	copy(newPs, pages)
 
-	SortPages(pages, key)
+	newPs.SortBy(key)
 	return newPs
 }
 
@@ -154,20 +178,42 @@ func FilterExpr(filter string) func(*Page) bool {
 	}
 }
 
-func SortPages(pages Pages, key string) {
-	sort.SliceStable(pages, utils.Sort(key, func(k string, i int, j int) int {
-		switch k {
-		case "-":
-			// "-"表示默认排序, 避免时间相同时排序混乱
-			return 0 - strings.Compare(pages[i].Title, pages[j].Title)
-		case "title":
-			return strings.Compare(pages[i].Title, pages[j].Title)
-		case "date":
-			return utils.Compare(pages[i].Date, pages[j].Date)
-		case "modified":
-			return utils.Compare(pages[i].Modified, pages[j].Modified)
-		default:
-			return utils.Compare(pages[i].FrontMatter.Get(k), pages[j].FrontMatter.Get(k))
+type RelatedPages struct {
+	mu    sync.RWMutex
+	once  sync.Once
+	list  Pages
+	index map[*Page]int
+}
+
+func (r *RelatedPages) init() {
+	r.once.Do(func() {
+		r.index = make(map[*Page]int)
+		for i, page := range r.list {
+			r.index[page] = i
 		}
-	}))
+	})
+}
+
+func (r *RelatedPages) Prev(page *Page) *Page {
+	r.init()
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	idx, ok := r.index[page]
+	if !ok || idx == 0 {
+		return nil
+	}
+	return r.list[idx-1]
+}
+
+func (r *RelatedPages) Next(page *Page) *Page {
+	r.init()
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	idx, ok := r.index[page]
+	if !ok || idx == len(r.list)-1 {
+		return nil
+	}
+	return r.list[idx+1]
 }
