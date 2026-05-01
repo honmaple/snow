@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/honmaple/snow/internal/site/content"
 )
 
 func (site *Site) isIgnoredContent(path string, isDir bool) bool {
@@ -40,17 +41,20 @@ func (site *Site) loadContent() error {
 		return fmt.Errorf("The content dir is null")
 	}
 
+	pages := make(content.Pages, 0)
+	sections := make(content.Sections, 0)
+
 	walkDir := func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if path == contentDir {
-			sections, err := site.contentParser.ParseRootSection(path)
+			sections, err := site.contentProcessor.ParseRootSection(path)
 			if err != nil {
 				return err
 			}
 			for _, section := range sections {
-				site.store.insertSection(section)
+				sections = append(sections, section)
 			}
 			return nil
 		}
@@ -62,28 +66,25 @@ func (site *Site) loadContent() error {
 			return nil
 		}
 		if info.IsDir() {
-			indexFiles, ok := site.contentParser.IsPageBundle(path)
+			indexFiles, ok := site.contentProcessor.IsPageBundle(path)
 			if ok {
 				for _, file := range indexFiles {
-					page, err := site.contentParser.ParsePage(filepath.Join(path, file), true)
+					page, err := site.contentProcessor.ParsePage(filepath.Join(path, file), true)
 					if err != nil {
 						return err
 					}
-					page = site.hook.HandlePage(page)
-					if page != nil && !page.Draft {
-						site.store.insertPage(page)
-					}
+					pages = append(pages, page)
 				}
 				return fs.SkipDir
 			}
-			sectionFiles, ok := site.contentParser.IsSection(path)
+			sectionFiles, ok := site.contentProcessor.IsSection(path)
 			if len(sectionFiles) > 0 {
 				for _, file := range sectionFiles {
-					section, err := site.contentParser.ParseSection(filepath.Join(path, file))
+					section, err := site.contentProcessor.ParseSection(filepath.Join(path, file))
 					if err != nil {
 						return err
 					}
-					site.store.insertSection(section)
+					sections = append(sections, section)
 				}
 				return nil
 			}
@@ -94,23 +95,35 @@ func (site *Site) loadContent() error {
 			return nil
 		}
 
-		if !site.contentParser.IsPage(path) {
+		if !site.contentProcessor.IsPage(path) {
 			return nil
 		}
 
-		page, err := site.contentParser.ParsePage(path, false)
+		page, err := site.contentProcessor.ParsePage(path, false)
 		if err != nil {
 			return err
 		}
-		page = site.hook.HandlePage(page)
-		if page != nil && !page.Draft {
-			site.store.insertPage(page)
-		}
+		pages = append(pages, page)
 		return nil
 	}
 
 	if err := filepath.WalkDir(contentDir, walkDir); err != nil {
 		return err
+	}
+
+	for _, section := range sections {
+		section = site.hook.HandleSection(section)
+		if section == nil {
+			continue
+		}
+		site.store.insertSection(section)
+	}
+	for _, page := range pages {
+		page = site.hook.HandlePage(page)
+		if page == nil || (!site.option.IncludeDrafts && page.Draft) {
+			continue
+		}
+		site.store.insertPage(page)
 	}
 
 	for _, sections := range site.store.AllSections() {
@@ -126,7 +139,7 @@ func (site *Site) loadContent() error {
 	for lang, pages := range site.store.AllPages() {
 		pages.SortBy("date desc")
 
-		taxonomies := site.contentParser.ParseTaxonomies(pages, lang)
+		taxonomies := site.contentProcessor.ParseTaxonomies(pages, lang)
 		for _, taxonomy := range taxonomies {
 			for _, term := range taxonomy.Terms {
 				site.store.insertTaxonomyTerm(term)
@@ -141,26 +154,32 @@ func (site *Site) buildContent(ctx context.Context) error {
 	for _, lang := range site.ctx.GetAllLanguages() {
 		site.ctx.Logger.Debugf("write %s site", lang)
 
+		tplset := &ContentTemplateSet{
+			lang:        lang,
+			store:       site.store,
+			TemplateSet: site.tplset,
+		}
+
 		for _, section := range site.store.Sections(lang) {
-			if err := site.contentRenderer.RenderSection(section); err != nil {
+			if err := site.contentProcessor.RenderSection(section, tplset, site.writer); err != nil {
 				site.ctx.Logger.Error(err.Error())
 			}
 		}
 
 		for _, page := range site.store.Pages(lang) {
-			if err := site.contentRenderer.RenderPage(page); err != nil {
+			if err := site.contentProcessor.RenderPage(page, tplset, site.writer); err != nil {
 				site.ctx.Logger.Error(err.Error())
 			}
 		}
 
 		for _, page := range site.store.HiddenPages(lang) {
-			if err := site.contentRenderer.RenderPage(page); err != nil {
+			if err := site.contentProcessor.RenderPage(page, tplset, site.writer); err != nil {
 				site.ctx.Logger.Error(err.Error())
 			}
 		}
 
 		for _, taxonomy := range site.store.Taxonomies(lang) {
-			if err := site.contentRenderer.RenderTaxonomy(taxonomy); err != nil {
+			if err := site.contentProcessor.RenderTaxonomy(taxonomy, tplset, site.writer); err != nil {
 				site.ctx.Logger.Error(err.Error())
 			}
 		}

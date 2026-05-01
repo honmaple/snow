@@ -1,4 +1,4 @@
-package types
+package content
 
 import (
 	"path/filepath"

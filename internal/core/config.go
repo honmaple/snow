@@ -72,10 +72,6 @@ func (conf *Config) SetDebug() {
 	conf.Set("debug", true)
 }
 
-func (conf *Config) SetOutput(output string) {
-	conf.Set("output_dir", output)
-}
-
 func (conf *Config) SetMode(mode string) {
 	key := fmt.Sprintf("modes.%s", mode)
 	if !conf.IsSet(key) {

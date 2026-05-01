@@ -2,36 +2,87 @@ package site
 
 import (
 	"fmt"
+	"iter"
 	stdpath "path"
+	"sync"
 
-	"github.com/honmaple/snow/internal/site/content/types"
+	"github.com/honmaple/snow/internal/site/content"
 )
 
-type Store struct {
-	pages         map[string]*Set[*types.Page]
-	hiddenPages   map[string]*Set[*types.Page]
-	sections      map[string]*Set[*types.Section]
-	taxonomies    map[string]*Set[*types.Taxonomy]
-	taxonomyTerms map[string]*Set[*types.TaxonomyTerm]
+type Set[T any] struct {
+	mu    sync.RWMutex
+	list  []T
+	index map[string]T
 }
 
-func (d *Store) Reset() {
-	d.pages = make(map[string]*Set[*types.Page])
-	d.hiddenPages = make(map[string]*Set[*types.Page])
-	d.sections = make(map[string]*Set[*types.Section])
-	d.taxonomies = make(map[string]*Set[*types.Taxonomy])
-	d.taxonomyTerms = make(map[string]*Set[*types.TaxonomyTerm])
+func (s *Set[T]) List() []T {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.list
 }
 
-func (d *Store) AllSections() map[string]types.Sections {
-	results := make(map[string]types.Sections)
+func (s *Set[T]) Iter() iter.Seq2[int, T] {
+	return func(yield func(key int, value T) bool) {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		for k, v := range s.list {
+			if !yield(k, v) {
+				return
+			}
+		}
+	}
+}
+
+func (s *Set[T]) Add(key string, val T) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.index[key]; !ok {
+		s.list = append(s.list, val)
+		s.index[key] = val
+	}
+}
+
+func (s *Set[T]) Find(key string) (T, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	value, ok := s.index[key]
+	return value, ok
+}
+
+func newSet[T any]() *Set[T] {
+	return &Set[T]{
+		list:  make([]T, 0),
+		index: make(map[string]T),
+	}
+}
+
+type ContentStore struct {
+	pages         map[string]*Set[*content.Page]
+	hiddenPages   map[string]*Set[*content.Page]
+	sections      map[string]*Set[*content.Section]
+	taxonomies    map[string]*Set[*content.Taxonomy]
+	taxonomyTerms map[string]*Set[*content.TaxonomyTerm]
+}
+
+func (d *ContentStore) Reset() {
+	d.pages = make(map[string]*Set[*content.Page])
+	d.hiddenPages = make(map[string]*Set[*content.Page])
+	d.sections = make(map[string]*Set[*content.Section])
+	d.taxonomies = make(map[string]*Set[*content.Taxonomy])
+	d.taxonomyTerms = make(map[string]*Set[*content.TaxonomyTerm])
+}
+
+func (d *ContentStore) AllSections() map[string]content.Sections {
+	results := make(map[string]content.Sections)
 	for lang, set := range d.sections {
 		results[lang] = set.List()
 	}
 	return results
 }
 
-func (d *Store) Sections(lang string) types.Sections {
+func (d *ContentStore) Sections(lang string) content.Sections {
 	set, ok := d.sections[lang]
 	if !ok {
 		return nil
@@ -39,7 +90,7 @@ func (d *Store) Sections(lang string) types.Sections {
 	return set.List()
 }
 
-func (d *Store) GetSection(path string, lang string) *types.Section {
+func (d *ContentStore) GetSection(path string, lang string) *content.Section {
 	set, ok := d.sections[lang]
 	if !ok {
 		return nil
@@ -48,7 +99,7 @@ func (d *Store) GetSection(path string, lang string) *types.Section {
 	return result
 }
 
-func (d *Store) GetSectionURL(path string, lang string) string {
+func (d *ContentStore) GetSectionURL(path string, lang string) string {
 	result := d.GetSection(path, lang)
 	if result == nil {
 		return ""
@@ -56,15 +107,15 @@ func (d *Store) GetSectionURL(path string, lang string) string {
 	return result.Permalink
 }
 
-func (d *Store) AllPages() map[string]types.Pages {
-	results := make(map[string]types.Pages)
+func (d *ContentStore) AllPages() map[string]content.Pages {
+	results := make(map[string]content.Pages)
 	for lang, set := range d.pages {
 		results[lang] = set.List()
 	}
 	return results
 }
 
-func (d *Store) HiddenPages(lang string) types.Pages {
+func (d *ContentStore) HiddenPages(lang string) content.Pages {
 	set, ok := d.hiddenPages[lang]
 	if !ok {
 		return nil
@@ -72,7 +123,7 @@ func (d *Store) HiddenPages(lang string) types.Pages {
 	return set.List()
 }
 
-func (d *Store) Pages(lang string) types.Pages {
+func (d *ContentStore) Pages(lang string) content.Pages {
 	set, ok := d.pages[lang]
 	if !ok {
 		return nil
@@ -80,7 +131,7 @@ func (d *Store) Pages(lang string) types.Pages {
 	return set.List()
 }
 
-func (d *Store) GetPage(path string, lang string) *types.Page {
+func (d *ContentStore) GetPage(path string, lang string) *content.Page {
 	set, ok := d.pages[lang]
 	if !ok {
 		return nil
@@ -89,7 +140,7 @@ func (d *Store) GetPage(path string, lang string) *types.Page {
 	return result
 }
 
-func (d *Store) GetPageURL(path string, lang string) string {
+func (d *ContentStore) GetPageURL(path string, lang string) string {
 	result := d.GetPage(path, lang)
 	if result == nil {
 		return ""
@@ -97,15 +148,15 @@ func (d *Store) GetPageURL(path string, lang string) string {
 	return result.Permalink
 }
 
-func (d *Store) AllTaxonomies() map[string]types.Taxonomies {
-	results := make(map[string]types.Taxonomies)
+func (d *ContentStore) AllTaxonomies() map[string]content.Taxonomies {
+	results := make(map[string]content.Taxonomies)
 	for lang, set := range d.taxonomies {
 		results[lang] = set.List()
 	}
 	return results
 }
 
-func (d *Store) Taxonomies(lang string) types.Taxonomies {
+func (d *ContentStore) Taxonomies(lang string) content.Taxonomies {
 	set, ok := d.taxonomies[lang]
 	if !ok {
 		return nil
@@ -113,7 +164,7 @@ func (d *Store) Taxonomies(lang string) types.Taxonomies {
 	return set.List()
 }
 
-func (d *Store) GetTaxonomy(name string, lang string) *types.Taxonomy {
+func (d *ContentStore) GetTaxonomy(name string, lang string) *content.Taxonomy {
 	set, ok := d.taxonomies[lang]
 	if !ok {
 		return nil
@@ -122,7 +173,7 @@ func (d *Store) GetTaxonomy(name string, lang string) *types.Taxonomy {
 	return result
 }
 
-func (d *Store) GetTaxonomyURL(name string, lang string) string {
+func (d *ContentStore) GetTaxonomyURL(name string, lang string) string {
 	result := d.GetTaxonomy(name, lang)
 	if result == nil {
 		return ""
@@ -130,7 +181,7 @@ func (d *Store) GetTaxonomyURL(name string, lang string) string {
 	return result.Permalink
 }
 
-func (d *Store) GetTaxonomyTerms(name string, lang string) types.TaxonomyTerms {
+func (d *ContentStore) GetTaxonomyTerms(name string, lang string) content.TaxonomyTerms {
 	taxonomy := d.GetTaxonomy(name, lang)
 	if taxonomy == nil {
 		return nil
@@ -138,7 +189,7 @@ func (d *Store) GetTaxonomyTerms(name string, lang string) types.TaxonomyTerms {
 	return taxonomy.Terms
 }
 
-func (d *Store) GetTaxonomyTerm(taxonomyName string, name string, lang string) *types.TaxonomyTerm {
+func (d *ContentStore) GetTaxonomyTerm(taxonomyName string, name string, lang string) *content.TaxonomyTerm {
 	set, ok := d.taxonomyTerms[lang]
 	if !ok {
 		return nil
@@ -147,7 +198,7 @@ func (d *Store) GetTaxonomyTerm(taxonomyName string, name string, lang string) *
 	return result
 }
 
-func (d *Store) GetTaxonomyTermURL(taxonomyName string, name string, lang string) string {
+func (d *ContentStore) GetTaxonomyTermURL(taxonomyName string, name string, lang string) string {
 	result := d.GetTaxonomyTerm(taxonomyName, name, lang)
 	if result == nil {
 		return ""
@@ -155,10 +206,10 @@ func (d *Store) GetTaxonomyTermURL(taxonomyName string, name string, lang string
 	return result.Permalink
 }
 
-func (d *Store) insertSection(section *types.Section) {
+func (d *ContentStore) insertSection(section *content.Section) {
 	set, ok := d.sections[section.Lang]
 	if !ok {
-		set = newSet[*types.Section]()
+		set = newSet[*content.Section]()
 
 		d.sections[section.Lang] = set
 	}
@@ -169,11 +220,11 @@ func (d *Store) insertSection(section *types.Section) {
 	}
 }
 
-func (d *Store) insertPage(page *types.Page) {
+func (d *ContentStore) insertPage(page *content.Page) {
 	if page.Hidden {
 		set, ok := d.hiddenPages[page.Lang]
 		if !ok {
-			set = newSet[*types.Page]()
+			set = newSet[*content.Page]()
 			d.hiddenPages[page.Lang] = set
 		}
 		set.Add(page.File.Path, page)
@@ -182,7 +233,7 @@ func (d *Store) insertPage(page *types.Page) {
 
 	set, ok := d.pages[page.Lang]
 	if !ok {
-		set = newSet[*types.Page]()
+		set = newSet[*content.Page]()
 		d.pages[page.Lang] = set
 	}
 	set.Add(page.File.Path, page)
@@ -208,19 +259,19 @@ func (d *Store) insertPage(page *types.Page) {
 	}
 }
 
-func (d *Store) insertTaxonomy(taxonomy *types.Taxonomy) {
+func (d *ContentStore) insertTaxonomy(taxonomy *content.Taxonomy) {
 	set, ok := d.taxonomies[taxonomy.Lang]
 	if !ok {
-		set = newSet[*types.Taxonomy]()
+		set = newSet[*content.Taxonomy]()
 		d.taxonomies[taxonomy.Lang] = set
 	}
 	set.Add(taxonomy.Name, taxonomy)
 }
 
-func (d *Store) insertTaxonomyTerm(term *types.TaxonomyTerm) {
+func (d *ContentStore) insertTaxonomyTerm(term *content.TaxonomyTerm) {
 	set, ok := d.taxonomyTerms[term.Taxonomy.Lang]
 	if !ok {
-		set = newSet[*types.TaxonomyTerm]()
+		set = newSet[*content.TaxonomyTerm]()
 		d.taxonomyTerms[term.Taxonomy.Lang] = set
 	}
 	set.Add(fmt.Sprintf("%s:%s", term.Taxonomy.Name, term.GetFullName()), term)
@@ -230,8 +281,8 @@ func (d *Store) insertTaxonomyTerm(term *types.TaxonomyTerm) {
 	}
 }
 
-func NewStore() *Store {
-	store := &Store{}
+func NewContentStore() *ContentStore {
+	store := &ContentStore{}
 	store.Reset()
 	return store
 }

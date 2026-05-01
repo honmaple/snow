@@ -1,16 +1,13 @@
 package content
 
 import (
-	"os"
-	stdpath "path"
-	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content/parser"
-	"github.com/honmaple/snow/internal/site/content/renderer"
-	"github.com/honmaple/snow/internal/site/content/types"
+	"os"
+	"path/filepath"
 )
 
 var (
@@ -18,20 +15,28 @@ var (
 )
 
 type (
-	ContentParser struct {
+	Processor struct {
 		ctx        *core.Context
 		parser     parser.Parser
 		parserExts map[string]bool
 	}
-	ContentParserOption func(*ContentParser)
-	ContentRenderer     = renderer.Renderer
+	ProcessorOption func(*Processor)
 )
 
-var (
-	NewRenderer = renderer.New
-)
+func (d *Processor) resolvePath(path string, vars map[string]string) string {
+	if vars == nil || path == "" {
+		return path
+	}
+	args := make([]string, 0)
+	for k, v := range vars {
+		args = append(args, k)
+		args = append(args, v)
+	}
+	r := strings.NewReplacer(args...)
+	return doubleSlashRe.ReplaceAllString(r.Replace(path), "/")
+}
 
-func (d *ContentParser) findIndexFiles(fullpath string, prefix string) []string {
+func (d *Processor) findIndexFiles(fullpath string, prefix string) []string {
 	// 如果有多个扩展: index.md, index.org只返回第一个
 	allowedFiles := make(map[string]bool)
 	for _, ext := range d.parser.SupportedExtensions() {
@@ -62,107 +67,14 @@ func (d *ContentParser) findIndexFiles(fullpath string, prefix string) []string 
 	return results
 }
 
-func (d *ContentParser) parseFile(fullpath string) (*types.File, error) {
-	relPath, err := filepath.Rel(d.ctx.GetContentDir(), fullpath)
-	if err != nil {
-		return nil, &core.Error{
-			Op:   "parse file",
-			Err:  err,
-			Path: "relpath",
-		}
-	}
-	relPath = filepath.ToSlash(relPath)
-
-	ext := stdpath.Ext(relPath)
-	nameWithExt := stdpath.Base(relPath)
-	nameWithoutExt := strings.TrimSuffix(nameWithExt, ext)
-
-	dir := stdpath.Dir(relPath)
-	if dir == "." {
-		dir = ""
-	}
-	return &types.File{
-		Path:     relPath,
-		Dir:      dir,
-		Ext:      ext,
-		Name:     nameWithExt,
-		BaseName: nameWithoutExt,
-	}, nil
-}
-
-func (d *ContentParser) parseNode(fullpath string, isPage bool) (*types.Node, error) {
-	file, err := d.parseFile(fullpath)
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := d.parser.Parse(fullpath)
-	if err != nil {
-		return nil, err
-	}
-
-	meta := types.NewFrontMatter(result.FrontMatter)
-	// 合并配置
-	if isPage {
-		meta.MergeFrom(d.ctx.GetPageConfig(file.Dir))
-	} else {
-		meta.MergeFrom(d.ctx.GetSectionConfig(file.Dir))
-	}
-
-	lang := meta.GetString("lang")
-	if lang == "" {
-		langExt := stdpath.Ext(file.BaseName)
-		if langExt != "" {
-			lang = strings.TrimPrefix(langExt, ".")
-		}
-	}
-	if !d.ctx.VerifyLanguage(lang) {
-		lang = d.ctx.GetDefaultLanguage()
-	}
-
-	if ext := "." + lang; strings.HasSuffix(file.BaseName, ext) {
-		file.BaseName = strings.TrimSuffix(file.BaseName, ext)
-		file.LanguageName = lang
-	}
-
-	node := &types.Node{
-		FrontMatter: meta,
-		File:        file,
-		Lang:        lang,
-		Slug:        meta.GetString("slug"),
-		Title:       meta.GetString("title"),
-		Description: meta.GetString("desc"),
-		Content:     result.Content,
-		Summary:     result.Summary,
-	}
-	lctx := d.ctx.For(lang)
-	if node.Summary == "" {
-		node.Summary = lctx.GetSummary(result.Content)
-	}
-	return node, nil
-}
-
-func (d *ContentParser) resolvePath(path string, vars map[string]string) string {
-	if vars == nil || path == "" {
-		return path
-	}
-	args := make([]string, 0)
-	for k, v := range vars {
-		args = append(args, k)
-		args = append(args, v)
-	}
-	r := strings.NewReplacer(args...)
-	return doubleSlashRe.ReplaceAllString(r.Replace(path), "/")
-}
-
-func WithParser(p parser.Parser) ContentParserOption {
-	return func(d *ContentParser) {
+func WithParser(p parser.Parser) ProcessorOption {
+	return func(d *Processor) {
 		d.parser = p
 	}
 }
 
-func NewContentParser(ctx *core.Context, opts ...ContentParserOption) *ContentParser {
-	d := &ContentParser{
+func NewProcessor(ctx *core.Context, opts ...ProcessorOption) *Processor {
+	d := &Processor{
 		ctx: ctx,
 	}
 	for _, opt := range opts {

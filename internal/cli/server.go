@@ -6,6 +6,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/site"
 	"github.com/honmaple/snow/internal/writer"
 	"github.com/urfave/cli/v2"
 )
@@ -13,7 +14,7 @@ import (
 var (
 	serverCommand = &cli.Command{
 		Name:  "server",
-		Usage: "server local files",
+		Usage: "server site",
 		Flags: append([]cli.Flag{
 			&cli.StringFlag{
 				Name:    "listen",
@@ -42,7 +43,14 @@ func serverAction(clx *cli.Context) error {
 	}
 
 	w := writer.NewMemoryWriter(ctx)
-	if err := build(ctx, w); err != nil {
+
+	opts := []site.SiteOption{
+		site.WithWriter(w),
+		site.WithOption(&site.Option{
+			IncludeDrafts: clx.Bool("include-drafts"),
+		}),
+	}
+	if err := build(ctx, opts...); err != nil {
 		return err
 	}
 
@@ -80,7 +88,7 @@ func serverAction(clx *cli.Context) error {
 					if event.Op == fsnotify.Write {
 						ctx.Logger.Infoln("The", event.Name, "has been modified. Rebuilding...")
 						w.Reset()
-						if err := build(ctx, w); err != nil {
+						if err := build(ctx, opts...); err != nil {
 							ctx.Logger.Errorln("Build error", err.Error())
 						}
 					}

@@ -17,17 +17,10 @@ var (
 				Name:  "hooks",
 				Usage: "List all hooks",
 			},
-			// &cli.StringFlag{
-			//	Name:    "mode",
-			//	Aliases: []string{"m"},
-			//	Value:   "",
-			//	Usage:   "Build site with special mode",
-			// },
-			&cli.StringFlag{
-				Name:    "output",
-				Aliases: []string{"o"},
-				Value:   "output",
-				Usage:   "Build output content",
+			&cli.BoolFlag{
+				Name:    "dry-run",
+				Aliases: []string{"d"},
+				Usage:   "dry run",
 			},
 			&cli.BoolFlag{
 				Name:    "clean",
@@ -35,19 +28,11 @@ var (
 				Value:   false,
 				Usage:   "Clean output content",
 			},
-			// &cli.StringFlag{
-			//	Name:    "filter",
-			//	Aliases: []string{"F"},
-			//	Value:   "",
-			//	Usage:   "Filter when build",
-			// },
-			&cli.BoolFlag{
-				Name:  "drafts",
-				Usage: "Build with drafts",
-			},
-			&cli.BoolFlag{
-				Name:  "dry-run",
-				Usage: "dry run",
+			&cli.StringFlag{
+				Name:    "output-dir",
+				Aliases: []string{"o"},
+				Value:   "output",
+				Usage:   "Build output content",
 			},
 		}, flags...),
 		Action: buildAction,
@@ -57,6 +42,10 @@ var (
 func buildAction(clx *cli.Context) error {
 	if err := commonAction(clx); err != nil {
 		return err
+	}
+
+	if out := clx.String("output-dir"); out != "" {
+		conf.Set("output_dir", out)
 	}
 
 	ctx, err := core.NewContext(conf)
@@ -77,11 +66,15 @@ func buildAction(clx *cli.Context) error {
 	} else {
 		w = writer.NewDiskWriter(ctx)
 	}
-	return build(ctx, w)
+
+	siteOpt := &site.Option{
+		IncludeDrafts: clx.Bool("include-drafts"),
+	}
+	return build(ctx, site.WithWriter(w), site.WithOption(siteOpt))
 }
 
-func build(ctx *core.Context, w core.Writer) error {
-	site, err := site.New(ctx, site.WithWriter(w))
+func build(ctx *core.Context, opts ...site.SiteOption) error {
+	site, err := site.New(ctx, opts...)
 	if err != nil {
 		return err
 	}

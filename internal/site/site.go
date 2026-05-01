@@ -11,14 +11,17 @@ import (
 )
 
 type (
+	Option struct {
+		IncludeDrafts bool
+	}
 	Site struct {
-		ctx             *core.Context
-		hook            hook.Hook
-		store           *Store
-		writer          core.Writer
-		tplset          template.TemplateSet
-		contentParser   *content.ContentParser
-		contentRenderer *content.ContentRenderer
+		ctx              *core.Context
+		hook             hook.Hook
+		option           *Option
+		writer           core.Writer
+		store            *ContentStore
+		contentProcessor *content.Processor
+		tplset           template.TemplateSet
 	}
 	SiteOption func(*Site)
 )
@@ -47,6 +50,12 @@ func (site *Site) Reload() error {
 	return site.Load()
 }
 
+func WithOption(opt *Option) SiteOption {
+	return func(site *Site) {
+		site.option = opt
+	}
+}
+
 func WithHook(h hook.Hook) SiteOption {
 	return func(site *Site) {
 		site.hook = h
@@ -61,17 +70,17 @@ func WithWriter(w core.Writer) SiteOption {
 
 func New(ctx *core.Context, opts ...SiteOption) (*Site, error) {
 	site := &Site{
-		ctx: ctx,
+		ctx:              ctx,
+		store:            NewContentStore(),
+		contentProcessor: content.NewProcessor(ctx),
 	}
 	for _, opt := range opts {
 		opt(site)
 	}
-	if site.hook == nil {
-		h, err := hook.New(ctx)
-		if err != nil {
-			return nil, err
+	if site.option == nil {
+		site.option = &Option{
+			IncludeDrafts: true,
 		}
-		site.hook = h
 	}
 	if site.writer == nil {
 		return nil, errors.New("writer is required")
@@ -83,12 +92,15 @@ func New(ctx *core.Context, opts ...SiteOption) (*Site, error) {
 		}
 		site.tplset = tplset
 	}
+	if site.hook == nil {
+		h, err := hook.New(ctx)
+		if err != nil {
+			return nil, err
+		}
+		site.hook = h
+	}
 	if err := site.hook.HandleInit(site.tplset); err != nil {
 		return nil, err
 	}
-
-	site.store = NewStore()
-	site.contentParser = content.NewContentParser(ctx)
-	site.contentRenderer = content.NewRenderer(ctx, site.store, site.tplset, site.writer)
 	return site, nil
 }

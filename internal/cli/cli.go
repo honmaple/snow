@@ -30,17 +30,22 @@ const (
 
 var (
 	flags = []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "debug",
-			Aliases: []string{"D"},
-			Value:   false,
-			Usage:   "Enable debug mode",
-		},
 		&cli.StringFlag{
 			Name:    "mode",
 			Aliases: []string{"m"},
 			Value:   "",
 			Usage:   "Build site with special mode",
+		},
+		&cli.BoolFlag{
+			Name:  "include-drafts",
+			Usage: "Build site with drafts",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:    "debug",
+			Aliases: []string{"D"},
+			Value:   false,
+			Usage:   "Enable debug mode",
 		},
 	}
 	conf = core.DefaultConfig()
@@ -56,9 +61,6 @@ func commonAction(clx *cli.Context) error {
 	}
 	if mode := clx.String("mode"); mode != "" {
 		conf.SetMode(mode)
-	}
-	if output := clx.String("output"); output != "" {
-		conf.SetOutput(output)
 	}
 	return nil
 }

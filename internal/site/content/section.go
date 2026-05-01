@@ -4,15 +4,48 @@ import (
 	stdpath "path"
 	"path/filepath"
 
-	"github.com/honmaple/snow/internal/site/content/types"
+	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/site/template"
 )
 
 type (
-	Section  = types.Section
-	Sections = types.Sections
+	Section struct {
+		*Node
+
+		Path      string
+		Permalink string
+
+		Pages    Pages
+		Assets   Assets
+		Formats  Formats
+		Children Sections
+	}
+	Sections []*Section
 )
 
-func (d *ContentParser) IsSection(fullpath string) ([]string, bool) {
+func (secs Sections) Len() int           { return len(secs) }
+func (secs Sections) Swap(i, j int)      { secs[i], secs[j] = secs[j], secs[i] }
+func (secs Sections) Less(i, j int) bool { return secs[i].Title < secs[j].Title }
+
+func (d *Processor) resolveSectionPath(section *Section, customPath string) string {
+	lctx := d.ctx.For(section.Lang)
+
+	vars := map[string]string{
+		"{lang}":         section.Lang,
+		"{path}":         section.File.Dir,
+		"{path:slug}":    lctx.GetPathSlug(section.File.Dir),
+		"{section}":      section.Title,
+		"{section:slug}": section.Slug,
+	}
+	if section.Lang == d.ctx.GetDefaultLanguage() {
+		vars["{lang:optional}"] = ""
+	} else {
+		vars["{lang:optional}"] = section.Lang
+	}
+	return d.resolvePath(customPath, vars)
+}
+
+func (d *Processor) IsSection(fullpath string) ([]string, bool) {
 	sectionFiles := d.findIndexFiles(fullpath, "_index")
 	if len(sectionFiles) > 0 {
 		return sectionFiles, true
@@ -20,8 +53,8 @@ func (d *ContentParser) IsSection(fullpath string) ([]string, bool) {
 	return nil, false
 }
 
-func (d *ContentParser) ParseRootSection(fullpath string) (types.Sections, error) {
-	sections := make(types.Sections, 0)
+func (d *Processor) ParseRootSection(fullpath string) (Sections, error) {
+	sections := make(Sections, 0)
 	sectionFiles := d.findIndexFiles(fullpath, "_index")
 	for _, file := range sectionFiles {
 		section, err := d.ParseSection(filepath.Join(fullpath, file))
@@ -33,18 +66,18 @@ func (d *ContentParser) ParseRootSection(fullpath string) (types.Sections, error
 	return sections, nil
 }
 
-func (d *ContentParser) ParseSection(fullpath string) (*types.Section, error) {
+func (d *Processor) ParseSection(fullpath string) (*Section, error) {
 	node, err := d.parseNode(fullpath, false)
 	if err != nil {
 		return nil, err
 	}
 	lctx := d.ctx.For(node.Lang)
 
-	section := &types.Section{
+	section := &Section{
 		Node:     node,
-		Pages:    make(types.Pages, 0),
-		Assets:   make(types.Assets, 0),
-		Children: make(types.Sections, 0),
+		Pages:    make(Pages, 0),
+		Assets:   make(Assets, 0),
+		Children: make(Sections, 0),
 	}
 	if section.Title == "" {
 		if section.File.Dir == "" {
@@ -66,12 +99,12 @@ func (d *ContentParser) ParseSection(fullpath string) (*types.Section, error) {
 	return section, nil
 }
 
-func (d *ContentParser) ParseSectionAssets(fullpath string, section *types.Section) types.Assets {
+func (d *Processor) ParseSectionAssets(fullpath string, section *Section) Assets {
 	lctx := d.ctx.For(section.Lang)
 
-	assets := make(types.Assets, 0)
+	assets := make(Assets, 0)
 	for _, file := range section.FrontMatter.GetStringSlice("assets") {
-		asset := &types.Asset{
+		asset := &Asset{
 			File: file,
 		}
 		customPath := section.FrontMatter.GetString("asset_path")
@@ -84,10 +117,10 @@ func (d *ContentParser) ParseSectionAssets(fullpath string, section *types.Secti
 	return assets
 }
 
-func (d *ContentParser) ParseSectionFormats(section *types.Section) types.Formats {
+func (d *Processor) ParseSectionFormats(section *Section) Formats {
 	lctx := d.ctx.For(section.Lang)
 
-	formats := make(types.Formats, 0)
+	formats := make(Formats, 0)
 	for name := range section.FrontMatter.GetStringMap("formats") {
 		customPath := section.FrontMatter.GetString(name + ".path")
 		customTemplate := section.FrontMatter.GetString(name + ".template")
@@ -98,7 +131,7 @@ func (d *ContentParser) ParseSectionFormats(section *types.Section) types.Format
 			continue
 		}
 
-		format := &types.Format{
+		format := &Format{
 			Name:     name,
 			Template: customTemplate,
 		}
@@ -111,20 +144,61 @@ func (d *ContentParser) ParseSectionFormats(section *types.Section) types.Format
 	return formats
 }
 
-func (d *ContentParser) resolveSectionPath(section *types.Section, customPath string) string {
-	lctx := d.ctx.For(section.Lang)
+func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet, writer core.Writer) error {
+	d.ctx.Logger.Debugf("write section [%s] -> %s", section.File.Path, section.Path)
 
-	vars := map[string]string{
-		"{lang}":         section.Lang,
-		"{path}":         section.File.Dir,
-		"{path:slug}":    lctx.GetPathSlug(section.File.Dir),
-		"{section}":      section.Title,
-		"{section:slug}": section.Slug,
+	customTemplate := section.FrontMatter.GetString("template")
+
+	lookups := []string{
+		customTemplate,
+		"section.html",
 	}
-	if section.Lang == d.ctx.GetDefaultLanguage() {
-		vars["{lang:optional}"] = ""
-	} else {
-		vars["{lang:optional}"] = section.Lang
+	// 首页content/_index.md
+	if section.File.Dir == "" {
+		lookups = []string{
+			customTemplate,
+			"index.html",
+			"section.html",
+		}
 	}
-	return d.resolvePath(customPath, vars)
+
+	if tpl := tplset.Lookup(lookups...); tpl != nil {
+		for _, por := range section.Pages.
+			FilterBy(
+				section.FrontMatter.GetString("paginate_filter_by"),
+			).
+			Paginate(
+				section.FrontMatter.GetInt("paginate"),
+				section.Path,
+				section.FrontMatter.GetString("paginate_path"),
+			) {
+			if err := d.RenderTemplate(por.Path, tpl, map[string]any{
+				"section":       section,
+				"paginator":     por,
+				"pages":         section.Pages,
+				"current_lang":  section.Lang,
+				"current_index": por.PageNum,
+			}, writer); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, format := range section.Formats {
+		if tpl := tplset.Lookup(format.Template); tpl != nil {
+			if err := d.RenderTemplate(format.Path, tpl, map[string]any{
+				"section":      section,
+				"pages":        section.Pages,
+				"current_lang": section.Lang,
+			}, writer); err != nil {
+				return err
+			}
+		}
+	}
+	// for _, asset := range section.Assets {
+	//	if err := r.renderAsset(asset); err != nil {
+	//		return err
+	//	}
+	// }
+	return nil
 }

@@ -60,8 +60,7 @@ type (
 		// 依赖于ctx上下文的变量
 		funcs map[string]TransientFunction
 	}
-	TransientFunction       func(map[string]any) any
-	TransientFilterFunction func(map[string]any) pongo2.FilterFunction
+	TransientFunction func(map[string]any) any
 )
 
 func (set *templateSet) Lookup(names ...string) Template {
