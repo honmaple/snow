@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 
@@ -115,8 +116,14 @@ func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 		lctx := &LocaleContext{
 			Config: NewConfig(),
 		}
-		lctx.Config.MergeConfigMap(conf.AllSettings())
-		lctx.Config.MergeConfigMap(conf.GetStringMap("languages." + lang))
+		for _, key := range conf.AllKeys() {
+			lctx.Config.Set(key, conf.Get(key))
+		}
+
+		lconf := conf.Sub(fmt.Sprintf("languages.%s", lang))
+		for _, key := range lconf.AllKeys() {
+			lctx.Config.Set(key, lconf.Get(key))
+		}
 		lctx.Config.Set("language", lang)
 
 		ctx.OtherLanguages[lang] = lctx

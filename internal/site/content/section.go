@@ -1,6 +1,7 @@
 package content
 
 import (
+	"fmt"
 	stdpath "path"
 	"path/filepath"
 
@@ -122,8 +123,8 @@ func (d *Processor) ParseSectionFormats(section *Section) Formats {
 
 	formats := make(Formats, 0)
 	for name := range section.FrontMatter.GetStringMap("formats") {
-		customPath := section.FrontMatter.GetString(name + ".path")
-		customTemplate := section.FrontMatter.GetString(name + ".template")
+		customPath := section.FrontMatter.GetString(fmt.Sprintf("formats.%s.path", name))
+		customTemplate := section.FrontMatter.GetString(fmt.Sprintf("formats.%s.template", name))
 		if customTemplate == "" {
 			customTemplate = d.ctx.Config.GetString("formats." + name + ".template")
 		}
@@ -135,8 +136,7 @@ func (d *Processor) ParseSectionFormats(section *Section) Formats {
 			Name:     name,
 			Template: customTemplate,
 		}
-		outputPath := d.resolveSectionPath(section, customPath)
-		format.Path = lctx.GetRelURL(outputPath)
+		format.Path = lctx.GetRelURL(d.resolveSectionPath(section, customPath))
 		format.Permalink = lctx.GetRelURL(format.Path)
 
 		formats = append(formats, format)
@@ -167,7 +167,7 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 			FilterBy(
 				section.FrontMatter.GetString("paginate_filter_by"),
 			).
-			Paginate(
+			PaginateBy(
 				section.FrontMatter.GetInt("paginate"),
 				section.Path,
 				section.FrontMatter.GetString("paginate_path"),
@@ -186,6 +186,7 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 
 	for _, format := range section.Formats {
 		if tpl := tplset.Lookup(format.Template); tpl != nil {
+			d.ctx.Logger.Debugf("write section format [%s] -> %s", section.File.Path, format.Path)
 			if err := d.RenderTemplate(format.Path, tpl, map[string]any{
 				"section":      section,
 				"pages":        section.Pages,

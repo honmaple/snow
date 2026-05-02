@@ -26,8 +26,12 @@ type (
 	SiteOption func(*Site)
 )
 
-func (site *Site) Build() error {
-	ctx := context.TODO()
+func (site *Site) Build(ctx context.Context) error {
+	site.store.Reset()
+
+	if err := site.loadContent(); err != nil {
+		return err
+	}
 
 	if err := site.hook.BeforeBuild(); err != nil {
 		return err
@@ -38,16 +42,7 @@ func (site *Site) Build() error {
 	if err := site.buildContent(ctx); err != nil {
 		return err
 	}
-	return site.hook.AfterBuild()
-}
-
-func (site *Site) Load() error {
-	return site.loadContent()
-}
-
-func (site *Site) Reload() error {
-	site.store.Reset()
-	return site.Load()
+	return site.hook.AfterBuild(site.writer)
 }
 
 func WithOption(opt *Option) SiteOption {

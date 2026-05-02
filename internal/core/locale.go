@@ -63,6 +63,10 @@ func (ctx *LocaleContext) GetPathSlug(path string) string {
 	return path
 }
 
+func (ctx *LocaleContext) GetBaseURL() string {
+	return ctx.Config.GetString("base_url")
+}
+
 func (ctx *LocaleContext) GetURL(path string) string {
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		return path

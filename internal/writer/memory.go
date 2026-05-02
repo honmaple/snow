@@ -1,52 +1,35 @@
 package writer
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"io/fs"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/honmaple/snow/internal/core"
+	"github.com/spf13/afero"
 )
 
-type (
-	memoryFile struct {
-		reader  io.ReadSeeker
-		modTime time.Time
-	}
-	MemoryWriter struct {
-		ctx   *core.Context
-		files sync.Map
-	}
-)
+type MemoryWriter struct {
+	fs  afero.Fs
+	ctx *core.Context
+}
 
 func (m *MemoryWriter) Reset() {
-	m.files.Range(func(k, v interface{}) bool {
-		m.files.Delete(k)
-		return true
-	})
+	m.fs = afero.NewMemMapFs()
 }
 
 func (m *MemoryWriter) Open(file string) (fs.File, error) {
-	return nil, nil
+	return m.fs.Open(file)
 }
 
 func (m *MemoryWriter) Write(ctx context.Context, file string, r io.Reader) error {
 	if !strings.HasPrefix(file, "/") {
 		file = "/" + file
 	}
-	// TODO: large file handle
-	buf, err := io.ReadAll(r)
-	if err != nil {
-		return err
-	}
-	m.files.Store(file, &memoryFile{bytes.NewReader(buf), time.Now()})
-	return nil
+	return afero.WriteReader(m.fs, file, r)
 }
 
 func NewMemoryWriter(ctx *core.Context) *MemoryWriter {
-	return &MemoryWriter{ctx: ctx}
+	return &MemoryWriter{ctx: ctx, fs: afero.NewMemMapFs()}
 }

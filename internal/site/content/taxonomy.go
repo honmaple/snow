@@ -74,8 +74,6 @@ func (d *Processor) ParseTaxonomies(pages Pages, lang string) Taxonomies {
 }
 
 func (d *Processor) RenderTaxonomy(taxonomy *Taxonomy, tplset template.TemplateSet, writer core.Writer) error {
-	d.ctx.Logger.Debugf("write taxonomy [%s] -> %s", taxonomy.Name, taxonomy.Path)
-
 	lctx := d.ctx.For(taxonomy.Lang)
 
 	lookups := []string{
@@ -84,6 +82,7 @@ func (d *Processor) RenderTaxonomy(taxonomy *Taxonomy, tplset template.TemplateS
 		"taxonomy.html",
 	}
 	if tpl := tplset.Lookup(lookups...); tpl != nil {
+		d.ctx.Logger.Debugf("write taxonomy [%s] -> %s", taxonomy.Name, taxonomy.Path)
 		// example.com/tags/index.html
 		if err := d.RenderTemplate(taxonomy.Path, tpl, map[string]any{
 			"taxonomy":     taxonomy,

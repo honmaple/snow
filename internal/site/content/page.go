@@ -109,15 +109,13 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 		}
 	} else {
 		groupf = func(page *Page) []string {
-			value := page.FrontMatter.Get(key)
-			switch v := value.(type) {
-			case string:
-				return []string{v}
-			case []string:
+			if v := page.FrontMatter.GetStringSlice(key); len(v) > 0 {
 				return v
-			default:
-				return nil
 			}
+			if v := page.FrontMatter.GetString(key); v != "" {
+				return []string{v}
+			}
+			return nil
 		}
 	}
 
@@ -165,7 +163,7 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 	return results
 }
 
-func (pages Pages) Paginate(number int, path string, paginatePath string) []*Paginator[*Page] {
+func (pages Pages) PaginateBy(number int, path string, paginatePath string) []*Paginator[*Page] {
 	return Paginate(pages, number, path, paginatePath)
 }
 
@@ -341,7 +339,6 @@ func (d *Processor) ParsePageFormats(page *Page) Formats {
 }
 
 func (d *Processor) RenderPage(page *Page, tplset template.TemplateSet, writer core.Writer) error {
-	d.ctx.Logger.Debugf("write page [%s] -> %s", page.File.Path, page.Path)
 
 	vars := map[string]any{
 		"page":         page,
@@ -350,6 +347,7 @@ func (d *Processor) RenderPage(page *Page, tplset template.TemplateSet, writer c
 		"current_lang": page.Lang,
 	}
 	if tpl := tplset.Lookup(page.FrontMatter.GetString("template"), "page.html"); tpl != nil {
+		d.ctx.Logger.Debugf("write page [%s] -> %s", page.File.Path, page.Path)
 		if err := d.RenderTemplate(page.Path, tpl, vars, writer); err != nil {
 			return err
 		}
@@ -363,6 +361,7 @@ func (d *Processor) RenderPage(page *Page, tplset template.TemplateSet, writer c
 					alias = stdpath.Join(stdpath.Dir(page.Path), alias)
 				}
 			}
+			d.ctx.Logger.Debugf("write page alias [%s] -> %s", page.File.Path, alias)
 			if err := d.RenderTemplate(alias, tpl, vars, writer); err != nil {
 				return err
 			}
@@ -370,6 +369,7 @@ func (d *Processor) RenderPage(page *Page, tplset template.TemplateSet, writer c
 	}
 	for _, format := range page.Formats {
 		if tpl := tplset.Lookup(format.Template); tpl != nil {
+			d.ctx.Logger.Debugf("write page format [%s] -> %s", page.File.Path, format.Path)
 			if err := d.RenderTemplate(format.Path, tpl, map[string]any{
 				"page":         page,
 				"current_lang": page.Lang,

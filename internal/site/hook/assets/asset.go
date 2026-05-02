@@ -2,10 +2,9 @@ package assets
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"io/fs"
-	"os"
-	"strings"
 
 	"github.com/bep/golibsass/libsass"
 	"github.com/honmaple/snow/internal/core"
@@ -81,31 +80,18 @@ func (n *Asset) jsmin(w io.Writer, r io.Reader, _ map[string]any) error {
 	return m.Minify("js", w, r)
 }
 
-func (n *Asset) Execute(ctx *core.Context) error {
+func (n *Asset) Execute(ctx context.Context, theme fs.FS, writer core.Writer) error {
 	var (
 		b bytes.Buffer
 	)
 	for _, file := range n.Files {
-		matchedFiles, err := fs.Glob(ctx.Theme, file)
+		matchedFiles, err := fs.Glob(theme, file)
 		if err != nil {
 			return err
 		}
 
-		for _, match := range matchedFiles {
-			var (
-				buf []byte
-				err error
-			)
-
-			if strings.HasPrefix(match, "@theme/") {
-				f, err := ctx.Theme.Open(match)
-				if err != nil {
-					return err
-				}
-				buf, err = io.ReadAll(f)
-			} else {
-				buf, err = os.ReadFile(match)
-			}
+		for _, matchedFile := range matchedFiles {
+			buf, err := fs.ReadFile(theme, matchedFile)
 			if err != nil {
 				return err
 			}
@@ -131,9 +117,5 @@ func (n *Asset) Execute(ctx *core.Context) error {
 		}
 
 	}
-	// 边读边写
-	// if err := ctx.Config.Write(opt.Output, io.TeeReader(&b, h)); err != nil {
-	//	return "", err
-	// }
-	return nil
+	return writer.Write(nil, n.Output, &b)
 }

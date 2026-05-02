@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"context"
 	"crypto/md5"
 	"fmt"
 	"io"
@@ -77,9 +78,13 @@ func (h *AssetsHook) BeforeBuild() error {
 }
 
 // 写入收集的文件
-func (h *AssetsHook) AfterBuild() error {
+func (h *AssetsHook) AfterBuild(w core.Writer) error {
+	ctx := context.TODO()
+
 	for _, asset := range h.assets {
-		fmt.Println(asset.Output)
+		if err := asset.Execute(ctx, h.ctx.Theme, w); err != nil {
+			return err
+		}
 	}
 	return nil
 }

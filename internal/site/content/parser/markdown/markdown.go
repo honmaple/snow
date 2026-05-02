@@ -24,7 +24,12 @@ var (
 )
 
 type mdParser struct {
+	ctx  *core.Context
 	opts []blackfriday.Option
+}
+
+func Read(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer, result *parser.Result) error {
+	return readMeta(r, content, summary, result)
 }
 
 func readMeta(r io.Reader, content *bytes.Buffer, summary *bytes.Buffer, result *parser.Result) error {
@@ -93,6 +98,8 @@ func (m *mdParser) Parse(r io.Reader) (*parser.Result, error) {
 	}
 	if summary.Len() > 0 {
 		result.Summary = m.HTML(summary.Bytes())
+	} else {
+		result.Summary = m.ctx.GetSummary(m.HTML(content.Bytes()))
 	}
 	result.Content = m.HTML(content.Bytes())
 	result.RawContent = content.String()
@@ -106,6 +113,7 @@ func (m *mdParser) HTML(data []byte) string {
 
 func New(ctx *core.Context) *mdParser {
 	return &mdParser{
+		ctx: ctx,
 		opts: []blackfriday.Option{
 			blackfriday.WithRenderer(NewChromaRenderer(ctx.GetHighlightStyle())),
 		},

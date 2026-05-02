@@ -15,9 +15,9 @@ type Registry struct {
 	hooks []Hook
 }
 
-func (r *Registry) AfterBuild() error {
+func (r *Registry) AfterBuild(writer core.Writer) error {
 	for _, hook := range r.hooks {
-		if err := hook.AfterBuild(); err != nil {
+		if err := hook.AfterBuild(writer); err != nil {
 			return err
 		}
 	}

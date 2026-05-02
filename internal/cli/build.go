@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"context"
+
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site"
 	"github.com/honmaple/snow/internal/utils"
@@ -62,7 +64,7 @@ func buildAction(clx *cli.Context) error {
 
 	var w core.Writer
 	if clx.Bool("dry-run") {
-		w = writer.NewDebugWriter(ctx)
+		w = writer.NewNullWriter(ctx)
 	} else {
 		w = writer.NewDiskWriter(ctx)
 	}
@@ -78,8 +80,5 @@ func build(ctx *core.Context, opts ...site.SiteOption) error {
 	if err != nil {
 		return err
 	}
-	if err := site.Load(); err != nil {
-		return err
-	}
-	return site.Build()
+	return site.Build(context.TODO())
 }

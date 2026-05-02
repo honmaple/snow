@@ -63,6 +63,9 @@ func (m *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func Serve(ctx *Context, listen string, fs fs.FS) error {
+	if listen == "" {
+		listen = ctx.GetBaseURL()
+	}
 	u, err := url.Parse(listen)
 	if err != nil {
 		return err

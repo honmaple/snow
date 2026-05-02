@@ -116,28 +116,21 @@ func (d *Processor) ParseTaxonomyTerms(taxonomy *Taxonomy, pages Pages, lang str
 		}
 	} else {
 		groupf = func(page *Page) []string {
-			value := page.FrontMatter.Get(taxonomy.Name)
-			switch v := value.(type) {
-			case string:
-				return []string{v}
-			case []string:
+			if v := page.FrontMatter.GetStringSlice(taxonomy.Name); len(v) > 0 {
 				return v
-			default:
-				return nil
 			}
+			if v := page.FrontMatter.GetString(taxonomy.Name); v != "" {
+				return []string{v}
+			}
+			return nil
 		}
 	}
 
 	lctx := d.ctx.For(lang)
 
-	filter := FilterExpr(lctx.GetTaxonomyConfig(taxonomy.Name, "term.filter_by").String())
-
 	results := make(TaxonomyTerms, 0)
 	resultMap := make(map[string]*TaxonomyTerm)
-	for _, page := range pages {
-		if filter != nil && !filter(page) {
-			continue
-		}
+	for _, page := range pages.FilterBy(lctx.GetTaxonomyConfig(taxonomy.Name, "term.filter_by").String()) {
 		for _, name := range groupf(page) {
 			var (
 				currentTerm *TaxonomyTerm
@@ -223,8 +216,6 @@ func (d *Processor) ParseTaxonomyTermFormats(term *TaxonomyTerm, lang string) Fo
 }
 
 func (d *Processor) RenderTaxonomyTerm(term *TaxonomyTerm, tplset template.TemplateSet, writer core.Writer) error {
-	d.ctx.Logger.Debugf("write taxonomy term [%s:%s] -> %s", term.Taxonomy.Name, term.GetFullName(), term.Path)
-
 	lctx := d.ctx.For(term.Taxonomy.Lang)
 
 	lookups := []string{
@@ -233,11 +224,12 @@ func (d *Processor) RenderTaxonomyTerm(term *TaxonomyTerm, tplset template.Templ
 		"taxonomy.terms.html",
 	}
 	if tpl := tplset.Lookup(lookups...); tpl != nil {
+		d.ctx.Logger.Debugf("write taxonomy term [%s:%s] -> %s", term.Taxonomy.Name, term.GetFullName(), term.Path)
 		for _, por := range term.Pages.
 			FilterBy(
 				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate_filter_by").String(),
 			).
-			Paginate(
+			PaginateBy(
 				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate").Int(),
 				term.Path,
 				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate_path").String(),
@@ -257,6 +249,7 @@ func (d *Processor) RenderTaxonomyTerm(term *TaxonomyTerm, tplset template.Templ
 	}
 	for _, format := range term.Formats {
 		if tpl := tplset.Lookup(format.Template); tpl != nil {
+			d.ctx.Logger.Debugf("write taxonomy term format [%s:%s] -> %s", term.Taxonomy.Name, term.GetFullName(), format.Path)
 			if err := d.RenderTemplate(format.Path, tpl, map[string]any{
 				"term":         term,
 				"pages":        term.Pages,

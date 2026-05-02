@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/honmaple/snow/internal/site/content"
@@ -49,11 +50,11 @@ func (site *Site) loadContent() error {
 			return err
 		}
 		if path == contentDir {
-			sections, err := site.contentProcessor.ParseRootSection(path)
+			roots, err := site.contentProcessor.ParseRootSection(path)
 			if err != nil {
 				return err
 			}
-			for _, section := range sections {
+			for _, section := range roots {
 				sections = append(sections, section)
 			}
 			return nil
@@ -112,6 +113,9 @@ func (site *Site) loadContent() error {
 	}
 
 	for _, section := range sections {
+		if section.FrontMatter.IsSet("render") && !section.FrontMatter.GetBool("render") {
+			continue
+		}
 		section = site.hook.HandleSection(section)
 		if section == nil {
 			continue
@@ -119,8 +123,14 @@ func (site *Site) loadContent() error {
 		site.store.insertSection(section)
 	}
 	for _, page := range pages {
+		if page.Draft && !site.option.IncludeDrafts {
+			continue
+		}
+		if page.FrontMatter.IsSet("render") && !page.FrontMatter.GetBool("render") {
+			continue
+		}
 		page = site.hook.HandlePage(page)
-		if page == nil || (!site.option.IncludeDrafts && page.Draft) {
+		if page == nil {
 			continue
 		}
 		site.store.insertPage(page)
@@ -152,7 +162,7 @@ func (site *Site) loadContent() error {
 
 func (site *Site) buildContent(ctx context.Context) error {
 	for _, lang := range site.ctx.GetAllLanguages() {
-		site.ctx.Logger.Debugf("write %s site", lang)
+		site.ctx.Logger.Infof("Building %s site...", lang)
 
 		tplset := &ContentTemplateSet{
 			lang:        lang,
@@ -160,6 +170,7 @@ func (site *Site) buildContent(ctx context.Context) error {
 			TemplateSet: site.tplset,
 		}
 
+		now := time.Now()
 		for _, section := range site.store.Sections(lang) {
 			if err := site.contentProcessor.RenderSection(section, tplset, site.writer); err != nil {
 				site.ctx.Logger.Error(err.Error())
@@ -178,11 +189,24 @@ func (site *Site) buildContent(ctx context.Context) error {
 			}
 		}
 
+		ts := make([]string, 0)
 		for _, taxonomy := range site.store.Taxonomies(lang) {
+			if count := len(taxonomy.Terms); count > 0 {
+				ts = append(ts, fmt.Sprintf("%d %s", count, taxonomy.Name))
+			}
+
 			if err := site.contentProcessor.RenderTaxonomy(taxonomy, tplset, site.writer); err != nil {
 				site.ctx.Logger.Error(err.Error())
 			}
 		}
+		site.ctx.Logger.Infof("Done: %d sections, %d pages, %d hidden pages and %d taxonomies (%s) in %v",
+			len(site.store.Sections(lang)),
+			len(site.store.Pages(lang)),
+			len(site.store.HiddenPages(lang)),
+			len(site.store.Taxonomies(lang)),
+			strings.Join(ts, ", "),
+			time.Since(now),
+		)
 	}
 	return nil
 }
