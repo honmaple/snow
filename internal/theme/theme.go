@@ -15,26 +15,17 @@ var (
 )
 
 type Theme struct {
-	name string
-	root fs.ReadDirFS
+	root fs.FS
 }
 
-func (t *Theme) Name() string {
-	return t.name
-}
-
-func (t *Theme) Open(file string) (fs.File, error) {
-	if strings.HasPrefix(file, "internal/") {
-		return internalFS.Open(file[9:])
+func (t *Theme) Open(name string) (fs.File, error) {
+	if name == "internal" {
+		return internalFS.Open(".")
 	}
-	return t.root.Open(file)
-}
-
-func (t *Theme) ReadDir(file string) ([]fs.DirEntry, error) {
-	if strings.HasPrefix(file, "internal/") {
-		return internalFS.ReadDir(file[9:])
+	if strings.HasPrefix(name, "internal/") {
+		return internalFS.Open(name[9:])
 	}
-	return t.root.ReadDir(file)
+	return t.root.Open(name)
 }
 
 func New(name string) (*Theme, error) {
@@ -53,8 +44,7 @@ func New(name string) (*Theme, error) {
 	}
 
 	t := &Theme{
-		name: name,
-		root: root.(fs.ReadDirFS),
+		root: root,
 	}
 	return t, nil
 }

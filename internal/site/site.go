@@ -42,7 +42,7 @@ func (site *Site) Build(ctx context.Context) error {
 	if err := site.buildContent(ctx); err != nil {
 		return err
 	}
-	return site.hook.AfterBuild(site.writer)
+	return site.hook.AfterBuild(ctx, site.writer)
 }
 
 func WithOption(opt *Option) SiteOption {

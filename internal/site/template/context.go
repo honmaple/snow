@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/flosch/pongo2/v7"
 	"github.com/honmaple/snow/internal/core"
@@ -14,13 +13,6 @@ import (
 type registry struct {
 	ctx *core.Context
 }
-
-const (
-	DAY90 = 90 * 24 * time.Hour
-	DAY10 = 10 * 24 * time.Hour
-	DAY7  = 7 * 24 * time.Hour
-	DAY   = 24 * time.Hour
-)
 
 func newError(name string, err error) *pongo2.Error {
 	return &pongo2.Error{

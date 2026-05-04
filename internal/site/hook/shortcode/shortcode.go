@@ -3,7 +3,6 @@ package shortcode
 import (
 	"bytes"
 	"io/fs"
-	"os"
 	stdpath "path"
 	"slices"
 	"strings"
@@ -14,21 +13,21 @@ import (
 	"golang.org/x/net/html"
 )
 
-type Shortcode struct {
+type ShortcodeSet struct {
 	ctx    *core.Context
 	tpls   map[string]template.Template
 	tplset template.TemplateSet
 }
 
-func (h *Shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Tokenizer, startToken *html.Token, counter map[string]int) bool {
+func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToken string, page *content.Page, counter map[string]int) bool {
 	for {
-		next := z.Next()
-		if next == html.ErrorToken {
+		tokenType := z.Next()
+		if tokenType == html.ErrorToken {
 			return false
 		}
 
 		token := z.Token()
-		switch next {
+		switch tokenType {
 		case html.StartTagToken, html.SelfClosingTagToken:
 			name := token.Data
 			if token.Data == "shortcode" {
@@ -54,7 +53,6 @@ func (h *Shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Toke
 					"page":     page,
 					"body":     "",
 					"attrs":    attrs,
-					"params":   attrs,
 					"_name":    name,
 					"_counter": counter[name],
 					"_shortcode": func(s string) string {
@@ -63,10 +61,10 @@ func (h *Shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Toke
 				}
 				counter[name]++
 
-				if next == html.StartTagToken {
+				if tokenType == html.StartTagToken {
 					var buf bytes.Buffer
 
-					if !h.renderNext(page, &buf, z, &token, counter) {
+					if !h.renderNext(z, &buf, token.Data, page, counter) {
 						h.ctx.Logger.Warnf("%s: closing delimiter '</%s>' is missing", page.File, token.Data)
 					}
 					vars["body"] = buf.String()
@@ -74,22 +72,22 @@ func (h *Shortcode) renderNext(page *content.Page, w *bytes.Buffer, z *html.Toke
 
 				result, err := tpl.Execute(vars)
 				if err != nil {
-					w.WriteString("")
+					out.WriteString("")
 				} else {
-					w.WriteString(result)
+					out.WriteString(result)
 				}
 				continue
 			}
 		case html.EndTagToken:
-			if startToken != nil && startToken.Data == token.Data {
+			if stopToken != "" && stopToken == token.Data {
 				return true
 			}
 		}
-		w.WriteString(token.String())
+		out.WriteString(token.String())
 	}
 }
 
-func (h *Shortcode) Render(page *content.Page, content string) string {
+func (h *ShortcodeSet) Render(page *content.Page, content string) string {
 	if len(h.tpls) == 0 {
 		return content
 	}
@@ -99,71 +97,69 @@ func (h *Shortcode) Render(page *content.Page, content string) string {
 		z       = html.NewTokenizer(strings.NewReader(content))
 		counter = make(map[string]int)
 	)
-	h.renderNext(page, &w, z, nil, counter)
+	h.renderNext(z, &w, "", page, counter)
 	return w.String()
 }
 
-func (h *Shortcode) Load() error {
+func (h *ShortcodeSet) Load() (map[string]template.Template, error) {
+	subFS, err := h.ctx.GetFS("templates", true)
+	if err != nil {
+		return nil, err
+	}
+
 	exts := []string{".tpl", ".html"}
+	files, err := fs.ReadDir(subFS, "shortcodes")
+	if err != nil {
+		return nil, err
+	}
 
-	sub1, _ := fs.Sub(os.DirFS("."), "templates")
-	sub2, _ := fs.Sub(h.ctx.Theme, "templates")
-	sub3, _ := fs.Sub(h.ctx.Theme, "internal/templates")
-	for _, subFS := range []fs.FS{sub1, sub2, sub3} {
-		if subFS == nil {
+	results := make(map[string]template.Template)
+	for _, file := range files {
+		filename := file.Name()
+		basename := strings.TrimSuffix(filename, stdpath.Ext(filename))
+		if _, ok := results[basename]; ok {
 			continue
 		}
 
-		files, err := fs.ReadDir(subFS, "shortcodes")
-		if err != nil {
-			continue
+		tplFiles := make([]string, 0)
+		if file.IsDir() {
+			for _, ext := range exts {
+				tplFiles = append(tplFiles, stdpath.Join("shortcodes", filename, "index"+ext))
+			}
+		} else {
+			if slices.Contains(exts, stdpath.Ext(filename)) {
+				tplFiles = []string{
+					stdpath.Join("shortcodes", filename),
+				}
+			}
 		}
-		for _, file := range files {
-			filename := file.Name()
-			basename := strings.TrimSuffix(filename, stdpath.Ext(filename))
-			if _, ok := h.tpls[basename]; ok {
+
+		for _, tplFile := range tplFiles {
+			buf, err := fs.ReadFile(subFS, tplFile)
+			if err != nil {
 				continue
 			}
-
-			tplFiles := make([]string, 0)
-			if file.IsDir() {
-				for _, ext := range exts {
-					tplFiles = append(tplFiles, stdpath.Join("shortcodes", filename, "index"+ext))
-				}
-			} else {
-				if slices.Contains(exts, stdpath.Ext(filename)) {
-					tplFiles = []string{
-						stdpath.Join("shortcodes", filename),
-					}
-				}
+			tpl, err := h.tplset.FromBytes(buf)
+			if err != nil {
+				h.ctx.Logger.Warnf("compile tpl %s err: %s", tplFile, err.Error())
+				continue
 			}
-
-			for _, tplFile := range tplFiles {
-				buf, err := fs.ReadFile(subFS, tplFile)
-				if err != nil {
-					continue
-				}
-				tpl, err := h.tplset.FromBytes(buf)
-				if err != nil {
-					h.ctx.Logger.Warnf("compile tpl %s err: %s", tplFile, err.Error())
-					continue
-				}
-				h.tpls[basename] = tpl
-			}
+			results[basename] = tpl
 		}
 	}
-	return nil
+	return results, nil
 }
 
-func NewShortcode(ctx *core.Context, tplset template.TemplateSet) (*Shortcode, error) {
-	h := &Shortcode{
+func NewShortcodeSet(ctx *core.Context, tplset template.TemplateSet) (*ShortcodeSet, error) {
+	h := &ShortcodeSet{
 		ctx:    ctx,
 		tpls:   make(map[string]template.Template),
 		tplset: tplset,
 	}
-
-	if err := h.Load(); err != nil {
+	tpls, err := h.Load()
+	if err != nil {
 		return nil, err
 	}
+	h.tpls = tpls
 	return h, nil
 }

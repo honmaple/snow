@@ -42,39 +42,38 @@ func (i *I18n) LoadTranslations(ctx *core.Context) error {
 	trans := make(map[string]map[string]*Translation)
 
 	// 加载主题下以及当前目录下的的翻译文件
-	for _, dir := range []fs.FS{ctx.Theme, os.DirFS(".")} {
-		if _, err := fs.Stat(dir, "i18n"); err != nil {
+	subFS, err := ctx.GetFS("i18n", false)
+	if err != nil {
+		return err
+	}
+	entries, err := fs.ReadDir(subFS, ".")
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
 			continue
 		}
-		entries, err := fs.ReadDir(dir, "i18n")
+
+		name := stdpath.Base(entry.Name())
+		lang := name[:len(name)-len(stdpath.Ext(name))]
+		if _, ok := trans[lang]; !ok {
+			trans[lang] = make(map[string]*Translation)
+		}
+
+		buf, err := fs.ReadFile(subFS, entry.Name())
 		if err != nil {
 			return err
 		}
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
+		ts := make([]*Translation, 0)
+		if err := yaml.Unmarshal(buf, &ts); err != nil {
+			return err
+		}
+		for _, t := range ts {
+			trans[lang][t.Id] = t
 
-			name := stdpath.Base(entry.Name())
-			lang := name[:len(name)-len(stdpath.Ext(name))]
-			if _, ok := trans[lang]; !ok {
-				trans[lang] = make(map[string]*Translation)
-			}
-
-			buf, err := fs.ReadFile(dir, stdpath.Join("i18n", entry.Name()))
-			if err != nil {
-				return err
-			}
-			ts := make([]*Translation, 0)
-			if err := yaml.Unmarshal(buf, &ts); err != nil {
-				return err
-			}
-			for _, t := range ts {
-				trans[lang][t.Id] = t
-
-				if t.IgnoreCase {
-					trans[lang][strings.ToLower(t.Id)] = t
-				}
+			if t.IgnoreCase {
+				trans[lang][strings.ToLower(t.Id)] = t
 			}
 		}
 	}

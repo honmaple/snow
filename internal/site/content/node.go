@@ -9,13 +9,12 @@ type Node struct {
 	File        *File
 	FrontMatter *FrontMatter
 
-	Lang        string
-	Slug        string
-	Title       string
-	Description string
-	Summary     string
-	Content     string
-	RawContent  string
+	Lang       string
+	Slug       string
+	Title      string
+	Summary    string
+	Content    string
+	RawContent string
 }
 
 func (d *Processor) parseNode(fullpath string, isPage bool) (*Node, error) {
@@ -59,7 +58,6 @@ func (d *Processor) parseNode(fullpath string, isPage bool) (*Node, error) {
 		Lang:        lang,
 		Slug:        meta.GetString("slug"),
 		Title:       meta.GetString("title"),
-		Description: meta.GetString("desc"),
 		Content:     result.Content,
 		Summary:     result.Summary,
 	}

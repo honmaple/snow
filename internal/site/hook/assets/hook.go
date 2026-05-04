@@ -1,7 +1,6 @@
 package assets
 
 import (
-	"context"
 	"crypto/md5"
 	"fmt"
 	"io"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"context"
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/hook"
 	"github.com/honmaple/snow/internal/site/template"
@@ -19,7 +19,8 @@ import (
 type (
 	AssetsHook struct {
 		hook.HookImpl
-		ctx *core.Context
+		ctx      *core.Context
+		staticFS fs.FS
 
 		hash        sync.Map
 		assets      []*Asset
@@ -29,7 +30,7 @@ type (
 )
 
 func (h *AssetsHook) getHash(file string, w io.Writer) error {
-	src, err := h.ctx.Theme.Open(file)
+	src, err := h.staticFS.Open(file)
 	if err != nil {
 		return err
 	}
@@ -44,7 +45,7 @@ func (h *AssetsHook) getHash(file string, w io.Writer) error {
 func (h *AssetsHook) getAssetHash(asset *Asset) (string, error) {
 	hash := md5.New()
 	for _, file := range asset.Files {
-		matchedFiles, err := fs.Glob(h.ctx.Theme, file)
+		matchedFiles, err := fs.Glob(h.staticFS, file)
 		if err != nil {
 			return "", err
 		}
@@ -78,14 +79,12 @@ func (h *AssetsHook) BeforeBuild() error {
 }
 
 // 写入收集的文件
-func (h *AssetsHook) AfterBuild(w core.Writer) error {
-	ctx := context.TODO()
-
-	for _, asset := range h.assets {
-		if err := asset.Execute(ctx, h.ctx.Theme, w); err != nil {
-			return err
-		}
-	}
+func (h *AssetsHook) AfterBuild(ctx context.Context, w core.Writer) error {
+	// for _, asset := range h.assets {
+	//	if err := asset.Execute(ctx, h.staticFS, w); err != nil {
+	//		return err
+	//	}
+	// }
 	return nil
 }
 
@@ -95,8 +94,12 @@ func (h *AssetsHook) HandleInit(set template.TemplateSet) error {
 }
 
 func New(ctx *core.Context) (hook.Hook, error) {
-	preAssetMap := make(map[string]*Asset)
+	staticFS, err := ctx.GetFS("static", false)
+	if err != nil {
+		return nil, err
+	}
 
+	preAssetMap := make(map[string]*Asset)
 	for name := range ctx.Config.GetStringMap("hooks.assets.option") {
 		conf := ctx.Config.Sub("hooks.assets.option." + name)
 		if conf == nil {
@@ -138,6 +141,7 @@ func New(ctx *core.Context) (hook.Hook, error) {
 
 	h := &AssetsHook{
 		ctx:         ctx,
+		staticFS:    staticFS,
 		assets:      make([]*Asset, 0),
 		assetMap:    make(map[string]bool),
 		preAssetMap: preAssetMap,

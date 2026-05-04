@@ -9,25 +9,25 @@ import (
 
 type ShortcodeHook struct {
 	hook.HookImpl
-	sc  *Shortcode
 	ctx *core.Context
+	set *ShortcodeSet
 }
 
 func (h *ShortcodeHook) HandlePage(page *content.Page) *content.Page {
-	if h.sc == nil {
+	if h.set == nil {
 		return page
 	}
-	page.Summary = h.sc.Render(page, page.Summary)
-	page.Content = h.sc.Render(page, page.Content)
+	page.Summary = h.set.Render(page, page.Summary)
+	page.Content = h.set.Render(page, page.Content)
 	return page
 }
 
 func (h *ShortcodeHook) HandleInit(set template.TemplateSet) error {
-	sc, err := NewShortcode(h.ctx, set)
+	sc, err := NewShortcodeSet(h.ctx, set)
 	if err != nil {
 		return err
 	}
-	h.sc = sc
+	h.set = sc
 	return nil
 }
 

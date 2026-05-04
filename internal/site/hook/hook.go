@@ -1,6 +1,8 @@
 package hook
 
 import (
+	"context"
+
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/site/template"
@@ -8,7 +10,7 @@ import (
 
 type (
 	BuildHook interface {
-		AfterBuild(core.Writer) error
+		AfterBuild(context.Context, core.Writer) error
 		BeforeBuild() error
 		HandleInit(template.TemplateSet) error
 	}
@@ -30,7 +32,7 @@ type (
 
 type HookImpl struct{}
 
-func (HookImpl) AfterBuild(core.Writer) error                                   { return nil }
+func (HookImpl) AfterBuild(context.Context, core.Writer) error                  { return nil }
 func (HookImpl) BeforeBuild() error                                             { return nil }
 func (HookImpl) HandleInit(template.TemplateSet) error                          { return nil }
 func (HookImpl) HandlePage(result *content.Page) *content.Page                  { return result }

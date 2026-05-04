@@ -2,9 +2,7 @@ package data
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/fs"
-	"os"
 	"strings"
 
 	"github.com/go-resty/resty/v2"
@@ -48,17 +46,15 @@ func (d *Data) loadFromURL(url string, format string) (any, error) {
 }
 
 func (d *Data) loadFromFile(path string, format string) (any, error) {
-	for _, dir := range []fs.FS{os.DirFS("."), d.ctx.Theme} {
-		if _, err := fs.Stat(dir, path); err != nil {
-			return nil, err
-		}
-		data, err := fs.ReadFile(dir, path)
-		if err != nil {
-			return nil, err
-		}
-		return d.loadFromBytes(data, format)
+	subFS, err := d.ctx.GetFS("data", false)
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("the %s is not found")
+	data, err := fs.ReadFile(subFS, path)
+	if err != nil {
+		return nil, err
+	}
+	return d.loadFromBytes(data, format)
 }
 
 func (d *Data) Load(path string, format string) any {

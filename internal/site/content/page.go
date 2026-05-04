@@ -339,7 +339,6 @@ func (d *Processor) ParsePageFormats(page *Page) Formats {
 }
 
 func (d *Processor) RenderPage(page *Page, tplset template.TemplateSet, writer core.Writer) error {
-
 	vars := map[string]any{
 		"page":         page,
 		"current_url":  page.Permalink,

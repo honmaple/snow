@@ -3,7 +3,7 @@ package site
 import (
 	"context"
 	"io/fs"
-	"os"
+	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -53,25 +53,20 @@ func (site *Site) copyStaticDir(staticFS fs.FS) error {
 }
 
 func (site *Site) buildStatic(ctx context.Context) error {
-	if _, err := fs.Stat(site.ctx.Theme, "static"); err == nil {
-		site.ctx.Logger.Debug("Copy theme static")
+	site.ctx.Logger.Infof("Copying static...")
 
-		subFS, err := fs.Sub(site.ctx.Theme, "static")
-		if err != nil {
-			return err
-		}
-		if err := site.copyStaticDir(subFS); err != nil {
-			return err
-		}
+	now := time.Now()
+
+	staticFS, err := site.ctx.GetFS("static", true)
+	if err != nil {
+		return err
 	}
 
-	staticDir := site.ctx.GetStaticDir()
-	if _, err := os.Stat(staticDir); err == nil {
-		site.ctx.Logger.Debugf("Copy static: %s", staticDir)
-
-		if err := site.copyStaticDir(os.DirFS(staticDir)); err != nil {
-			return err
-		}
+	if err := site.copyStaticDir(staticFS); err != nil {
+		return err
 	}
+	site.ctx.Logger.Infof("Done: in %v",
+		time.Since(now),
+	)
 	return nil
 }

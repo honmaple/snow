@@ -3,9 +3,7 @@ package template
 import (
 	"fmt"
 	"io"
-	"io/fs"
 	"maps"
-	"os"
 	"sync"
 
 	"github.com/flosch/pongo2/v7"
@@ -151,20 +149,13 @@ func (set *templateSet) RegisterTransient(name string, fn TransientFunction) err
 }
 
 func NewSet(ctx *core.Context) (TemplateSet, error) {
-	tplFS, err := fs.Sub(ctx.Theme, "templates")
-	if err != nil {
-		return nil, err
-	}
-
-	internalFS, err := fs.Sub(ctx.Theme, "internal/templates")
+	tplFS, err := ctx.GetFS("templates", true)
 	if err != nil {
 		return nil, err
 	}
 
 	loaders := []pongo2.TemplateLoader{
-		newLoader(os.DirFS("templates")),
 		newLoader(tplFS),
-		newLoader(internalFS),
 	}
 	tplset := pongo2.NewSet("app", loaders...)
 

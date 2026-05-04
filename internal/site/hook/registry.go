@@ -1,11 +1,12 @@
 package hook
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 
-	"encoding/json"
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/site/template"
@@ -15,9 +16,9 @@ type Registry struct {
 	hooks []Hook
 }
 
-func (r *Registry) AfterBuild(writer core.Writer) error {
+func (r *Registry) AfterBuild(ctx context.Context, writer core.Writer) error {
 	for _, hook := range r.hooks {
-		if err := hook.AfterBuild(writer); err != nil {
+		if err := hook.AfterBuild(ctx, writer); err != nil {
 			return err
 		}
 	}

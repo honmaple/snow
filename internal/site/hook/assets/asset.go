@@ -117,5 +117,5 @@ func (n *Asset) Execute(ctx context.Context, theme fs.FS, writer core.Writer) er
 		}
 
 	}
-	return writer.Write(nil, n.Output, &b)
+	return writer.Write(ctx, n.Output, &b)
 }

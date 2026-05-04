@@ -6,14 +6,15 @@ import (
 	"os"
 
 	"github.com/honmaple/snow/internal/theme"
+	"github.com/honmaple/snow/internal/utils/mergefs"
 	"github.com/sirupsen/logrus"
 )
 
 type (
 	Context struct {
 		*LocaleContext
-		Theme          fs.FS
 		Logger         Logger
+		ThemeFS        fs.FS
 		OtherLanguages map[string]*LocaleContext
 	}
 	ContextOption func(*Context)
@@ -44,6 +45,23 @@ func (ctx *Context) VerifyLanguage(lang string) bool {
 	return ok
 }
 
+func (ctx *Context) GetFS(path string, internal bool) (fs.FS, error) {
+	fsys := []fs.FS{
+		os.DirFS(path),
+	}
+
+	if subFS, err := fs.Sub(ctx.ThemeFS, path); err == nil {
+		fsys = append(fsys, subFS)
+	}
+	// 是否包括内置主题文件
+	if internal {
+		if subFS, err := fs.Sub(ctx.ThemeFS, "internal/"+path); err == nil {
+			fsys = append(fsys, subFS)
+		}
+	}
+	return mergefs.Merge(fsys...), nil
+}
+
 func (ctx *Context) For(lang string) *LocaleContext {
 	if lang == ctx.GetDefaultLanguage() {
 		return ctx.LocaleContext
@@ -61,12 +79,6 @@ func WithLogger(log Logger) ContextOption {
 	}
 }
 
-func WithTheme(theme fs.FS) ContextOption {
-	return func(ctx *Context) {
-		ctx.Theme = theme
-	}
-}
-
 func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 	ctx := &Context{
 		LocaleContext: &LocaleContext{
@@ -74,7 +86,6 @@ func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 		},
 		OtherLanguages: make(map[string]*LocaleContext),
 	}
-
 	for _, opt := range opts {
 		opt(ctx)
 	}
@@ -92,15 +103,14 @@ func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 			Level: level,
 		}
 	}
-	if ctx.Theme == nil {
-		t, err := theme.New(conf.GetString("theme"))
-		if err != nil {
-			return nil, err
-		}
-		ctx.Theme = t
-	}
 
-	if err := conf.MergeFromThemeConfig(ctx.Theme); err != nil {
+	themeFS, err := theme.New(conf.GetString("theme"))
+	if err != nil {
+		return nil, err
+	}
+	ctx.ThemeFS = themeFS
+
+	if err := conf.MergeFromThemeConfig(ctx.ThemeFS); err != nil {
 		return nil, err
 	}
 
