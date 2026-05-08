@@ -12,7 +12,8 @@ type (
 	BuildHook interface {
 		AfterBuild(context.Context, core.Writer) error
 		BeforeBuild() error
-		HandleInit(template.TemplateSet) error
+		HandleWriter(core.Writer) (core.Writer, error)
+		HandleTemplateSet(template.TemplateSet) (template.TemplateSet, error)
 	}
 	ContentHook interface {
 		HandlePage(*content.Page) *content.Page
@@ -34,10 +35,15 @@ type HookImpl struct{}
 
 func (HookImpl) AfterBuild(context.Context, core.Writer) error                  { return nil }
 func (HookImpl) BeforeBuild() error                                             { return nil }
-func (HookImpl) HandleInit(template.TemplateSet) error                          { return nil }
 func (HookImpl) HandlePage(result *content.Page) *content.Page                  { return result }
 func (HookImpl) HandlePages(results content.Pages) content.Pages                { return results }
 func (HookImpl) HandleSection(result *content.Section) *content.Section         { return result }
 func (HookImpl) HandleSections(results content.Sections) content.Sections       { return results }
 func (HookImpl) HandleTaxonomy(result *content.Taxonomy) *content.Taxonomy      { return result }
 func (HookImpl) HandleTaxonomies(results content.Taxonomies) content.Taxonomies { return results }
+func (HookImpl) HandleWriter(writer core.Writer) (core.Writer, error) {
+	return writer, nil
+}
+func (HookImpl) HandleTemplateSet(set template.TemplateSet) (template.TemplateSet, error) {
+	return set, nil
+}

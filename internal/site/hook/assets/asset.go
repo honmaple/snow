@@ -3,12 +3,11 @@ package assets
 import (
 	"bytes"
 	"context"
-	"io"
 	"io/fs"
+	stdpath "path"
 
 	"github.com/bep/golibsass/libsass"
 	"github.com/honmaple/snow/internal/core"
-	"github.com/spf13/cast"
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
 	"github.com/tdewolff/minify/v2/js"
@@ -16,7 +15,7 @@ import (
 
 type Asset struct {
 	Files       []string
-	Filters     []map[string]map[string]any
+	Filters     []string
 	Output      string
 	ShowVersion bool
 }
@@ -28,94 +27,114 @@ func getFirstKey[K comparable, V any](m map[K]V) (key K, ok bool) {
 	return key, false
 }
 
-func (n *Asset) filter(name string, w io.Writer, r io.Reader, opt map[string]any) (err error) {
+func (n *Asset) filter(name string, buf []byte) (result []byte, err error) {
 	switch name {
-	case "libscss":
-		err = n.libscss(w, r, opt)
+	// case "libscss":
+	//	result, err = n.libscss(assetsFS, file, buf, opt)
 	case "cssmin":
-		err = n.cssmin(w, r, opt)
+		result, err = n.cssmin(buf)
 	case "jsmin":
-		err = n.jsmin(w, r, opt)
+		result, err = n.jsmin(buf)
 	}
-	return err
+	return result, err
 }
 
-func (n *Asset) libscss(w io.Writer, r io.Reader, opt map[string]any) error {
-	bs, err := io.ReadAll(r)
-	if err != nil {
-		return err
-	}
+func (n *Asset) cssmin(buf []byte) ([]byte, error) {
+	m := minify.New()
+	m.AddFunc("css", css.Minify)
+
+	return m.Bytes("css", buf)
+}
+
+func (n *Asset) jsmin(buf []byte) ([]byte, error) {
+	m := minify.New()
+	m.AddFunc("js", js.Minify)
+
+	return m.Bytes("js", buf)
+}
+
+func (n *Asset) libscss(assetsFS fs.FS, file string, buf []byte, opt map[string]any) ([]byte, error) {
+	dir := stdpath.Dir(file)
 
 	opts := libsass.Options{}
-	if opt != nil {
-		opts.IncludePaths = cast.ToStringSlice(opt["paths"])
+	opts.ImportResolver = func(url string, prev string) (newURL string, body string, resolved bool) {
+		if stdpath.Ext(url) == "" {
+			urls := []string{
+				url + ".scss",
+				url + ".sass",
+				"_" + url + ".scss",
+				"_" + url + ".sass",
+			}
+			for _, u := range urls {
+				if _, err := fs.Stat(assetsFS, stdpath.Join(dir, u)); err == nil {
+					url = u
+					break
+				}
+			}
+		}
+		b, err := fs.ReadFile(assetsFS, stdpath.Join(dir, url))
+		if err != nil {
+			return url, "", false
+		}
+		return url, string(b), true
 	}
 
 	transpiler, err := libsass.New(opts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	result, err := transpiler.Execute(string(bs))
+	result, err := transpiler.Execute(string(buf))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = io.WriteString(w, result.CSS)
-	return err
+	return []byte(result.CSS), nil
 }
 
-func (n *Asset) cssmin(w io.Writer, r io.Reader, _ map[string]any) error {
-	m := minify.New()
-	m.AddFunc("css", css.Minify)
-
-	return m.Minify("css", w, r)
-}
-
-func (n *Asset) jsmin(w io.Writer, r io.Reader, _ map[string]any) error {
-	m := minify.New()
-	m.AddFunc("js", js.Minify)
-
-	// 多个js文件合并如果没有;会有问题
-	defer w.Write([]byte(";"))
-	return m.Minify("js", w, r)
-}
-
-func (n *Asset) Execute(ctx context.Context, theme fs.FS, writer core.Writer) error {
+func (n *Asset) Execute(ctx context.Context, assetsFS fs.FS, writer core.Writer) error {
 	var (
 		b bytes.Buffer
 	)
+	// 先合并再压缩
 	for _, file := range n.Files {
-		matchedFiles, err := fs.Glob(theme, file)
+		matchedFiles, err := fs.Glob(assetsFS, file)
 		if err != nil {
 			return err
 		}
 
 		for _, matchedFile := range matchedFiles {
-			buf, err := fs.ReadFile(theme, matchedFile)
+			buf, err := fs.ReadFile(assetsFS, matchedFile)
 			if err != nil {
 				return err
 			}
-			var (
-				w = bytes.NewBuffer(nil)
-				r = bytes.NewBuffer(buf)
-			)
-			// filters为空时返回原数据
-			w.Write(r.Bytes())
-			for _, filter := range n.Filters {
-				name, ok := getFirstKey(filter)
-				if !ok {
-					continue
-				}
-				w.Reset()
-				if err := n.filter(name, w, r, filter[name]); err != nil {
+			switch stdpath.Ext(matchedFile) {
+			case ".scss", ".sass":
+				result, err := n.libscss(assetsFS, matchedFile, buf, nil)
+				if err != nil {
 					return err
 				}
-				r.Reset()
-				r.Write(w.Bytes())
+				b.Write(result)
+				b.WriteString("\n")
+			case ".css":
+				b.Write(buf)
+				b.WriteString("\n")
+			case ".js":
+				b.Write(buf)
+				b.WriteString("\n;\n")
 			}
-			b.Write(w.Bytes())
 		}
-
 	}
+
+	buf := b.Bytes()
+	for _, name := range n.Filters {
+		result, err := n.filter(name, buf)
+		if err != nil {
+			return err
+		}
+		buf = result
+	}
+
+	b.Reset()
+	b.Write(buf)
 	return writer.Write(ctx, n.Output, &b)
 }

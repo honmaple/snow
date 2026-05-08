@@ -34,13 +34,26 @@ func (r *Registry) BeforeBuild() error {
 	return nil
 }
 
-func (r *Registry) HandleInit(set template.TemplateSet) error {
+func (r *Registry) HandleWriter(writer core.Writer) (core.Writer, error) {
 	for _, hook := range r.hooks {
-		if err := hook.HandleInit(set); err != nil {
-			return err
+		result, err := hook.HandleWriter(writer)
+		if err != nil {
+			return nil, err
 		}
+		writer = result
 	}
-	return nil
+	return writer, nil
+}
+
+func (r *Registry) HandleTemplateSet(set template.TemplateSet) (template.TemplateSet, error) {
+	for _, hook := range r.hooks {
+		result, err := hook.HandleTemplateSet(set)
+		if err != nil {
+			return nil, err
+		}
+		set = result
+	}
+	return set, nil
 }
 
 func (r *Registry) HandlePage(result *content.Page) *content.Page {

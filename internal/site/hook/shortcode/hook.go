@@ -22,13 +22,13 @@ func (h *ShortcodeHook) HandlePage(page *content.Page) *content.Page {
 	return page
 }
 
-func (h *ShortcodeHook) HandleInit(set template.TemplateSet) error {
+func (h *ShortcodeHook) HandleTemplateSet(set template.TemplateSet) (template.TemplateSet, error) {
 	sc, err := NewShortcodeSet(h.ctx, set)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	h.set = sc
-	return nil
+	return set, nil
 }
 
 func New(ctx *core.Context) (hook.Hook, error) {

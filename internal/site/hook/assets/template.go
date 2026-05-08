@@ -34,12 +34,7 @@ func (n *assetNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Template
 			case "files":
 				asset.Files = strings.Split(val.String(), ",")
 			case "filters":
-				asset.Filters = make([]map[string]map[string]any, 0)
-				for name := range strings.SplitSeq(val.String(), ",") {
-					asset.Filters = append(asset.Filters, map[string]map[string]any{
-						name: nil,
-					})
-				}
+				asset.Filters = strings.Split(val.String(), ",")
 			case "output":
 				asset.Output = val.String()
 			case "version":

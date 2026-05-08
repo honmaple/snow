@@ -20,7 +20,7 @@ type (
 	AssetsHook struct {
 		hook.HookImpl
 		ctx      *core.Context
-		staticFS fs.FS
+		assetsFS fs.FS
 
 		hash        sync.Map
 		assets      []*Asset
@@ -30,7 +30,7 @@ type (
 )
 
 func (h *AssetsHook) getHash(file string, w io.Writer) error {
-	src, err := h.staticFS.Open(file)
+	src, err := h.assetsFS.Open(file)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func (h *AssetsHook) getHash(file string, w io.Writer) error {
 func (h *AssetsHook) getAssetHash(asset *Asset) (string, error) {
 	hash := md5.New()
 	for _, file := range asset.Files {
-		matchedFiles, err := fs.Glob(h.staticFS, file)
+		matchedFiles, err := fs.Glob(h.assetsFS, file)
 		if err != nil {
 			return "", err
 		}
@@ -80,21 +80,21 @@ func (h *AssetsHook) BeforeBuild() error {
 
 // 写入收集的文件
 func (h *AssetsHook) AfterBuild(ctx context.Context, w core.Writer) error {
-	// for _, asset := range h.assets {
-	//	if err := asset.Execute(ctx, h.staticFS, w); err != nil {
-	//		return err
-	//	}
-	// }
+	for _, asset := range h.assets {
+		if err := asset.Execute(ctx, h.assetsFS, w); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func (h *AssetsHook) HandleInit(set template.TemplateSet) error {
+func (h *AssetsHook) HandleTemplateSet(set template.TemplateSet) (template.TemplateSet, error) {
 	set.RegisterTag("assets", h.assetsTagParser)
-	return nil
+	return set, nil
 }
 
 func New(ctx *core.Context) (hook.Hook, error) {
-	staticFS, err := ctx.GetFS("static", false)
+	assetsFS, err := ctx.GetFS("assets", false)
 	if err != nil {
 		return nil, err
 	}
@@ -114,26 +114,15 @@ func New(ctx *core.Context) (hook.Hook, error) {
 		if m := conf.Get("filters"); m != nil {
 			switch reflect.TypeOf(m).Kind() {
 			case reflect.Slice:
-				// - libsass:
-				//     path: ""
-				// - cssmin:
-				asset.Filters = make([]map[string]map[string]any, 0)
+				// - libsass
+				// - cssmin
+				asset.Filters = make([]string, 0)
 				for _, item := range m.([]any) {
-					for k, v := range cast.ToStringMap(item) {
-						asset.Filters = append(asset.Filters, map[string]map[string]any{
-							k: cast.ToStringMap(v),
-						})
-						break
-					}
+					asset.Filters = append(asset.Filters, cast.ToString(item))
 				}
 			case reflect.String:
 				// libcass,css
-				asset.Filters = make([]map[string]map[string]any, 0)
-				for name := range strings.SplitSeq(m.(string), ",") {
-					asset.Filters = append(asset.Filters, map[string]map[string]any{
-						name: nil,
-					})
-				}
+				asset.Filters = strings.Split(m.(string), ",")
 			}
 		}
 		preAssetMap[name] = asset
@@ -141,7 +130,7 @@ func New(ctx *core.Context) (hook.Hook, error) {
 
 	h := &AssetsHook{
 		ctx:         ctx,
-		staticFS:    staticFS,
+		assetsFS:    assetsFS,
 		assets:      make([]*Asset, 0),
 		assetMap:    make(map[string]bool),
 		preAssetMap: preAssetMap,

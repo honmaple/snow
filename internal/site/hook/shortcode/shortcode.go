@@ -44,15 +44,17 @@ func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToke
 			}
 			tpl, ok := h.tpls[name]
 			if ok {
-				attrs := make(map[string]any)
+				params := make(map[string]any)
 				for _, attr := range token.Attr {
-					attrs[attr.Key] = attr.Val
+					params[attr.Key] = attr.Val
 				}
 
 				vars := map[string]any{
 					"page":     page,
+					"name":     name,
 					"body":     "",
-					"attrs":    attrs,
+					"params":   params,
+					"counter":  counter[name],
 					"_name":    name,
 					"_counter": counter[name],
 					"_shortcode": func(s string) string {

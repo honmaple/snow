@@ -94,8 +94,16 @@ func New(ctx *core.Context, opts ...SiteOption) (*Site, error) {
 		}
 		site.hook = h
 	}
-	if err := site.hook.HandleInit(site.tplset); err != nil {
+	w, err := site.hook.HandleWriter(site.writer)
+	if err != nil {
 		return nil, err
 	}
+	site.writer = w
+
+	set, err := site.hook.HandleTemplateSet(site.tplset)
+	if err != nil {
+		return nil, err
+	}
+	site.tplset = set
 	return site, nil
 }

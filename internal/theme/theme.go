@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	//go:embed static templates
+	//go:embed templates
 	internalFS embed.FS
 )
 

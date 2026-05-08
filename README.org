@@ -594,88 +594,88 @@
      - "shortcode"
    #+end_src
 *** i18n
-     - 模版
-       #+begin_src html
-       {% i18n "tags" %}
-       {% T "tags %d" 12 %}
-       {{ i18n("authors") }}
-       {{ T("authors") }}
-       {{ _("authors %f", 3.14) }}
-       #+end_src
-       甚至可以直接使用变量
-       {{ _(term.Name) }}
-     - 翻译文件
-       默认会加载主题下 *i18n* 目录下的文件
-       #+begin_example
-       i18n
-       ├── en.yaml
-       └── zh.yaml
-       #+end_example
-       文件内容
-       #+begin_src yaml
-       ---
-       - id: "authors"
-         tr: "作者"
-       - id: "tags"
-         tr: "标签"
-       #+end_src
+    - 模版
+      #+begin_src html
+      {% i18n "tags" %}
+      {% T "tags %d" 12 %}
+      {{ i18n("authors") }}
+      {{ T("authors") }}
+      {{ _("authors %f", 3.14) }}
+      #+end_src
+      甚至可以直接使用变量
+      {{ _(term.Name) }}
+    - 翻译文件
+      默认会加载主题下 *i18n* 目录下的文件
+      #+begin_example
+      i18n
+      ├── en.yaml
+      └── zh.yaml
+      #+end_example
+      文件内容
+      #+begin_src yaml
+      ---
+      - id: "authors"
+        tr: "作者"
+      - id: "tags"
+        tr: "标签"
+      #+end_src
 
-       也可以自定义文件位置或翻译内容覆盖主题原有的翻译
-       #+begin_src yaml
-       languages.en:
-         translations: "i18n/en.yaml"
-       languages.zh:
-         translations:
-           - id: "authors"
-             tr: "作者"
-       #+end_src
+      也可以自定义文件位置或翻译内容覆盖主题原有的翻译
+      #+begin_src yaml
+      languages.en:
+        translations: "i18n/en.yaml"
+      languages.zh:
+        translations:
+          - id: "authors"
+            tr: "作者"
+      #+end_src
 
 *** encrypt
-     内容加密, 需要一个密码
-     #+begin_src html
-     {{ page.Content | encrypt:"123456" }}
-     #+end_src
+    内容加密, 需要一个密码
+    #+begin_src html
+    {{ page.Content | encrypt:"123456" }}
+    #+end_src
 
 *** shortcode
-     用于快速插入已有模版, 示例:
-     #+begin_example
-     <shortcode _name="encrypt" password="1234567">
-     hello *markdown*
-     </shortcode>
+    用于快速插入已有模版, 示例:
+    #+begin_example
+    <shortcode _name="encrypt" password="1234567">
+    hello *markdown*
+    </shortcode>
 
-     <shortcode _name="gist" author="spf13" id="7896402" />
-     #+end_example
+    <shortcode _name="gist" author="spf13" id="7896402" />
+    #+end_example
 
-     可以自定义 *shortcode* 到主题的 =templates/shortcodes= 目录下, 目前内置 *gist*, *encrypt*
+    可以自定义 *shortcode* 到主题的 =templates/shortcodes= 目录下, 目前内置 *gist*, *encrypt*
 
-     - 如果使用的外部 =js，css= 文件可以加载内置的 =shortcode.js= 实现全局只加载一次，具体可以参考 [[https://github.com/honmaple/snow/blob/master/builder/theme/internal/templates/shortcodes/encrypt.html][shortcodes/encrypt.html]]
-     - 如果想要在单个页面只加载一次，请使用
-       #+begin_example
-       _counter == 0
-       #+end_example
+    - 如果使用的外部 =js，css= 文件可以加载内置的 =shortcode.js= 实现全局只加载一次，具体可以参考 [[https://github.com/honmaple/snow/blob/master/builder/theme/internal/templates/shortcodes/encrypt.html][shortcodes/encrypt.html]]
+    - 如果想要在单个页面只加载一次，请使用
+      #+begin_example
+      _counter == 0
+      #+end_example
 *** assets
-     静态文件处理
-     #+begin_src yaml
-     hooks.assets:
-       css:
-         files:
-           - "@theme/static/scss/main.scss"
-           - "@theme/static/scss/entry.scss"
-         filters:
-           - libscss:
-               path: ["@theme/static/scss/"]
-           - cssmin:
-         output: "static/lib.min.css"
-     #+end_src
-     #+begin_src html
-     {% assets files="css/style.scss" filters="libsass,cssmin" output="css/style.min.css" %}
-     <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
-     {% endassets %}
+    静态文件处理
+    #+begin_src yaml
+    hooks.assets:
+      css:
+        files:
+          - "@theme/static/scss/main.scss"
+          - "@theme/static/scss/entry.scss"
+        filters:
+          - libscss:
+              path: ["@theme/static/scss/"]
+          - cssmin:
+        output: "static/lib.min.css"
+    #+end_src
+    #+begin_src html
+    {% assets files="css/style.scss" filters="libsass,cssmin" output="css/style.min.css" %}
+    <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
+    {% endassets %}
 
-     {% assets css %}
-     <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
-     {% endassets %}
-     #+end_src
+    {% assets css %}
+    <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
+    {% endassets %}
+    #+end_src
 *** sofile
     *sofile* 允许使用Go的 =Plugin= 系统支持自定义插件
     - 创建一个 =sofile.go= 的文件
@@ -719,6 +719,17 @@
       hooks.sofile.files:
         - "sofile.so"
       #+end_src
+*** minify
+    *minify* 允许对写入的html、css、js文件进行压缩
+**** 配置
+     #+begin_src yaml
+     hooks.minify:
+       enabled: true
+       option:
+         js: true
+         css: true
+         html: true
+     #+end_src
 
 ** 本地测试和正式发布
    snow 提供了 *mode* 配置用于区分本地测试和正式发布
