@@ -74,7 +74,7 @@ func New(ctx *core.Context, opts ...SiteOption) (*Site, error) {
 	}
 	if site.option == nil {
 		site.option = &Option{
-			IncludeDrafts: true,
+			IncludeDrafts: false,
 		}
 	}
 	if site.writer == nil {

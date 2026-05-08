@@ -21,7 +21,7 @@ var (
 			},
 			&cli.BoolFlag{
 				Name:    "dry-run",
-				Aliases: []string{"d"},
+				Aliases: []string{"V"},
 				Usage:   "dry run",
 			},
 			&cli.BoolFlag{

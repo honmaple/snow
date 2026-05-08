@@ -132,43 +132,38 @@
     │   └── posts
     │       └── first-page.md
     ├── static
-    ├── layouts
+    ├── templates
     └── themes
     │   └── snow
     │       └── static
-    │       └── template
+    │       └── templates
     #+end_example
-    - *config.yaml*:
-      使用的配置文件
-    - *content*:
-      包括所有的页面内容, 比如 =.md=, =.org= 等,如果一个子目录包括 =index.{md,org}= 文件，那么这个目录将会成为一个页面，否则每一个子目录都是一个 *section*, 同样的，子目录下 =_index.{md,org}= 文件也是该 *section* 的配置文件
-    - *static*:
-      =static_dirs= 指定的静态文件或目录，名称可修改
-    - *layouts*: 主题模版覆盖目录
-      =theme.override= 指定的主题覆盖文件，比如有一个主题模版 ={theme}/templates/post.html=, 当指定了 =override= 目录后就可以在该目录创建一个同样名称为 =post.html= 的文件进行覆盖
-    - *themes*:
-      主题目录, 该目录下包括的子目录就是主题名称，可以在 =theme.name= 里指定
+    - *config.yaml*: 配置文件
+    - *content*: 内容目录
+    - *static*: 静态文件目录，该目录下的所有文件都会同步到站点的根目录
+    - *templates*: 模版目录
+    - *themes*: 主题目录
 *** 配置文件(Configuration)
     #+begin_src yaml
     # 站点配置信息
-    site:
-      url: "http://127.0.0.1:8000"
-      title: "snow"
-      subtitle: "Snow is a static generator."
-      language: "zh"
-      author: "honmaple"
+    base_url: "http://127.0.0.1:8000"
+    title: "Snow"
+    description: "snow is a static site generator."
+    author: "honmaple"
+    language: "zh"
 
     # 发布时使用的配置
-    mode.publish:
-      site:
-        url: "https://honmaple.me"
+    modes.publish:
+      base_url: "https://honmaple.me"
+
+    # 多语言en使用的配置
+    languages.en:
+      base_url: "https://honmaple.me/en"
 
     output_dir: "output"
     content_dir: "content"
-    build_filter: "not draft"
 
-    theme:
-      name: "snow"
+    theme: "snow"
 
     # 按照主题需要进行配置
     params.extra:
@@ -177,26 +172,35 @@
           url: "/pages/about.html"
     #+end_src
 ** 内容管理
+   #+begin_src yaml
+   # 指定内容目录
+   content_dir: "content"
+
+   # 忽略的内容，如果是目录则以 / 结尾
+   ignored_content:
+     - "drafts/"
+   #+end_src
+
 *** Section
+    =content_dir= 目录下以 =_index.= 开头的文件都将识别为 =section= 结构，=secion= 下包括多篇文章
     #+begin_example
       content/
-      ├── pages             // no url, because sections.pages.path is ""
-      │   └── about         // <- http://127.0.0.1:8000/pages/about.html
-      │       └── index.org // no url
-      │   └── contact.org   // <- http://127.0.0.1:8000/pages/contact.html
-      └── posts             // <- http://127.0.0.1:8000/posts/index.html
-          ├── post1.org     // <- http://127.0.0.1:8000/posts/2022/02/post1.html
-          └── subposts      // <- http://127.0.0.1:8000/posts/subposts/index.html
-              └── post2.org // <- http://127.0.0.1:8000/posts/2023/02/post2.html
+      ├── _index.md           // <- http://127.0.0.1:8000/index.html，包括content下所有默认语言的文章
+      ├── _index.en.md        // <- http://127.0.0.1:8000/en/index.html，包括content下所有语言为en的文章
+      └── posts              // no url
+          ├── post1.org      // <- http://127.0.0.1:8000/posts/2022/02/post1.html
+          └── subposts       //
+              └── _index.org // <- http://127.0.0.1:8000/posts/subposts/index.html
+              └── post2.org  // <- http://127.0.0.1:8000/posts/2023/02/post2.html
     #+end_example
 **** 配置
      #+begin_src yaml
      sections:
        _default:
          # 页面默认排序, 多字段使用逗号分隔
-         orderby: "date desc"
+         sort_by: "date desc"
          # 自定义某个section下的页面筛选
-         filter: ""
+         filter_by: ""
          # 页面默认分页, path必须使用{number}变量, 0表示不分页
          paginate: 10
          # 分页路径
@@ -207,45 +211,46 @@
          path: "{section}/index.html"
          # 使用的模版
          template: "section.html"
-         # 当前section下所有页面生成路径
-         page_path: "{section}/{slug}/index.html"
-         # 页面使用的模版
-         page_template: "post.html"
+         # section输出格式
          formats.atom:
            path: "{section:slug}/atom.xml"
-       posts:
-         page_path: "posts/{date:%Y}/{date:%m}/{slug}.html"
-       pages:
-         path: ""
-       pages/about:
-         # 自定义pages/about下的页面生成路径，同时继承pages.path不会生成所有页面
-         page_path: "{slug}/index.html"
+       en:
+         # en目录下的所有section都是en语言
+         lang: "en"
      #+end_src
-     *filter* 格式(下同):
+
+     *filter_by* 格式(下同):
      #+begin_example
      'emacs' in tags and not draft or weight > 1
      #+end_example
-     其中 *tags*, *draft* 等都是page元数据
+     其中 =tags=, =draft= 等都是 =FrontMatter=
 
 **** 路径变量(*sections.xxx.path*)
-     |----------------+---------------------------------|
-     | 变量           | 描述                            |
-     |----------------+---------------------------------|
-     | {section}      | section名称                     |
-     | {section:slug} | section slug, 中国 -> zhong-guo |
+     |-----------------+---------------------------------------|
+     | 变量             | 描述                                   |
+     |-----------------+---------------------------------------|
+     | {lang}          | section所属language                    |
+     | {lang:optional} | section所属language，如果是默认语言则为空 |
+     | {path}          | section所属路径                         |
+     | {path:slug}     | section所属路径, 转为slug               |
+     | {section}       | section名称                            |
+     | {section:slug}  | section slug, 中国 -> zhong-guo        |
 
 **** 模版变量(*sections.xxx.template*)
      |-------------------+-------------------------|
      | 变量              | 描述                    |
      |-------------------+-------------------------|
      | section           |                         |
+     | section.Lang | section语言           |
+     | section.Slug |            |
      | section.Title     | section标题             |
      | section.Path      | section相对链接         |
      | section.Permalink | section绝对链接         |
      | section.Content   | section内容             |
+     | section.RawContent | section原始内容           |
      | section.Pages     | 当前section下的页面列表 |
      | section.Children  | 子section               |
-     | section.Parent    | 父section               |
+     | section.Formats | section输出的其它格式        |
 
 *** 页面(Page)
 **** 元数据
@@ -278,21 +283,44 @@
        </head>
        #+end_src
 **** 配置
+     可以在配置文件设置页面的 =FrontMatter=，如果页面已有则忽略
      #+begin_src yaml
-     # 页面目录所在, 其中该目录下应该包括一系列子目录，这些子目录的名称对应为 *页面的类型*, 比如 *content/drafts/* 目录下的 页面类型为 *drafts*, 当然也可以直接在 页面文件头添加 =type: drafts=
-     content_dir: "content"
+     pages:
+       _default:
+         comment: true
+       posts:
+         path: "/articles/{date:%Y}/{date:%m}/{slug}.html"
+         template: "post.html"
+         comment: true
+       pages:
+         hidden: true
+         path: "/pages/{slug}.html"
+         template: "page.html"
+       drafts:
+         draft: true
+       en:
+         lang: "en"
+         path: "/en/articles/{date:%Y}/{date:%m}/{slug}.html"
+         template: "post.html"
+       en/pages:
+         hidden: true
+         path: "/en/pages/{slug}.html"
+         template: "page.html"
      #+end_src
 **** 路径变量(*sections.xxx.page_path*)
-     |------------+----------------------|
-     | 变量       | 描述                 |
-     |------------+----------------------|
-     | {date:%Y}  | 创建页面的年份       |
-     | {date:%m}  | 创建页面的月份       |
-     | {date:%d}  | 创建页面的日期       |
-     | {date:%H}  | 创建页面的小时       |
-     | {lang}     | 页面语言             |
-     | {slug}     | 页面标题或自定义slug |
-     | {filename} | 文件名称(不带后缀名) |
+     |-----------------+-----------------------------------|
+     | 变量             | 描述                               |
+     |-----------------+-----------------------------------|
+     | {lang}          | 页面语言                            |
+     | {lang:optional} | 页面所属language，如果是默认语言则为空 |
+     | {date:%Y}       | 创建页面的年份                      |
+     | {date:%m}       | 创建页面的月份                      |
+     | {date:%d}       | 创建页面的日期                      |
+     | {date:%H}       | 创建页面的小时                      |
+     | {path}          | 页面所属路径                        |
+     | {path:slug}     | 页面所属路径, 转为slug               |
+     | {slug}          | 页面标题或自定义slug                 |
+     | {title} | 页面标题                 |
 
 **** 模版变量(*sections.xxx.page_template*)
      |----------------------+----------------------|
@@ -309,30 +337,22 @@
      | page.Summary         | 页面简介             |
      | page.Content         | 页面内容             |
      | page.FrontMatter.xxx        | 自定义的元数据       |
-     | page.Prev            | 上一篇               |
-     | page.Next            | 下一篇               |
-     | page.HasPrev()       | 是否有上一篇         |
-     | page.HasNext()       | 是否有下一篇         |
-     | page.PrevInType      | 同一类型上一篇       |
-     | page.NextInType      | 同一类型下一篇       |
-     | page.HasPrevInType() | 是否有同一类型上一篇 |
-     | page.HasNextInType() | 是否有同一类型下一篇 |
 
 *** 分类系统(Taxonomy)
 **** 配置
      #+begin_src yaml
      taxonomies:
        _default:
-         path: "{taxonomy}/index.html"
          # terms排序, 可选name,count
-         orderby: ""
+         sort_by: ""
+         path: "{taxonomy}/index.html"
          template: "{taxonomy}/list.html"
          term_path: "{taxonomy}/{term:slug}/index.html"
          term_template: "{taxonomy}/single.html"
          # 页面列表筛选
-         term_filter: ""
+         term_filter_by: ""
          # 页面列表排序
-         term_orderby: "date desc"
+         term_sort_by: "date desc"
          # 页面列表分页
          term_paginate: 0
          term_paginate_path: ""
@@ -344,14 +364,18 @@
 
 **** 路径变量
      - *taxonomies.xxx.path*
-       |------------+--------------|
-       | 变量       | 描述         |
-       |------------+--------------|
-       | {taxonomy} | 分类系统名称 |
+       |-----------------+-----------------------------------|
+       | 变量             | 描述                               |
+       |-----------------+-----------------------------------|
+       | {lang}          | 分类所属语言                        |
+       | {lang:optional} | 分类所属语言，如果是默认语言则为空 |
+       | {taxonomy}      | 分类系统名称                        |
      - *taxonomies.xxx.term_path*
        |-------------+------------------|
        | 变量        | 描述             |
        |-------------+------------------|
+       | {lang}          | 分类所属语言                        |
+       | {lang:optional} | 分类所属语言，如果是默认语言则为空 |
        | {taxonomy}  | 分类系统名称     |
        | {term}      | 分类具体名称     |
        | {term:slug} | 分类slug         |
@@ -409,12 +433,12 @@
      |--------------+-------------------|
      | {name}       | 路径名称          |
      | {extension}  | 路径扩展          |
-     | {number}     | 页码, 第一页为空  |
-     | {number:one} | 页码, 第一页为"1" |
+     | {number}     | 页码, 第一页为"1" |
+     | {number:optional} | 页码, 第一页为空 |
      - 示例一:
        #+begin_src yaml
        path: "section/index.html"
-       paginate_path: "{name}{number}{extension}"
+       paginate_path: "{name}{number:optional}{extension}"
        #+end_src
        - 第一页: =section/index.html=
        - 第二页: =section/index2.html=
@@ -422,7 +446,7 @@
      - 示例二:
        #+begin_src yaml
        path: "section/index.html"
-       paginate_path: "page/{number:one}{extension}"
+       paginate_path: "page/{number}{extension}"
        #+end_src
        - 第一页: =section/page/1.html=
        - 第二页: =section/page/2.html=
@@ -432,7 +456,7 @@
      | 变量                | 描述                 |
      |---------------------+----------------------|
      | paginator           |                      |
-     | paginator.URL       | 分页链接             |
+     | paginator.Path   | 分页链接             |
      | paginator.PageNum   | 当前页               |
      | paginator.Total     | 总页数               |
      | paginator.HasPrev() | 是否有上一页         |
@@ -445,27 +469,25 @@
      | paginator.List      | 当前分页下的页面列表 |
 
 *** 草稿(Draft)
-    使用者可以自定义草稿标志，但推荐使用两种形式:
-    1. 添加元数据 =draft: true=, 构建时增加筛选条件
-       - *草稿*
-         #+begin_example
-         snow build --filter 'draft = true'
-         #+end_example
-       - *非草稿*
-         #+begin_example
-         snow build -F 'not draft'
-         #+end_example
-    2. 创建一个单独的 =drafts= 目录存放草稿
-       - *草稿*
-         #+begin_example
-         snow build -F 'type = "drafts"'
-         #+end_example
-       - *非草稿*
-         #+begin_example
-         snow build -F 'type != "drafts"'
-         #+end_example
+    页面中的 =FrontMatter= 中的 =draft: true= 将会识别为草稿，如果不想每一篇草稿都添加相应字段，可以添加 =pages= 配置
+    #+begin_src yaml
+    pages:
+      drafts:
+        draft: true
+    #+end_src
+    配置表示 ={content_dir}/drafts= 该目录下的所有页面都将被识别为草稿。
 
-    注: 默认筛选条件可以写入配置 =build_filter=
+    构建时忽略草稿
+    1. 忽略草稿目录
+       #+begin_src yaml
+       ignored_content:
+         - "drafts/"
+       #+end_src
+    2. 使用命令行参数
+       #+begin_example
+       snow build --include-drafts
+       #+end_example
+
 *** 输出格式(Atom,Rss,JSON)
     可以生成 *rss* ，*atom* 或者其它任意格式(需要自定义模版)
 **** 配置
@@ -500,43 +522,14 @@
      | pages   | 页面列表                 |
 
 *** 静态文件(Static)
-    静态文件分 *主题静态文件* 和 *配置指定的静态文件*
+    静态文件分 *当前目录下静态文件* 和 *主题静态文件*
+    #+begin_src yaml
+    # 忽略的静态文件，如果是目录则以 / 结尾
+    ignored_static:
+      - "extra/"
+    #+end_src
 
-**** 主题静态文件
-     #+begin_example
-     ├── themes
-     │   └── snow
-     │       └── static
-     │           └── main.css
-     #+end_example
-     主题目录下的所有文件默认会复制到 *output* 目录, 除非设置 =statics.@theme/static.path= 为空
-
-**** 指定的静态文件
-     该文件需要在配置指定
-     #+begin_src yaml
-     statics:
-       # 根目录下static目录下的文件将会拷贝到{output_dir}/static
-       static:
-         # 拷贝的路径, 为空时表示不写入, 如果以"/"结尾, 表示拷贝到该目录
-         # static  -> {output_dir}/static
-         # static/ -> {output_dir}/static/static
-         path: "/"
-         # 指定扩展，不配置将会使用目录下的所有文件
-         exts:
-           - ".js"
-           - ".css"
-         # 如果指定的静态文件是一个目录，可以设置忽略文件, 比如忽略static目录下的images子目录
-         ignore_files:
-           - "^images/"
-       # 以@theme/开头表示主题目录, 以@theme/开头表示内置的主题目录
-       @theme/static:
-         path: "static"
-       @theme/static:
-         path: "static"
-       # 同样可以指定任意静态文件或目录
-       content/pages/css:
-         path: "static/css"
-     #+end_src
+    当 =static/{filename}= 和 =themes/{theme}/static/{filename}= 同时存在时，优先当前目录下的文件
 
 *** 多语言(Multilingual)
     需要配置 =languages=
@@ -548,14 +541,48 @@
           path: "{taxonomy}/index.html"
     languages.fr:
       translations: "i18n/fr.yaml"
-      ignores:
-        # 忽略所有的静态文件，与主站点共用一个静态目录
-        - statics
     #+end_src
     页面格式:
     - ={title}.en.md=
     - ={title}.fr.md=
     或者可以在文件头指定 =lang: en=
+
+**** i18n
+     - 模版
+       #+begin_src html
+       {% i18n "tags" %}
+       {% T "tags %d" 12 %}
+       {{ i18n("authors") }}
+       {{ T("authors") }}
+       {{ _("authors %f", 3.14) }}
+       #+end_src
+       甚至可以直接使用变量
+       {{ _(term.Name) }}
+     - 翻译文件
+       默认会加载主题下 *i18n* 目录下的文件
+       #+begin_example
+       i18n
+       ├── en.yaml
+       └── zh.yaml
+       #+end_example
+       文件内容
+       #+begin_src yaml
+       ---
+       - id: "authors"
+         tr: "作者"
+       - id: "tags"
+         tr: "标签"
+       #+end_src
+
+       也可以自定义文件位置或翻译内容覆盖主题原有的翻译
+       #+begin_src yaml
+       languages.en:
+         translations: "i18n/en.yaml"
+       languages.zh:
+         translations:
+           - id: "authors"
+             tr: "作者"
+       #+end_src
 
 ** 模版(templates)
    [[https://github.com/flosch/pongo2]]
@@ -586,145 +613,156 @@
      #+end_src
 
 ** 插件(hooks)
-   #+begin_src yaml
-   registered_hooks:
-     - "i18n"
-     - "assets"
-     - "encrypt"
-     - "shortcode"
-   #+end_src
-*** i18n
-    - 模版
-      #+begin_src html
-      {% i18n "tags" %}
-      {% T "tags %d" 12 %}
-      {{ i18n("authors") }}
-      {{ T("authors") }}
-      {{ _("authors %f", 3.14) }}
-      #+end_src
-      甚至可以直接使用变量
-      {{ _(term.Name) }}
-    - 翻译文件
-      默认会加载主题下 *i18n* 目录下的文件
-      #+begin_example
-      i18n
-      ├── en.yaml
-      └── zh.yaml
-      #+end_example
-      文件内容
-      #+begin_src yaml
-      ---
-      - id: "authors"
-        tr: "作者"
-      - id: "tags"
-        tr: "标签"
-      #+end_src
+*** rewrite
+    重写文章的 =FrontMatter= 字段，不用修改原文章的内容
+**** 配置插件
+     #+begin_src yaml
+     hooks.rewrite:
+       enabled: true
+     #+end_src
 
-      也可以自定义文件位置或翻译内容覆盖主题原有的翻译
-      #+begin_src yaml
-      languages.en:
-        translations: "i18n/en.yaml"
-      languages.zh:
-        translations:
-          - id: "authors"
-            tr: "作者"
-      #+end_src
+     配置选项，如果设置 =type= 为 =list=，将会把原字段以 =逗号= 分隔进行转换
+     #+begin_src yaml
+     hooks.rewrite:
+       option:
+         - src: "tag"
+           dst: "tags"
+           type: "list"
+     #+end_src
 
 *** encrypt
-    内容加密, 需要一个密码
-    #+begin_src html
-    {{ page.Content | encrypt:"123456" }}
-    #+end_src
+    文章内容加密
+**** 配置插件
+     #+begin_src yaml
+     hooks.encrypt:
+       enabled: true
+     #+end_src
+
+     配置选项
+     #+begin_src yaml
+     hooks.encrypt:
+       option:
+         password: "默认密码"
+         description: "默认描述"
+     #+end_src
+**** 在文章中使用
+     - 添加密码到 =frontmatter=
+       #+begin_src markdown
+       ---
+       password: "123456"
+       ---
+       #+end_src
+     - 局部加密：可以使用 =shortcodes= 中的 =encrypt= 功能
+       #+begin_src markdown
+       <shortcode encrypt password="123456">
+       加密的内容
+       </shortcode>
+       #+end_src
+**** 在模版中使用
+     #+begin_src html
+     {{ page.Content | encrypt:"123456" }}
+     #+end_src
 
 *** shortcode
-    用于快速插入已有模版, 示例:
-    #+begin_example
-    <shortcode _name="encrypt" password="1234567">
-    hello *markdown*
-    </shortcode>
+    用于快速插入已有模版
+**** 配置插件
+     #+begin_src yaml
+     hooks.shortcode:
+       enabled: true
+     #+end_src
+**** 创建新的shortcode
+     在 =templates= 目录下添加 =shortcodes/bilibili.html=
+     #+begin_src html
+     <div class="shortcodes-bilibili">
+       <iframe
+         src="https://player.bilibili.com/player.html?bvid={{ params.id }}&page={% if params.page %}{{ params.page }}{% else %}1&high_quality=1&danmaku=0&as_wide=0{% endif %}&autoplay=0"
+         scrolling="no"
+         border="0"
+         frameborder="no"
+         framespacing="0"
+         allowfullscreen="true"
+       >
+       </iframe>
+     </div>
+     #+end_src
 
-    <shortcode _name="gist" author="spf13" id="7896402" />
+     模版内参数
+     - =name=: 当前 =shortcode= 的名称
+     - =params.*=: 传递的参数，比如 =params.id=
+     - =body=
+     - =counter=: 统计 =shortcode= 在当前文章中的使用次数
+**** 使用shortcode
+     #+begin_src html
+     <bilibili id="BV1yB4cz8E9y" />
+     #+end_src
+     或者
+     #+begin_src html
+     <shortcode bilibili id="BV1yB4cz8E9y" />
+     #+end_src
+
+*** assets
+    静态文件处理，区别于 =static= 目录, =assets= 目录支持合并，压缩等功能
+    #+begin_example
+    mysite/
+    ├── assets
+    │   ├── js
+    │   │   ├── main.js
+    │   │   └── theme.js
+    │   ├── scss
+    │   │   ├── _variables.scss
+    │   │   ├── entry.scss
+    │   │   ├── prose.scss
+    │   │   ├── style.scss
+    │   │   ├── theme.scss
+    │   ├── css
+    │   │   ├── custom.css
     #+end_example
 
-    可以自定义 *shortcode* 到主题的 =templates/shortcodes= 目录下, 目前内置 *gist*, *encrypt*
+**** 配置插件
+     #+begin_src yaml
+     hooks.assets:
+       enabled: true
+     #+end_src
 
-    - 如果使用的外部 =js，css= 文件可以加载内置的 =shortcode.js= 实现全局只加载一次，具体可以参考 [[https://github.com/honmaple/snow/blob/master/builder/theme/internal/templates/shortcodes/encrypt.html][shortcodes/encrypt.html]]
-    - 如果想要在单个页面只加载一次，请使用
-      #+begin_example
-      _counter == 0
-      #+end_example
-*** assets
-    静态文件处理
-    #+begin_src yaml
-    hooks.assets:
-      css:
-        files:
-          - "@theme/static/scss/main.scss"
-          - "@theme/static/scss/entry.scss"
-        filters:
-          - libscss:
-              path: ["@theme/static/scss/"]
-          - cssmin:
-        output: "static/lib.min.css"
-    #+end_src
-    #+begin_src html
-    {% assets files="css/style.scss" filters="libsass,cssmin" output="css/style.min.css" %}
-    <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
-    {% endassets %}
+     配置选项
+     #+begin_src yaml
+     hooks.assets:
+       ...
+       option.css:
+         files:
+           - "scss/style.scss"
+           - "css/custom.css"
+         filters:
+           - "cssmin"
+         output: "static/lib.min.css"
+     #+end_src
+     如果文件以 =.scss= 或者 =.sass=，将自动编译为 =.css=
 
-    {% assets css %}
-    <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
-    {% endassets %}
-    #+end_src
-*** sofile
-    *sofile* 允许使用Go的 =Plugin= 系统支持自定义插件
-    - 创建一个 =sofile.go= 的文件
-      #+begin_src go
-      package main
+**** 在模版中使用
+     - 使用配置的名称 =css=
+       #+begin_src html
+       {% assets css %}
+       <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
+       {% endassets %}
+       #+end_src
 
-      import (
-          "fmt"
+     - 在模版中调用 =assets=
+       #+begin_src html
+       {% assets files="css/style.scss" filters="cssmin" output="css/style.min.css" %}
+       <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
+       {% endassets %}
+       #+end_src
 
-          "github.com/honmaple/snow/internal/site/hook"
-          "github.com/honmaple/snow/internal/site/content"
-          "github.com/honmaple/snow/internal/theme"
-          "github.com/honmaple/snow/config"
-      )
-
-      type testHook struct {
-          hook.BaseHook
-      }
-
-      func (testHook) Name() string {
-          return "test"
-      }
-
-      func (testHook) Page(page *content.Page) *content.Page {
-          fmt.Println(page.Title)
-          return page
-      }
-
-      func NewHook(conf config.Config, theme theme.Theme) hook.Hook {
-          return &testHook{}
-      }
-      #+end_src
-    - 编译为so文件
-      #+begin_example
-      go build -buildmode=plugin sofile.go
-      #+end_example
-    - 注册插件
-      #+begin_src yaml
-      registered_hooks:
-        - "sofile"
-      hooks.sofile.files:
-        - "sofile.so"
-      #+end_src
 *** minify
-    *minify* 允许对写入的html、css、js文件进行压缩
-**** 配置
+    *minify* 允许对写入的=html=、=css=、=js=文件进行压缩
+**** 配置插件
      #+begin_src yaml
      hooks.minify:
        enabled: true
+     #+end_src
+     配置选项
+     #+begin_src yaml
+     hooks.minify:
        option:
          js: true
          css: true
@@ -732,18 +770,14 @@
      #+end_src
 
 ** 本地测试和正式发布
-   snow 提供了 *mode* 配置用于区分本地测试和正式发布
+   *snow* 提供了 *mode* 配置用于区分本地测试和正式发布
    #+begin_src yaml :noindent
-   site:
-     url: "http://127.0.0.1:8000"
-     output_dir: "output"
+   base_url: "http://127.0.0.1:8000"
 
-   mode.publish:
-     site:
-       url: "https://example.com"
-       output_dir: "xxx"
+   modes.publish:
+     base_url: "https://example.com"
 
-   mode.develop:
+   modes.develop:
      include: "develop.yaml"
    #+end_src
    只要在构建时使用 =snow build --mode publish= 即可覆盖本地默认配置

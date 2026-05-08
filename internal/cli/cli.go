@@ -40,7 +40,7 @@ var (
 		&cli.BoolFlag{
 			Name:  "include-drafts",
 			Usage: "Build site with drafts",
-			Value: true,
+			Value: false,
 		},
 		&cli.BoolFlag{
 			Name:    "debug",
@@ -84,6 +84,7 @@ func Execute() {
 			initCommand,
 			buildCommand,
 			serverCommand,
+			hookCommand,
 		},
 	}
 	if err := app.Run(os.Args); err != nil {

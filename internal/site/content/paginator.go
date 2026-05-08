@@ -46,7 +46,7 @@ func Paginate[T any](list []T, number int, path string, paginatePath string) []*
 	output := path
 	if number > 0 {
 		if paginatePath == "" {
-			paginatePath = "{name}{number}{extension}"
+			paginatePath = "{name}{number:optional}{extension}"
 		}
 		name, exts := "", ".html"
 		if !strings.HasSuffix(path, "/") {
@@ -86,10 +86,14 @@ func Paginate[T any](list []T, number int, path string, paginatePath string) []*
 			All:     pors,
 		}
 		if num == 0 {
-			por.Path = path
+			por.Path = utils.StringReplace(output, map[string]string{
+				"{number}":          strconv.Itoa(num + 1),
+				"{number:optional}": "",
+			})
 		} else {
 			por.Path = utils.StringReplace(output, map[string]string{
-				"{number}": strconv.Itoa(num + 1),
+				"{number}":          strconv.Itoa(num + 1),
+				"{number:optional}": strconv.Itoa(num + 1),
 			})
 		}
 

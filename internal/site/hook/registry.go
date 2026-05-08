@@ -161,10 +161,21 @@ func Unmarshal(data any, value any) error {
 	return json.Unmarshal(bs, value)
 }
 
-func Print() {
+func Print(ctx *core.Context) {
+	nameMap := make(map[string]bool, 0)
+	for name := range ctx.Config.GetStringMap("hooks") {
+		if !ctx.Config.GetBool(fmt.Sprintf("hooks.%s.enabled", name)) {
+			continue
+		}
+		nameMap[name] = true
+	}
 	names := make([]string, 0)
 	for name := range factories {
-		names = append(names, name)
+		if nameMap[name] {
+			names = append(names, name+"(enabled)")
+		} else {
+			names = append(names, name)
+		}
 	}
 	sort.Strings(names)
 	fmt.Println(strings.Join(names, ", "))
