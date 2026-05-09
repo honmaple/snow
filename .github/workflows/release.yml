@@ -13,13 +13,13 @@ jobs:
   build:
     strategy:
       matrix:
-        build: [macos, macos-arm64, linux]
+        build: [macos-intel, macos-arm64, linux]
         include:
-          - build: macos
-            os: macos-13
-            archive-name: darwin.tar.gz
+          - build: macos-intel
+            os: macos-15-intel
+            archive-name: darwin-intel.tar.gz
           - build: macos-arm64
-            os: macos-latest
+            os: macos-15
             archive-name: darwin-arm64.tar.gz
           - build: linux
             os: ubuntu-22.04
