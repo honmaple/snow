@@ -104,7 +104,7 @@ func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 		}
 	}
 
-	themeFS, err := theme.New(conf.GetString("theme"))
+	themeFS, err := theme.New(ctx.GetThemeDir(), conf.GetString("theme"))
 	if err != nil {
 		return nil, err
 	}

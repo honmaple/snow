@@ -31,22 +31,22 @@ const (
 
 var (
 	flags = []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "include-drafts",
+			Usage: "include content marked as draft",
+			Value: false,
+		},
 		&cli.StringFlag{
 			Name:    "mode",
 			Aliases: []string{"m"},
 			Value:   "",
-			Usage:   "Build site with special mode",
-		},
-		&cli.BoolFlag{
-			Name:  "include-drafts",
-			Usage: "Build site with drafts",
-			Value: false,
+			Usage:   "build site with special mode",
 		},
 		&cli.BoolFlag{
 			Name:    "debug",
 			Aliases: []string{"D"},
 			Value:   false,
-			Usage:   "Enable debug mode",
+			Usage:   "enable debug mode",
 		},
 	}
 	conf = core.DefaultConfig()

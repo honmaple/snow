@@ -28,14 +28,18 @@ func (t *Theme) Open(name string) (fs.File, error) {
 	return t.root.Open(name)
 }
 
-func New(name string) (*Theme, error) {
+func New(dir string, name string) (*Theme, error) {
+	if dir == "" {
+		dir = "themes"
+	}
+
 	var (
 		root fs.FS
 	)
 	if name == "" {
 		root = internalFS
 	} else {
-		path := filepath.Join("themes", name)
+		path := filepath.Join(dir, name)
 		_, err := os.Stat(path)
 		if err != nil {
 			return nil, fmt.Errorf("The theme %s not found: %s", name, err.Error())

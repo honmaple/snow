@@ -9,7 +9,7 @@ import (
 var (
 	hookCommand = &cli.Command{
 		Name:   "hooks",
-		Usage:  "list hooks",
+		Usage:  "List hooks",
 		Action: hookAction,
 	}
 )

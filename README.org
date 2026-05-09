@@ -101,15 +101,6 @@
        └──╼ ./snow build --mode {mode}
        └──╼ ./snow build -m {mode}
        #+end_example
-     - 筛选页面
-       #+begin_example
-       └──╼ ./snow build --filter {build_filter}
-       └──╼ ./snow build -F {build_filter}
-       #+end_example
-     - 显示所有hooks
-       #+begin_example
-       └──╼ ./snow build --hooks
-       #+end_example
 **** server
      build 支持的命令 server也同样支持, 除此之外，还有
      - 指定监听地址
@@ -123,6 +114,12 @@
        └──╼ ./snow server --autoload
        └──╼ ./snow server -r
        #+end_example
+**** hooks
+     显示所有hooks
+     #+begin_example
+     └──╼ ./snow hooks
+     assets(enabled), encrypt(enabled), filter, minify, pelican(enabled), rewrite(enabled), shortcode(enabled)
+     #+end_example
 
 *** 目录结构(Driectory structure)
     #+begin_example

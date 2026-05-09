@@ -158,9 +158,8 @@ func (d *Processor) ParseTaxonomyTerms(taxonomy *Taxonomy, pages Pages, lang str
 					}
 					term.Slug = lctx.GetSlug(part)
 
-					customPath := lctx.GetTaxonomyConfig(taxonomy.Name, "term.path").String()
-
-					term.Path = lctx.GetRelURL(d.resolveTaxonomyTermPath(term, customPath))
+					customPath := d.resolveTaxonomyTermPath(term, lctx.GetTaxonomyConfig(taxonomy.Name, "term.path").String())
+					term.Path = lctx.GetRelURL(customPath)
 					term.Permalink = lctx.GetURL(term.Path)
 					term.Formats = d.ParseTaxonomyTermFormats(term, page.Lang)
 

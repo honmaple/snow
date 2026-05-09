@@ -200,14 +200,14 @@ var (
 		"sections._default.template":      "section.html",
 		"sections._default.sort_by":       "date desc",
 		"sections._default.paginate":      10,
-		"sections._default.paginate_path": "{name}{number}{extension}",
+		"sections._default.paginate_path": "{name}{number:optional}{extension}",
 	}
 	taxonomyConfig = map[string]any{
 		"taxonomies._default.path":               "{taxonomy}/",
 		"taxonomies._default.sort_by":            "name",
 		"taxonomies._default.term.path":          "{taxonomy}/{term:slug}/",
 		"taxonomies._default.term.sort_by":       "date desc",
-		"taxonomies._default.term.paginate_path": "{name}{number}{extension}",
+		"taxonomies._default.term.paginate_path": "{name}{number:optional}{extension}",
 	}
 	hookConfig = map[string]any{
 		"hooks.assets.enabled":    true,

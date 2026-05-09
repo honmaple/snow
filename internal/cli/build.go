@@ -13,28 +13,23 @@ import (
 var (
 	buildCommand = &cli.Command{
 		Name:  "build",
-		Usage: "build site",
+		Usage: "Build site",
 		Flags: append([]cli.Flag{
 			&cli.BoolFlag{
-				Name:  "hooks",
-				Usage: "List all hooks",
-			},
-			&cli.BoolFlag{
-				Name:    "dry-run",
-				Aliases: []string{"V"},
-				Usage:   "dry run",
+				Name:  "dry-run",
+				Usage: "dry run",
 			},
 			&cli.BoolFlag{
 				Name:    "clean",
 				Aliases: []string{"C"},
 				Value:   false,
-				Usage:   "Clean output content",
+				Usage:   "clean output content",
 			},
 			&cli.StringFlag{
 				Name:    "output-dir",
 				Aliases: []string{"o"},
 				Value:   "output",
-				Usage:   "Build output content",
+				Usage:   "build output content",
 			},
 		}, flags...),
 		Action: buildAction,

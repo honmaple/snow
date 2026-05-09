@@ -14,7 +14,7 @@ import (
 var (
 	initCommand = &cli.Command{
 		Name:   "init",
-		Usage:  "init a new site",
+		Usage:  "Init a new site",
 		Action: initAction,
 	}
 )

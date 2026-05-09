@@ -2,6 +2,7 @@ package content
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	stdpath "path"
@@ -314,8 +315,8 @@ func (d *Processor) ParsePageFormats(page *Page) Formats {
 
 	formats := make(Formats, 0)
 	for name := range page.FrontMatter.GetStringMap("formats") {
-		customPath := page.FrontMatter.GetString(name + ".path")
-		customTemplate := page.FrontMatter.GetString(name + ".template")
+		customPath := page.FrontMatter.GetString(fmt.Sprintf("formats.%s.path", name))
+		customTemplate := page.FrontMatter.GetString(fmt.Sprintf("formats.%s.template", name))
 		// 从全局配置获取
 		if customTemplate == "" {
 			customTemplate = lctx.Config.GetString("formats." + name + ".template")

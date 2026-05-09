@@ -84,20 +84,14 @@ func (self *scratch) JSON(key string) any {
 	return err.Error()
 }
 
-func newScratch(ctx *core.Context, vars map[string]any) any {
+func newScratch() any {
 	return &scratch{}
-}
-
-func newScratchFunc(ctx *core.Context, vars map[string]any) any {
-	return func() any {
-		return &scratch{}
-	}
 }
 
 func init() {
 	Register("scratch", func(ctx *core.Context, set TemplateSet) error {
-		set.Register("scratch", newScratch)
-		set.Register("newScratch", newScratchFunc)
+		set.Register("scratch", newScratch())
+		set.Register("newScratch", newScratch)
 		return nil
 	})
 }

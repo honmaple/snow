@@ -14,18 +14,18 @@ import (
 var (
 	serverCommand = &cli.Command{
 		Name:  "server",
-		Usage: "server site",
+		Usage: "Server site",
 		Flags: append([]cli.Flag{
 			&cli.StringFlag{
 				Name:    "listen",
 				Aliases: []string{"l"},
 				Value:   "",
-				Usage:   "Listen address",
+				Usage:   "listen address",
 			},
 			&cli.BoolFlag{
 				Name:    "autoload",
 				Aliases: []string{"r"},
-				Usage:   "Autoload when file change",
+				Usage:   "autoload when file change",
 			},
 		}, flags...),
 		Action: serverAction,
