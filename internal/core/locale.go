@@ -34,10 +34,6 @@ func (ctx *LocaleContext) GetOutputDir() string {
 	return ctx.Config.GetString("output_dir")
 }
 
-func (ctx *LocaleContext) GetHighlightStyle() string {
-	return ctx.Config.GetString("content_highlight_style")
-}
-
 func (ctx *LocaleContext) GetSummary(content string) string {
 	length := ctx.Config.GetInt("content_truncate_len")
 	ellipsis := ctx.Config.GetString("content_truncate_ellipsis")
@@ -157,6 +153,18 @@ func (ctx *LocaleContext) GetFormatConfig(name string, keyName string) Result {
 	}
 	if val == nil || val == "" {
 		val = ctx.Config.Get("formats._default." + keyName)
+	}
+	return Result{value: val}
+}
+
+func (ctx *LocaleContext) GetMarkupConfig(name string, keyName string) Result {
+	var val any
+
+	if key := fmt.Sprintf("markups.%s.%s", name, keyName); ctx.Config.IsSet(key) {
+		val = ctx.Config.Get(key)
+	}
+	if val == nil || val == "" {
+		val = ctx.Config.Get("markups._default." + keyName)
 	}
 	return Result{value: val}
 }

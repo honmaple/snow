@@ -170,6 +170,7 @@ func (conf *Config) MergeFromDefaultConfig(force bool) {
 	conf.Reset(pageConfig, force)
 	conf.Reset(sectionConfig, force)
 	conf.Reset(taxonomyConfig, force)
+	conf.Reset(markupConfig, force)
 	conf.Reset(hookConfig, force)
 }
 
@@ -187,7 +188,6 @@ var (
 		"slugify":                   true,
 		"content_truncate_len":      49,
 		"content_truncate_ellipsis": "...",
-		"content_highlight_style":   "monokai",
 		"formats.rss.template":      "partials/rss.xml",
 		"formats.atom.template":     "partials/atom.xml",
 	}
@@ -208,6 +208,11 @@ var (
 		"taxonomies._default.term.path":          "{taxonomy}/{term:slug}/",
 		"taxonomies._default.term.sort_by":       "date desc",
 		"taxonomies._default.term.paginate_path": "{name}{number:optional}{extension}",
+	}
+	markupConfig = map[string]any{
+		"markups._default.style":             "monokai",
+		"markups._default.show_toc":          true,
+		"markups._default.show_line_numbers": true,
 	}
 	hookConfig = map[string]any{
 		"hooks.assets.enabled":    true,

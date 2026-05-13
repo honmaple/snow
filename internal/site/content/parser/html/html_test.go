@@ -9,9 +9,9 @@ import (
 )
 
 func assertFunc(t *testing.T, text string) {
-	r := &htmlReader{}
+	r := &htmlParser{}
 
-	result, _ := r.Read(strings.NewReader(text))
+	result, _ := r.Parse(strings.NewReader(text))
 
 	date, _ := utils.ParseTime("2023-02-24 20:35:51")
 	assert.Equal(t, map[string]any{

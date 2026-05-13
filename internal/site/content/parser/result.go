@@ -10,7 +10,7 @@ import (
 type (
 	Heading struct {
 		Id       string
-		Level    int32
+		Level    int
 		Title    string
 		Children []*Heading
 	}
@@ -19,6 +19,7 @@ type (
 		Toc         []*Heading
 		Summary     string
 		Content     string
+		RawSummary  string
 		RawContent  string
 	}
 )

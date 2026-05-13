@@ -15,6 +15,11 @@ type (
 		Parse(string) (*Result, error)
 		SupportedExtensions() []string
 	}
+	MarkupOption struct {
+		Style           string
+		ShowToc         bool
+		ShowLineNumbers bool
+	}
 	MarkupParser interface {
 		Parse(io.Reader) (*Result, error)
 	}
@@ -65,6 +70,18 @@ func New(ctx *core.Context) Parser {
 		d.ps[ext] = foctory(ctx)
 	}
 	return d
+}
+
+func NewMarkupOption(ctx *core.Context, name string) MarkupOption {
+	opt := MarkupOption{
+		Style:           ctx.GetMarkupConfig(name, "style").String(),
+		ShowToc:         ctx.GetMarkupConfig(name, "show_toc").Bool(),
+		ShowLineNumbers: ctx.GetMarkupConfig(name, "show_line_numbers").Bool(),
+	}
+	if opt.Style == "" {
+		opt.Style = "monokai"
+	}
+	return opt
 }
 
 type Factory func(*core.Context) MarkupParser

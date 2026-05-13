@@ -19,6 +19,7 @@ import (
 type (
 	AssetsHook struct {
 		hook.HookImpl
+		mu       sync.Mutex
 		ctx      *core.Context
 		assetsFS fs.FS
 
@@ -59,6 +60,9 @@ func (h *AssetsHook) getAssetHash(asset *Asset) (string, error) {
 }
 
 func (h *AssetsHook) collectAsset(asset *Asset) (string, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	if _, ok := h.assetMap[asset.Output]; !ok {
 		hash, err := h.getAssetHash(asset)
 		if err != nil {

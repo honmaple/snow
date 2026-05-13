@@ -11,6 +11,7 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/honmaple/snow/internal/site/content"
+	"github.com/honmaple/snow/internal/utils/taskutil"
 )
 
 func (site *Site) isIgnoredContent(path string, isDir bool) bool {
@@ -170,23 +171,32 @@ func (site *Site) buildContent(ctx context.Context) error {
 			TemplateSet: site.tplset,
 		}
 
-		now := time.Now()
-		for _, section := range site.store.Sections(lang) {
-			if err := site.contentProcessor.RenderSection(section, tplset, site.writer); err != nil {
+		tasks := taskutil.NewPool[any](20, func(arg any) (err error) {
+			switch v := arg.(type) {
+			case *content.Section:
+				err = site.contentProcessor.RenderSection(v, tplset, site.writer)
+			case *content.Page:
+				err = site.contentProcessor.RenderPage(v, tplset, site.writer)
+			case *content.Taxonomy:
+				err = site.contentProcessor.RenderTaxonomy(v, tplset, site.writer)
+			}
+			if err != nil {
 				site.ctx.Logger.Error(err.Error())
 			}
+			return nil
+		})
+
+		now := time.Now()
+		for _, section := range site.store.Sections(lang) {
+			tasks.Invoke(section)
 		}
 
 		for _, page := range site.store.Pages(lang) {
-			if err := site.contentProcessor.RenderPage(page, tplset, site.writer); err != nil {
-				site.ctx.Logger.Error(err.Error())
-			}
+			tasks.Invoke(page)
 		}
 
 		for _, page := range site.store.HiddenPages(lang) {
-			if err := site.contentProcessor.RenderPage(page, tplset, site.writer); err != nil {
-				site.ctx.Logger.Error(err.Error())
-			}
+			tasks.Invoke(page)
 		}
 
 		ts := make([]string, 0)
@@ -194,11 +204,10 @@ func (site *Site) buildContent(ctx context.Context) error {
 			if count := len(taxonomy.Terms); count > 0 {
 				ts = append(ts, fmt.Sprintf("%d %s", count, taxonomy.Name))
 			}
-
-			if err := site.contentProcessor.RenderTaxonomy(taxonomy, tplset, site.writer); err != nil {
-				site.ctx.Logger.Error(err.Error())
-			}
+			tasks.Invoke(taxonomy)
 		}
+		tasks.StopAndWait()
+
 		site.ctx.Logger.Infof("Done: %d sections, %d pages, %d hidden pages and %d taxonomies (%s) in %v",
 			len(site.store.Sections(lang)),
 			len(site.store.Pages(lang)),

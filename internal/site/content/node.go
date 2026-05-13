@@ -3,19 +3,25 @@ package content
 import (
 	stdpath "path"
 	"strings"
+
+	"github.com/honmaple/snow/internal/site/content/parser"
 )
 
-type Node struct {
-	File        *File
-	FrontMatter *FrontMatter
+type (
+	Node struct {
+		File        *File
+		FrontMatter *FrontMatter
 
-	Lang       string
-	Slug       string
-	Title      string
-	Summary    string
-	Content    string
-	RawContent string
-}
+		Toc        []*Heading
+		Lang       string
+		Slug       string
+		Title      string
+		Summary    string
+		Content    string
+		RawContent string
+	}
+	Heading = parser.Heading
+)
 
 func (d *Processor) parseNode(fullpath string, isPage bool) (*Node, error) {
 	file, err := d.parseFile(fullpath)
@@ -60,6 +66,7 @@ func (d *Processor) parseNode(fullpath string, isPage bool) (*Node, error) {
 		Title:       meta.GetString("title"),
 		Content:     result.Content,
 		Summary:     result.Summary,
+		Toc:         result.Toc,
 	}
 	lctx := d.ctx.For(lang)
 	if node.Summary == "" {

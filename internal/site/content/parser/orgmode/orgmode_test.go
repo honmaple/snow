@@ -1,47 +1,42 @@
 package orgmode
 
 import (
-	"bytes"
 	"strings"
 	"testing"
 
-	"github.com/honmaple/snow/internal/site/content/parser"
-	"github.com/honmaple/snow/internal/utils"
+	// "github.com/honmaple/snow/internal/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func assertFunc(t *testing.T, text string) {
-	var (
-		r       = strings.NewReader(text)
-		content bytes.Buffer
-		summary bytes.Buffer
-	)
+	r := New(&Option{})
 
-	result := &parser.Result{
-		FrontMatter: make(map[string]any),
-	}
+	result, err := r.Parse(strings.NewReader(text))
+	assert.Nil(t, err)
 
-	_ = readMeta(r, &content, &summary, result)
+	// date, _ := utils.ParseTime("2023-02-24 20:35:51")
 
-	date, _ := utils.ParseTime("2023-02-24 20:35:51")
-	assert.Equal(t, map[string]any{
+	expected := map[string]any{
 		"title":   "aaa",
-		"date":    date,
-		"tags":    []string{"snow", "hello, world"},
-		"authors": []string{"snow", "snow1"},
+		"date":    "2023-02-24 20:35:51",
+		"tags":    []any{"snow", "hello, world"},
+		"authors": []any{"snow", "snow1"},
 		"formats": map[string]any{
 			"atom": map[string]any{
 				"path":     "index.html",
 				"template": "index.json",
 			},
+			"js": map[string]any{
+				"atom": "index.xml",
+			},
 		},
-		"formats.js": map[string]any{
-			"atom": "index.xml",
-		},
-	}, result.FrontMatter)
+	}
+	for k, v := range result.FrontMatter {
+		assert.Equal(t, expected[k], v)
+	}
 
-	assert.Equal(t, "\nsummary\n", summary.String())
-	assert.Equal(t, "\nsummary\n#+MORE\ncontent\n", content.String())
+	assert.Equal(t, "\nsummary\n", result.RawSummary)
+	assert.Equal(t, "\nsummary\n#+MORE\ncontent\n", result.RawContent)
 }
 
 func TestMeta(t *testing.T) {

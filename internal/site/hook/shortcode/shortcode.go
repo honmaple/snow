@@ -19,6 +19,14 @@ type ShortcodeSet struct {
 	tplset template.TemplateSet
 }
 
+func isSelfClosing(tag string) bool {
+	switch tag {
+	case "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr":
+		return true
+	}
+	return false
+}
+
 func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToken string, page *content.Page, counter map[string]int) bool {
 	for {
 		tokenType := z.Next()
@@ -38,7 +46,7 @@ func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToke
 					}
 				}
 				if name == "" {
-					h.ctx.Logger.Warnf("%s: shortcode no name", page.File)
+					h.ctx.Logger.Warnf("%s: shortcode no name", page.File.Path)
 					break
 				}
 			}
@@ -63,11 +71,11 @@ func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToke
 				}
 				counter[name]++
 
-				if tokenType == html.StartTagToken {
+				if tokenType == html.StartTagToken && !isSelfClosing(token.Data) {
 					var buf bytes.Buffer
 
 					if !h.renderNext(z, &buf, token.Data, page, counter) {
-						h.ctx.Logger.Warnf("%s: closing delimiter '</%s>' is missing", page.File, token.Data)
+						h.ctx.Logger.Warnf("%s for %s: closing delimiter '</%s>' is missing", page.File.Path, name, token.Data)
 					}
 					vars["body"] = buf.String()
 				}

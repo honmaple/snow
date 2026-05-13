@@ -33,7 +33,7 @@ type PromptString struct {
 }
 
 func (p *PromptString) Excute(r *bufio.Reader) error {
-	fmt.Printf(p.Usage)
+	fmt.Print(p.Usage)
 	if p.Value != "" {
 		fmt.Printf("[%s] ", p.Value)
 	}
@@ -70,11 +70,11 @@ type PromptBool struct {
 }
 
 func (p *PromptBool) Excute(r *bufio.Reader) error {
-	fmt.Printf(p.Usage)
+	fmt.Print(p.Usage)
 	if p.Value {
-		fmt.Printf("[Y/n] ")
+		fmt.Print("[Y/n] ")
 	} else {
-		fmt.Printf("[y/N] ")
+		fmt.Print("[y/N] ")
 	}
 	input, err := r.ReadString('\n')
 	if err != nil {
@@ -103,7 +103,7 @@ type PromptInt struct {
 }
 
 func (p *PromptInt) Excute(r *bufio.Reader) error {
-	fmt.Printf(p.Usage)
+	fmt.Print(p.Usage)
 	if p.Value != 0 {
 		fmt.Printf("[%d] ", p.Value)
 	}
@@ -146,7 +146,7 @@ type PromptFilePath struct {
 }
 
 func (p *PromptFilePath) Excute(r *bufio.Reader) error {
-	fmt.Printf(p.Usage)
+	fmt.Print(p.Usage)
 	if p.Value != "" {
 		fmt.Printf("[%s] ", p.Value)
 	}
