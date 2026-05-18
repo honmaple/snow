@@ -1,6 +1,10 @@
 package content
 
 import (
+	"time"
+
+	"github.com/pelletier/go-toml/v2"
+	"github.com/spf13/cast"
 	"github.com/spf13/viper"
 )
 
@@ -86,6 +90,26 @@ func (fm *FrontMatter) GetStringMap(key string, defaults ...map[string]any) map[
 		return defaults[0]
 	}
 	return nil
+}
+
+func (fm *FrontMatter) GetTime(key string, defaults ...string) time.Time {
+	if fm.IsSet(key) {
+		// 兼容toml时间格式
+		switch v := fm.Viper.Get(key).(type) {
+		case toml.LocalDate:
+			return cast.ToTime(v.String())
+		case toml.LocalTime:
+			return cast.ToTime(v.String())
+		case toml.LocalDateTime:
+			return cast.ToTime(v.String())
+		default:
+			return cast.ToTime(v)
+		}
+	}
+	if len(defaults) > 0 {
+		return cast.ToTime(defaults[0])
+	}
+	return time.Time{}
 }
 
 func (fm *FrontMatter) MergeFrom(m map[string]any) {

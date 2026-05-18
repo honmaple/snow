@@ -113,20 +113,30 @@ func (conf *Config) Reset(m map[string]any, force bool) {
 }
 
 func (conf *Config) LoadFromFile(file string) error {
-	if file != "" && utils.FileExists(file) {
-		content, err := os.ReadFile(file)
-		if err != nil {
-			return err
+	if file == "" {
+		for _, c := range []string{"config.yaml", "config.toml", "config.json"} {
+			if utils.FileExists(c) {
+				file = c
+				break
+			}
 		}
-		v := viper.New()
-		v.SetConfigFile(file)
+	}
+	if file == "" {
+		return nil
+	}
 
-		if err := v.ReadConfig(strings.NewReader(os.ExpandEnv(string(content)))); err != nil {
-			return err
-		}
-		for _, k := range v.AllKeys() {
-			conf.Set(k, v.Get(k))
-		}
+	content, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	v := viper.New()
+	v.SetConfigFile(file)
+
+	if err := v.ReadConfig(strings.NewReader(os.ExpandEnv(string(content)))); err != nil {
+		return err
+	}
+	for _, k := range v.AllKeys() {
+		conf.Set(k, v.Get(k))
 	}
 
 	conf.MergeFromDefaultConfig(false)
@@ -193,11 +203,11 @@ var (
 	}
 	pageConfig = map[string]any{
 		"pages._default.path":     "{path:slug}/{slug}/",
-		"pages._default.template": "page.html",
+		// "pages._default.template": "page.html",
 	}
 	sectionConfig = map[string]any{
 		"sections._default.path":          "{path:slug}/",
-		"sections._default.template":      "section.html",
+		// "sections._default.template":      "section.html",
 		"sections._default.sort_by":       "date desc",
 		"sections._default.paginate":      10,
 		"sections._default.paginate_path": "{name}{number:optional}{extension}",

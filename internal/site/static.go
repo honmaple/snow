@@ -48,7 +48,7 @@ func (site *Site) copyStaticDir(staticFS fs.FS) error {
 		}
 		defer src.Close()
 
-		return site.writer.Write(context.TODO(), path, src)
+		return site.writer.WriteFile(context.TODO(), path, src)
 	})
 }
 

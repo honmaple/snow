@@ -19,19 +19,19 @@ type (
 		hook             hook.Hook
 		option           *Option
 		writer           core.Writer
-		store            *ContentStore
 		contentProcessor *content.Processor
 		tplset           template.TemplateSet
 	}
 	SiteOption func(*Site)
 )
 
-func (site *Site) Build(ctx context.Context) error {
-	site.store.Reset()
+func (site *Site) Reset() {
+	site.writer.Reset()
+	site.contentProcessor.Reset()
+}
 
-	if err := site.loadContent(); err != nil {
-		return err
-	}
+func (site *Site) Build(ctx context.Context) error {
+	site.Reset()
 
 	if err := site.hook.BeforeBuild(); err != nil {
 		return err
@@ -66,7 +66,6 @@ func WithWriter(w core.Writer) SiteOption {
 func New(ctx *core.Context, opts ...SiteOption) (*Site, error) {
 	site := &Site{
 		ctx:              ctx,
-		store:            NewContentStore(),
 		contentProcessor: content.NewProcessor(ctx),
 	}
 	for _, opt := range opts {

@@ -48,6 +48,10 @@ func (r *registry) slice(args ...any) []any {
 	return m
 }
 
+func (r *registry) startsWith(s, prefix string) bool {
+	return strings.HasPrefix(s, prefix)
+}
+
 // call function and return nothing
 func (r *registry) slient(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, error) {
 	return pongo2.AsValue(""), nil
@@ -110,6 +114,7 @@ func init() {
 
 		set.Register("dict", r.dict)
 		set.Register("slice", r.slice)
+		set.Register("startsWith", r.startsWith)
 
 		set.RegisterFilter("parser", r.parser)
 		set.RegisterFilter("slient", r.slient)

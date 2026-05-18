@@ -79,12 +79,14 @@ func (d *Processor) RenderTaxonomy(taxonomy *Taxonomy, tplset template.TemplateS
 	lookups := []string{
 		lctx.GetTaxonomyConfig(taxonomy.Name, "template").String(),
 		fmt.Sprintf("%s/taxonomy.html", taxonomy.Name),
+		"taxonomy_list.html",
 		"taxonomy.html",
 	}
 	if tpl := tplset.Lookup(lookups...); tpl != nil {
 		d.ctx.Logger.Debugf("write taxonomy [%s] -> %s", taxonomy.Name, taxonomy.Path)
 		// example.com/tags/index.html
 		if err := d.RenderTemplate(taxonomy.Path, tpl, map[string]any{
+			"terms":        taxonomy.Terms,
 			"taxonomy":     taxonomy,
 			"current_lang": taxonomy.Lang,
 		}, writer); err != nil {

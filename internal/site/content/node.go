@@ -29,9 +29,17 @@ func (d *Processor) parseNode(fullpath string, isPage bool) (*Node, error) {
 		return nil, err
 	}
 
-	result, err := d.parser.Parse(fullpath)
-	if err != nil {
-		return nil, err
+	var result *parser.Result
+	if v, ok := d.parserCache.Load(fullpath); ok {
+		result = v.(*parser.Result)
+	} else {
+		v, err := d.parser.Parse(fullpath)
+		if err != nil {
+			return nil, err
+		}
+		d.parserCache.Store(fullpath, result)
+
+		result = v
 	}
 
 	meta := NewFrontMatter(result.FrontMatter)

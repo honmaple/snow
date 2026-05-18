@@ -41,7 +41,7 @@ func (w *MinifyWriter) Write(ctx context.Context, file string, r io.Reader) erro
 			r = w.minify.Reader("js", r)
 		}
 	}
-	return w.Writer.Write(ctx, file, r)
+	return w.Writer.WriteFile(ctx, file, r)
 }
 
 func NewWriter(ctx *core.Context, w core.Writer) *MinifyWriter {

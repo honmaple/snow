@@ -34,9 +34,6 @@ type (
 
 		Assets  Assets
 		Formats Formats
-
-		Prev *Page
-		Next *Page
 	}
 	Pages []*Page
 )
@@ -55,8 +52,16 @@ func (pages Pages) Last() *Page {
 	return nil
 }
 
-func (pages Pages) Related() *RelatedPages {
-	return &RelatedPages{list: pages}
+func (pages Pages) Related(page *Page) *Related[*Page] {
+	return &Related[*Page]{list: pages, cur: page}
+}
+
+func (pages Pages) Reverse() Pages {
+	ns := make(Pages, len(pages))
+	for i, j := 0, len(pages)-1; j >= 0; i, j = i+1, j-1 {
+		ns[i] = pages[j]
+	}
+	return ns
 }
 
 func (pages Pages) FilterBy(filter string) Pages {
@@ -240,7 +245,7 @@ func (d *Processor) ParsePage(fullpath string, isBundle bool) (*Page, error) {
 		}
 	}
 	if page.Slug == "" {
-		page.Slug = lctx.GetSlug(page.Title)
+		page.Slug = lctx.GetSlug(page.File.BaseName)
 	}
 	if page.Date.IsZero() {
 		stat, err := os.Stat(fullpath)
@@ -423,7 +428,7 @@ func (d *Processor) RenderTemplate(path string, tpl template.Template, vars map[
 			Path: tpl.Name(),
 		}
 	}
-	if err := writer.Write(context.TODO(), path, strings.NewReader(result)); err != nil {
+	if err := writer.WriteFile(context.TODO(), path, strings.NewReader(result)); err != nil {
 		return &core.Error{
 			Op:   "write tpl",
 			Err:  err,

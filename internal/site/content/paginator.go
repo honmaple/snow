@@ -43,6 +43,9 @@ func (p *Paginator[T]) HasNext() bool {
 }
 
 func Paginate[T any](list []T, number int, path string, paginatePath string) []*Paginator[T] {
+	if strings.HasSuffix(path, "/") {
+		path = path + "index.html"
+	}
 	output := path
 	if number > 0 {
 		if paginatePath == "" {

@@ -14,7 +14,9 @@ type DiskWriter struct {
 	ctx *core.Context
 }
 
-func (w *DiskWriter) Write(ctx context.Context, file string, r io.Reader) error {
+func (w *DiskWriter) Reset() {}
+
+func (w *DiskWriter) WriteFile(ctx context.Context, file string, r io.Reader) error {
 	if file == "" {
 		return nil
 	}

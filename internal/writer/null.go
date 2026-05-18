@@ -11,7 +11,8 @@ type NullWriter struct {
 	ctx *core.Context
 }
 
-func (w *NullWriter) Write(ctx context.Context, file string, r io.Reader) error {
+func (w *NullWriter) Reset() {}
+func (w *NullWriter) WriteFile(ctx context.Context, file string, r io.Reader) error {
 	return nil
 }
 

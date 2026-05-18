@@ -71,7 +71,7 @@ func (m *mdParser) Parse(r io.Reader) (*parser.Result, error) {
 			var b bytes.Buffer
 			for scanner.Scan() {
 				l := scanner.Text()
-				if strings.TrimSpace(l) == "" || MARKDOWN_LINE.MatchString(l) {
+				if MARKDOWN_LINE.MatchString(l) {
 					break
 				}
 				b.WriteString(l)

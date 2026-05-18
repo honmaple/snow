@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"slices"
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site"
@@ -14,7 +15,7 @@ var (
 	buildCommand = &cli.Command{
 		Name:  "build",
 		Usage: "Build site",
-		Flags: append([]cli.Flag{
+		Flags: slices.Concat(flags, []cli.Flag{
 			&cli.BoolFlag{
 				Name:  "dry-run",
 				Usage: "dry run",
@@ -31,13 +32,14 @@ var (
 				Value:   "output",
 				Usage:   "build output content",
 			},
-		}, flags...),
+		}),
 		Action: buildAction,
 	}
 )
 
 func buildAction(clx *cli.Context) error {
-	if err := commonAction(clx); err != nil {
+	conf, err := commonAction(clx)
+	if err != nil {
 		return err
 	}
 
@@ -64,14 +66,9 @@ func buildAction(clx *cli.Context) error {
 		w = writer.NewDiskWriter(ctx)
 	}
 
-	siteOpt := &site.Option{
+	site, err := site.New(ctx, site.WithWriter(w), site.WithOption(&site.Option{
 		IncludeDrafts: clx.Bool("include-drafts"),
-	}
-	return build(ctx, site.WithWriter(w), site.WithOption(siteOpt))
-}
-
-func build(ctx *core.Context, opts ...site.SiteOption) error {
-	site, err := site.New(ctx, opts...)
+	}))
 	if err != nil {
 		return err
 	}

@@ -37,10 +37,10 @@ func (site *Site) isIgnoredContent(path string, isDir bool) bool {
 	return false
 }
 
-func (site *Site) loadContent() error {
+func (site *Site) loadContent() (*ContentStore, error) {
 	contentDir := site.ctx.GetContentDir()
 	if contentDir == "" {
-		return fmt.Errorf("The content dir is null")
+		return nil, fmt.Errorf("The content dir is null")
 	}
 
 	pages := make(content.Pages, 0)
@@ -110,8 +110,10 @@ func (site *Site) loadContent() error {
 	}
 
 	if err := filepath.WalkDir(contentDir, walkDir); err != nil {
-		return err
+		return nil, err
 	}
+
+	store := NewContentStore()
 
 	for _, section := range sections {
 		if section.FrontMatter.IsSet("render") && !section.FrontMatter.GetBool("render") {
@@ -121,7 +123,7 @@ func (site *Site) loadContent() error {
 		if section == nil {
 			continue
 		}
-		site.store.insertSection(section)
+		store.insertSection(section)
 	}
 	for _, page := range pages {
 		if page.Draft && !site.option.IncludeDrafts {
@@ -134,10 +136,10 @@ func (site *Site) loadContent() error {
 		if page == nil {
 			continue
 		}
-		site.store.insertPage(page)
+		store.insertPage(page)
 	}
 
-	for _, sections := range site.store.AllSections() {
+	for _, sections := range store.AllSections() {
 		sort.SliceStable(sections, func(i, j int) bool {
 			return sections[i].File.Path > sections[j].File.Path
 		})
@@ -147,27 +149,32 @@ func (site *Site) loadContent() error {
 		}
 	}
 
-	for lang, pages := range site.store.AllPages() {
+	for lang, pages := range store.AllPages() {
 		pages.SortBy("date desc")
 
 		taxonomies := site.contentProcessor.ParseTaxonomies(pages, lang)
 		for _, taxonomy := range taxonomies {
 			for _, term := range taxonomy.Terms {
-				site.store.insertTaxonomyTerm(term)
+				store.insertTaxonomyTerm(term)
 			}
-			site.store.insertTaxonomy(taxonomy)
+			store.insertTaxonomy(taxonomy)
 		}
 	}
-	return nil
+	return store, nil
 }
 
 func (site *Site) buildContent(ctx context.Context) error {
+	store, err := site.loadContent()
+	if err != nil {
+		return err
+	}
+
 	for _, lang := range site.ctx.GetAllLanguages() {
 		site.ctx.Logger.Infof("Building %s site...", lang)
 
 		tplset := &ContentTemplateSet{
 			lang:        lang,
-			store:       site.store,
+			store:       store,
 			TemplateSet: site.tplset,
 		}
 
@@ -187,20 +194,20 @@ func (site *Site) buildContent(ctx context.Context) error {
 		})
 
 		now := time.Now()
-		for _, section := range site.store.Sections(lang) {
+		for _, section := range store.Sections(lang) {
 			tasks.Invoke(section)
 		}
 
-		for _, page := range site.store.Pages(lang) {
+		for _, page := range store.Pages(lang) {
 			tasks.Invoke(page)
 		}
 
-		for _, page := range site.store.HiddenPages(lang) {
+		for _, page := range store.HiddenPages(lang) {
 			tasks.Invoke(page)
 		}
 
 		ts := make([]string, 0)
-		for _, taxonomy := range site.store.Taxonomies(lang) {
+		for _, taxonomy := range store.Taxonomies(lang) {
 			if count := len(taxonomy.Terms); count > 0 {
 				ts = append(ts, fmt.Sprintf("%d %s", count, taxonomy.Name))
 			}
@@ -209,10 +216,10 @@ func (site *Site) buildContent(ctx context.Context) error {
 		tasks.StopAndWait()
 
 		site.ctx.Logger.Infof("Done: %d sections, %d pages, %d hidden pages and %d taxonomies (%s) in %v",
-			len(site.store.Sections(lang)),
-			len(site.store.Pages(lang)),
-			len(site.store.HiddenPages(lang)),
-			len(site.store.Taxonomies(lang)),
+			len(store.Sections(lang)),
+			len(store.Pages(lang)),
+			len(store.HiddenPages(lang)),
+			len(store.Taxonomies(lang)),
 			strings.Join(ts, ", "),
 			time.Since(now),
 		)

@@ -220,6 +220,7 @@ func (d *Processor) RenderTaxonomyTerm(term *TaxonomyTerm, tplset template.Templ
 	lookups := []string{
 		lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.template").String(),
 		fmt.Sprintf("%s/taxonomy.terms.html", term.Taxonomy.Name),
+		"taxonomy_single.html",
 		"taxonomy.terms.html",
 	}
 	if tpl := tplset.Lookup(lookups...); tpl != nil {

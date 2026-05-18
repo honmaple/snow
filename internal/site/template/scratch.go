@@ -26,6 +26,15 @@ func (self *scratch) Get(key string) any {
 	return val
 }
 
+func (self *scratch) GetOrSet(key string, val any) any {
+	v, ok := self.m.Load(key)
+	if ok {
+		return v
+	}
+	self.m.Store(key, val)
+	return val
+}
+
 func (self *scratch) Add(key string, newVal any) any {
 	oldVal, ok := self.m.Load(key)
 	if !ok {

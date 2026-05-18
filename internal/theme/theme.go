@@ -37,7 +37,7 @@ func New(dir string, name string) (*Theme, error) {
 		root fs.FS
 	)
 	if name == "" {
-		root = internalFS
+		root = os.DirFS(".")
 	} else {
 		path := filepath.Join(dir, name)
 		_, err := os.Stat(path)

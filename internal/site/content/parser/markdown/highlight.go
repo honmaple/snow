@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/formatters/html"
@@ -12,6 +13,16 @@ import (
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
 )
+
+type onlyPreWrapper struct{}
+
+func (onlyPreWrapper) Start(code bool, styleAttr string) string {
+	return fmt.Sprintf(`<pre%s>`, styleAttr)
+}
+
+func (onlyPreWrapper) End(code bool) string {
+	return `</pre>`
+}
 
 type highlightExtension struct {
 	opt       *Option
@@ -85,6 +96,9 @@ func NewHighlightExtension(opt *Option) goldmark.Extender {
 	opts := make([]html.Option, 0)
 	if opt.ShowLineNumbers {
 		opts = append(opts, html.WithLineNumbers(true))
+	}
+	if opt.PreventPreCode {
+		opts = append(opts, html.WithPreWrapper(onlyPreWrapper{}))
 	}
 	r := &highlightExtension{
 		opt:       opt,

@@ -18,6 +18,10 @@ func (ctx *LocaleContext) GetLanguage() string {
 	return ctx.Config.GetString("language")
 }
 
+func (ctx *LocaleContext) GetTheme() string {
+	return ctx.Config.GetString("theme")
+}
+
 func (ctx *LocaleContext) GetThemeDir() string {
 	return ctx.Config.GetString("theme_dir")
 }

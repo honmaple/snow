@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/honmaple/snow/internal/core"
 )
@@ -19,6 +18,7 @@ type (
 		Style           string
 		ShowToc         bool
 		ShowLineNumbers bool
+		PreventPreCode  bool
 	}
 	MarkupParser interface {
 		Parse(io.Reader) (*Result, error)
@@ -26,17 +26,11 @@ type (
 )
 
 type parserImpl struct {
-	cache sync.Map
-	ps    map[string]MarkupParser
-	exts  []string
+	ps   map[string]MarkupParser
+	exts []string
 }
 
 func (d *parserImpl) Parse(file string) (*Result, error) {
-	v, ok := d.cache.Load(file)
-	if ok {
-		return v.(*Result), nil
-	}
-
 	p, ok := d.ps[filepath.Ext(file)]
 	if !ok {
 		return nil, fmt.Errorf("no parser for %s", file)
@@ -51,7 +45,6 @@ func (d *parserImpl) Parse(file string) (*Result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Read file %s err: %s", file, err.Error())
 	}
-	d.cache.Store(file, result)
 	return result, nil
 }
 
@@ -77,6 +70,7 @@ func NewMarkupOption(ctx *core.Context, name string) MarkupOption {
 		Style:           ctx.GetMarkupConfig(name, "style").String(),
 		ShowToc:         ctx.GetMarkupConfig(name, "show_toc").Bool(),
 		ShowLineNumbers: ctx.GetMarkupConfig(name, "show_line_numbers").Bool(),
+		PreventPreCode:  ctx.GetMarkupConfig(name, "prevent_pre_code").Bool(),
 	}
 	if opt.Style == "" {
 		opt.Style = "monokai"

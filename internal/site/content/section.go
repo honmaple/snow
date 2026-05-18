@@ -43,6 +43,7 @@ func (d *Processor) resolveSectionPath(section *Section, customPath string) stri
 	} else {
 		vars["{lang:optional}"] = section.Lang
 	}
+
 	return d.resolvePath(customPath, vars)
 }
 
@@ -173,8 +174,8 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 				section.FrontMatter.GetString("paginate_path"),
 			) {
 			if err := d.RenderTemplate(por.Path, tpl, map[string]any{
-				"section":       section,
 				"paginator":     por,
+				"section":       section,
 				"pages":         section.Pages,
 				"current_lang":  section.Lang,
 				"current_index": por.PageNum,

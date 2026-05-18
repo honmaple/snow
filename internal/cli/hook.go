@@ -15,7 +15,8 @@ var (
 )
 
 func hookAction(clx *cli.Context) error {
-	if err := commonAction(clx); err != nil {
+	conf, err := commonAction(clx)
+	if err != nil {
 		return err
 	}
 

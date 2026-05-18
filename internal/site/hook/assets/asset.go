@@ -136,5 +136,5 @@ func (n *Asset) Execute(ctx context.Context, assetsFS fs.FS, writer core.Writer)
 
 	b.Reset()
 	b.Write(buf)
-	return writer.Write(ctx, n.Output, &b)
+	return writer.WriteFile(ctx, n.Output, &b)
 }

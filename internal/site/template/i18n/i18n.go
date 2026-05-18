@@ -130,11 +130,11 @@ func (i *I18n) LoadTranslations(ctx *core.Context) error {
 func New(ctx *core.Context) (*I18n, error) {
 	i18n := &I18n{}
 	if err := i18n.LoadTranslations(ctx); err != nil {
-		return nil, &core.Error{
-			Op:   "load i18n translations",
-			Path: "i18n",
-			Err:  err,
-		}
+		// return nil, &core.Error{
+		//	Op:   "load i18n translations",
+		//	Path: "i18n",
+		//	Err:  err,
+		// }
 	}
 	return i18n, nil
 }

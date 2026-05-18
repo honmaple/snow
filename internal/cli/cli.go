@@ -32,9 +32,16 @@ const (
 var (
 	flags = []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "include-drafts",
-			Usage: "include content marked as draft",
-			Value: false,
+			Name:    "debug",
+			Aliases: []string{"D"},
+			Value:   false,
+			Usage:   "enable debug mode",
+		},
+		&cli.PathFlag{
+			Name:    "config",
+			Aliases: []string{"c"},
+			Value:   "",
+			Usage:   "load configuration from `FILE`",
 		},
 		&cli.StringFlag{
 			Name:    "mode",
@@ -43,27 +50,26 @@ var (
 			Usage:   "build site with special mode",
 		},
 		&cli.BoolFlag{
-			Name:    "debug",
-			Aliases: []string{"D"},
-			Value:   false,
-			Usage:   "enable debug mode",
+			Name:  "include-drafts",
+			Usage: "include content marked as draft",
+			Value: false,
 		},
 	}
-	conf = core.DefaultConfig()
 )
 
-func beforeAction(clx *cli.Context) error {
-	return conf.LoadFromFile(clx.String("config"))
-}
+func commonAction(clx *cli.Context) (*core.Config, error) {
+	conf := core.DefaultConfig()
 
-func commonAction(clx *cli.Context) error {
 	if clx.Bool("debug") {
 		conf.SetDebug()
 	}
 	if mode := clx.String("mode"); mode != "" {
 		conf.SetMode(mode)
 	}
-	return nil
+	if err := conf.LoadFromFile(clx.String("config")); err != nil {
+		return nil, err
+	}
+	return conf, nil
 }
 
 func Execute() {
@@ -71,15 +77,6 @@ func Execute() {
 		Name:    PROCESS,
 		Usage:   DESCRIPTION,
 		Version: VERSION,
-		Flags: []cli.Flag{
-			&cli.PathFlag{
-				Name:    "config",
-				Aliases: []string{"c"},
-				Value:   "config.yaml",
-				Usage:   "load configuration from `FILE`",
-			},
-		},
-		Before: beforeAction,
 		Commands: []*cli.Command{
 			initCommand,
 			buildCommand,
