@@ -89,7 +89,11 @@ func (d *Processor) ParseSection(fullpath string) (*Section, error) {
 		}
 	}
 	if section.Slug == "" {
-		section.Slug = lctx.GetSlug(section.Title)
+		if section.File.Dir == "" {
+			section.Slug = "index"
+		} else {
+			section.Slug = lctx.GetSlug(stdpath.Base(section.File.Dir))
+		}
 	}
 
 	section.Assets = d.ParseSectionAssets(fullpath, section)
