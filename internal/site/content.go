@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/utils/taskutil"
 )
 
-func (site *Site) isIgnoredContent(path string, isDir bool) bool {
+func (site *Site) IsIgnoredContent(path string, isDir bool) bool {
 	// 忽略以.或者_开头的文件或目录，不要忽略_index.md
 	if basename := filepath.Base(path); !strings.HasPrefix(basename, "_index.") && (strings.HasPrefix(basename, "_") || strings.HasPrefix(basename, ".")) {
 		return true
@@ -61,7 +62,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 			return nil
 		}
 		// 忽略指定的文件
-		if site.isIgnoredContent(path, info.IsDir()) {
+		if site.IsIgnoredContent(path, info.IsDir()) {
 			if info.IsDir() {
 				return fs.SkipDir
 			}
@@ -114,7 +115,6 @@ func (site *Site) loadContent() (*ContentStore, error) {
 	}
 
 	store := NewContentStore()
-
 	for _, section := range sections {
 		if section.FrontMatter.IsSet("render") && !section.FrontMatter.GetBool("render") {
 			continue
@@ -126,7 +126,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 		store.insertSection(section)
 	}
 	for _, page := range pages {
-		if page.Draft && !site.option.IncludeDrafts {
+		if page.Draft && !site.includeDrafts {
 			continue
 		}
 		if page.FrontMatter.IsSet("render") && !page.FrontMatter.GetBool("render") {
@@ -163,7 +163,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 	return store, nil
 }
 
-func (site *Site) buildContent(ctx context.Context) error {
+func (site *Site) BuildContent(ctx context.Context, writer core.Writer) error {
 	store, err := site.loadContent()
 	if err != nil {
 		return err
@@ -181,11 +181,11 @@ func (site *Site) buildContent(ctx context.Context) error {
 		tasks := taskutil.NewPool[any](20, func(arg any) (err error) {
 			switch v := arg.(type) {
 			case *content.Section:
-				err = site.contentProcessor.RenderSection(v, tplset, site.writer)
+				err = site.contentProcessor.RenderSection(v, tplset, writer)
 			case *content.Page:
-				err = site.contentProcessor.RenderPage(v, tplset, site.writer)
+				err = site.contentProcessor.RenderPage(v, tplset, writer)
 			case *content.Taxonomy:
-				err = site.contentProcessor.RenderTaxonomy(v, tplset, site.writer)
+				err = site.contentProcessor.RenderTaxonomy(v, tplset, writer)
 			}
 			if err != nil {
 				site.ctx.Logger.Error(err.Error())

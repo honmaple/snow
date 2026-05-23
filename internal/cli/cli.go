@@ -29,45 +29,16 @@ const (
 	DESCRIPTION = "snow is a static site generator."
 )
 
-var (
-	flags = []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "debug",
-			Aliases: []string{"D"},
-			Value:   false,
-			Usage:   "enable debug mode",
-		},
-		&cli.PathFlag{
-			Name:    "config",
-			Aliases: []string{"c"},
-			Value:   "",
-			Usage:   "load configuration from `FILE`",
-		},
-		&cli.StringFlag{
-			Name:    "mode",
-			Aliases: []string{"m"},
-			Value:   "",
-			Usage:   "build site with special mode",
-		},
-		&cli.BoolFlag{
-			Name:  "include-drafts",
-			Usage: "include content marked as draft",
-			Value: false,
-		},
-	}
-)
-
 func commonAction(clx *cli.Context) (*core.Config, error) {
 	conf := core.DefaultConfig()
-
+	if err := conf.LoadFromFile(clx.String("config")); err != nil {
+		return nil, err
+	}
 	if clx.Bool("debug") {
 		conf.SetDebug()
 	}
 	if mode := clx.String("mode"); mode != "" {
 		conf.SetMode(mode)
-	}
-	if err := conf.LoadFromFile(clx.String("config")); err != nil {
-		return nil, err
 	}
 	return conf, nil
 }

@@ -24,7 +24,6 @@ type (
 		Fatalln(...any)
 	}
 	Writer interface {
-		Reset()
 		WriteFile(context.Context, string, io.Reader) error
 	}
 	Builder interface {

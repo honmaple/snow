@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content/parser"
@@ -20,17 +19,10 @@ type (
 		ctx         *core.Context
 		parser      parser.Parser
 		parserExts  map[string]bool
-		parserCache sync.Map
 	}
 	ProcessorOption func(*Processor)
 )
 
-func (d *Processor) Reset() {
-	d.parserCache.Range(func(k, v any) bool {
-		d.parserCache.Delete(k)
-		return true
-	})
-}
 
 func (d *Processor) resolvePath(path string, vars map[string]string) string {
 	if vars == nil || path == "" {

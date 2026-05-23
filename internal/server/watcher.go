@@ -6,34 +6,40 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/fsnotify/fsnotify"
 )
 
-func (srv *Server) watchDir(watcher *fsnotify.Watcher, path string) error {
+func (s *Server) watchDir(watcher *fsnotify.Watcher, path string) error {
 	return filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
 		if d.IsDir() {
+			if strings.HasPrefix(p, ".") || strings.HasPrefix(p, "_") {
+				return fs.SkipDir
+			}
 			return watcher.Add(p)
 		}
 		return nil
 	})
 }
 
-func (srv *Server) watch(paths []string, fn func(string)) error {
+func (s *Server) watch(paths []string, fn func(string, fs.FileInfo)) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
 	}
+	defer watcher.Close()
 
 	for _, path := range paths {
 		if _, err := os.Stat(path); err != nil && !os.IsExist(err) {
 			continue
 		}
-		if err := srv.watchDir(watcher, path); err != nil {
-			srv.ctx.Logger.Errorf("Error watching %s: %v", path, err)
+		if err := s.watchDir(watcher, path); err != nil {
+			s.ctx.Logger.Errorf("Error watching %s: %v", path, err)
 		}
 	}
 
@@ -43,18 +49,26 @@ func (srv *Server) watch(paths []string, fn func(string)) error {
 			if !ok {
 				return nil
 			}
+			info, err := os.Stat(event.Name)
+			if err != nil {
+				continue
+			}
+			if info.IsDir() {
+				continue
+			}
+
 			if event.Has(fsnotify.Write) {
-				srv.ctx.Logger.Infoln("The", event.Name, "has been modified. Rebuilding...")
+				s.ctx.Logger.Infoln("The", event.Name, "has been modified. Rebuilding...")
 
-				fn(event.Name)
+				fn(event.Name, info)
 			} else if event.Has(fsnotify.Create) {
-				srv.ctx.Logger.Infoln("The", event.Name, "has been created. Rebuilding...")
+				s.ctx.Logger.Infoln("The", event.Name, "has been created. Rebuilding...")
 
-				fn(event.Name)
+				fn(event.Name, info)
 			} else if event.Has(fsnotify.Remove) {
-				srv.ctx.Logger.Infoln("The", event.Name, "has been removed. Rebuilding...")
+				s.ctx.Logger.Infoln("The", event.Name, "has been removed. Rebuilding...")
 
-				fn(event.Name)
+				fn(event.Name, info)
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {
@@ -65,27 +79,101 @@ func (srv *Server) watch(paths []string, fn func(string)) error {
 	}
 }
 
-func (srv *Server) watchFiles() {
-	contentDir := srv.ctx.GetContentDir()
-
-	paths := []string{
-		contentDir, "static", "templates",
+func (s *Server) watchFiles() {
+	staticDirs := []string{"static"}
+	templatesDirs := []string{"templates"}
+	if theme := s.ctx.GetTheme(); theme != "" {
+		staticDirs = append(staticDirs, filepath.Join("themes", theme, "static"))
+		templatesDirs = append(templatesDirs, filepath.Join("themes", theme, "templates"))
 	}
-	if name := srv.ctx.GetTheme(); name != "" {
-		paths = append(paths, filepath.Join("themes", name, "static"))
-		paths = append(paths, filepath.Join("themes", name, "templates"))
-	}
-	if err := srv.watch(paths, func(file string) {
-		ctx := context.Background()
+	contentDir := s.ctx.GetContentDir()
 
-		if err := srv.site.Build(ctx); err != nil {
-			srv.ctx.Logger.Errorf("Rebuilding err:", err.Error())
+	watchDirs := slices.Concat([]string{contentDir}, staticDirs, templatesDirs)
+	if err := s.watch(watchDirs, func(file string, info fs.FileInfo) {
+		if strings.HasPrefix(file, contentDir+"/") {
+			if err := s.reloadContent(file, info); err != nil {
+				s.ctx.Logger.Errorf("Reload content err: %s", err.Error())
+			}
 			return
 		}
-		if srv.livereload != nil {
-			srv.livereload.Notify("*.html")
+		for _, staticDir := range staticDirs {
+			if strings.HasPrefix(file, staticDir+"/") {
+				if err := s.reloadStatic(staticDir, file, info); err != nil {
+					s.ctx.Logger.Errorf("Reload static err: %s", err.Error())
+				}
+				return
+			}
+		}
+		for _, templateDir := range templatesDirs {
+			if strings.HasPrefix(file, templateDir+"/") {
+				if err := s.reloadTemplate(file, info); err != nil {
+					s.ctx.Logger.Errorf("Reload templates err: %s", err.Error())
+				}
+				return
+			}
 		}
 	}); err != nil {
-		srv.ctx.Logger.Errorf("Watch files err: %s", err.Error())
+		s.ctx.Logger.Errorf("Watch files err: %s", err.Error())
 	}
+}
+
+func (s *Server) reloadContent(file string, info fs.FileInfo) error {
+	if s.site.IsIgnoredContent(file, info.IsDir()) {
+		return nil
+	}
+
+	s.fs.Reset()
+
+	if err := s.site.BuildContent(context.TODO(), s.fs); err != nil {
+		return err
+	}
+	if s.livereload != nil {
+		s.livereload.Notify("*.html")
+	}
+	return nil
+}
+
+func (s *Server) reloadStatic(baseDir string, file string, info fs.FileInfo) error {
+	srcPath, err := filepath.Rel(baseDir, file)
+	if err != nil {
+		return err
+	}
+	if s.site.IsIgnoredStatic(srcPath, info.IsDir()) {
+		return nil
+	}
+
+	staticFS, err := s.ctx.GetFS("static", true)
+	if err != nil {
+		return err
+	}
+
+	src, err := staticFS.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	dstPath := srcPath
+	if !strings.HasPrefix(dstPath, "/") {
+		dstPath = "/" + dstPath
+	}
+	if err := s.fs.WriteFile(context.TODO(), dstPath, src); err != nil {
+		return err
+	}
+	if s.livereload != nil {
+		s.livereload.Notify(dstPath)
+	}
+	return nil
+}
+
+func (s *Server) reloadTemplate(file string, info fs.FileInfo) error {
+	s.fs.Reset()
+
+	if err := s.site.Build(context.TODO(), s.fs); err != nil {
+		return err
+	}
+	if s.livereload != nil {
+		s.livereload.Notify("*.html")
+	}
+	return nil
 }

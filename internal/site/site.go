@@ -2,7 +2,6 @@ package site
 
 import (
 	"context"
-	"errors"
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content"
@@ -11,55 +10,45 @@ import (
 )
 
 type (
-	Option struct {
-		IncludeDrafts bool
-	}
 	Site struct {
 		ctx              *core.Context
 		hook             hook.Hook
-		option           *Option
-		writer           core.Writer
 		contentProcessor *content.Processor
 		tplset           template.TemplateSet
+		includeDrafts    bool
 	}
 	SiteOption func(*Site)
 )
 
-func (site *Site) Reset() {
-	site.writer.Reset()
-	site.contentProcessor.Reset()
+func (site *Site) newTemplateSet() (template.TemplateSet, error) {
+	tplset, err := template.NewSet(site.ctx)
+	if err != nil {
+		return nil, err
+	}
+	return site.hook.HandleTemplateSet(tplset)
 }
 
-func (site *Site) Build(ctx context.Context) error {
-	site.Reset()
+func (site *Site) Build(ctx context.Context, w core.Writer) error {
+	writer, err := site.hook.HandleWriter(w)
+	if err != nil {
+		return err
+	}
 
 	if err := site.hook.BeforeBuild(); err != nil {
 		return err
 	}
-	if err := site.buildStatic(ctx); err != nil {
+	if err := site.BuildStatic(ctx, writer); err != nil {
 		return err
 	}
-	if err := site.buildContent(ctx); err != nil {
+	if err := site.BuildContent(ctx, writer); err != nil {
 		return err
 	}
-	return site.hook.AfterBuild(ctx, site.writer)
+	return site.hook.AfterBuild(ctx, writer)
 }
 
-func WithOption(opt *Option) SiteOption {
+func IncludeDrafts(b bool) SiteOption {
 	return func(site *Site) {
-		site.option = opt
-	}
-}
-
-func WithHook(h hook.Hook) SiteOption {
-	return func(site *Site) {
-		site.hook = h
-	}
-}
-
-func WithWriter(w core.Writer) SiteOption {
-	return func(site *Site) {
-		site.writer = w
+		site.includeDrafts = b
 	}
 }
 
@@ -71,38 +60,17 @@ func New(ctx *core.Context, opts ...SiteOption) (*Site, error) {
 	for _, opt := range opts {
 		opt(site)
 	}
-	if site.option == nil {
-		site.option = &Option{
-			IncludeDrafts: false,
-		}
-	}
-	if site.writer == nil {
-		return nil, errors.New("writer is required")
-	}
-	if site.tplset == nil {
-		tplset, err := template.NewSet(ctx)
-		if err != nil {
-			return nil, err
-		}
-		site.tplset = tplset
-	}
-	if site.hook == nil {
-		h, err := hook.New(ctx)
-		if err != nil {
-			return nil, err
-		}
-		site.hook = h
-	}
-	w, err := site.hook.HandleWriter(site.writer)
-	if err != nil {
-		return nil, err
-	}
-	site.writer = w
 
-	set, err := site.hook.HandleTemplateSet(site.tplset)
+	h, err := hook.New(ctx)
 	if err != nil {
 		return nil, err
 	}
-	site.tplset = set
+	site.hook = h
+
+	tplset, err := site.newTemplateSet()
+	if err != nil {
+		return nil, err
+	}
+	site.tplset = tplset
 	return site, nil
 }

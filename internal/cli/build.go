@@ -2,11 +2,12 @@ package cli
 
 import (
 	"context"
-	"slices"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site"
-	"github.com/honmaple/snow/internal/utils"
 	"github.com/honmaple/snow/internal/writer"
 	"github.com/urfave/cli/v2"
 )
@@ -15,10 +16,34 @@ var (
 	buildCommand = &cli.Command{
 		Name:  "build",
 		Usage: "Build site",
-		Flags: slices.Concat(flags, []cli.Flag{
+		Flags: []cli.Flag{
+			&cli.PathFlag{
+				Name:    "config",
+				Aliases: []string{"c"},
+				Value:   "",
+				Usage:   "load configuration from `FILE`",
+			},
+			&cli.BoolFlag{
+				Name:    "debug",
+				Aliases: []string{"D"},
+				Value:   false,
+				Usage:   "enable debug mode",
+			},
 			&cli.BoolFlag{
 				Name:  "dry-run",
 				Usage: "dry run",
+			},
+			&cli.StringFlag{
+				Name:    "root-dir",
+				Aliases: []string{"r"},
+				Value:   ".",
+				Usage:   "directory to use as root of project",
+			},
+			&cli.StringFlag{
+				Name:    "output-dir",
+				Aliases: []string{"o"},
+				Value:   "output",
+				Usage:   "build output content",
 			},
 			&cli.BoolFlag{
 				Name:    "clean",
@@ -27,12 +52,17 @@ var (
 				Usage:   "clean output content",
 			},
 			&cli.StringFlag{
-				Name:    "output-dir",
-				Aliases: []string{"o"},
-				Value:   "output",
-				Usage:   "build output content",
+				Name:    "mode",
+				Aliases: []string{"m"},
+				Value:   "",
+				Usage:   "build site with special mode",
 			},
-		}),
+			&cli.BoolFlag{
+				Name:  "include-drafts",
+				Usage: "build site with content marked as draft",
+				Value: false,
+			},
+		},
 		Action: buildAction,
 	}
 )
@@ -42,7 +72,6 @@ func buildAction(clx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
 	if out := clx.String("output-dir"); out != "" {
 		conf.Set("output_dir", out)
 	}
@@ -54,23 +83,32 @@ func buildAction(clx *cli.Context) error {
 
 	if out := ctx.GetOutputDir(); out != "" && clx.Bool("clean") {
 		ctx.Logger.Infoln("Removing the contents of", out)
-		if err := utils.RemoveDir(out); err != nil {
+
+		files, err := os.ReadDir(out)
+		if err != nil {
 			return err
 		}
+		for _, file := range files {
+			if strings.HasPrefix(file.Name(), ".") {
+				continue
+			}
+			if err := os.RemoveAll(filepath.Join(out, file.Name())); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	s, err := site.New(ctx, site.IncludeDrafts(clx.Bool("include-drafts")))
+	if err != nil {
+		return err
 	}
 
 	var w core.Writer
 	if clx.Bool("dry-run") {
-		w = writer.NewNullWriter(ctx)
+		w = writer.NewNullWriter()
 	} else {
-		w = writer.NewDiskWriter(ctx)
+		w = writer.NewDiskWriter(conf.GetString("output_dir"))
 	}
-
-	site, err := site.New(ctx, site.WithWriter(w), site.WithOption(&site.Option{
-		IncludeDrafts: clx.Bool("include-drafts"),
-	}))
-	if err != nil {
-		return err
-	}
-	return site.Build(context.TODO())
+	return s.Build(context.TODO(), w)
 }

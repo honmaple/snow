@@ -172,3 +172,24 @@ func (ctx *LocaleContext) GetMarkupConfig(name string, keyName string) Result {
 	}
 	return Result{value: val}
 }
+
+// func (ctx *LocaleContext) CleanOutputDir() error {
+//	if out := ctx.GetOutputDir(); out != "" {
+//		ctx.Logger.Infoln("Removing the contents of", out)
+
+//		files, err := os.ReadDir(out)
+//		if err != nil {
+//			return err
+//		}
+//		for _, file := range files {
+//			if strings.HasPrefix(file.Name(), ".") {
+//				continue
+//			}
+//			if err := os.RemoveAll(filepath.Join(out, file.Name())); err != nil {
+//				return err
+//			}
+//		}
+//		return nil
+//	}
+//	return nil
+// }

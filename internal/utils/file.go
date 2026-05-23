@@ -2,28 +2,10 @@ package utils
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 )
-
-func RemoveDir(path string) error {
-	files, err := ioutil.ReadDir(path)
-	if err != nil {
-		return err
-	}
-	for _, file := range files {
-		if strings.HasPrefix(file.Name(), ".") {
-			continue
-		}
-		if err := os.RemoveAll(filepath.Join(path, file.Name())); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 func FileExists(path string) bool {
 	if _, err := os.Stat(path); os.IsExist(err) || err == nil {

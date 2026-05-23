@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"io"
 	"io/fs"
 	"net/http"
@@ -11,11 +12,12 @@ import (
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site"
+	"github.com/honmaple/snow/internal/writer"
 )
 
 type (
 	Server struct {
-		fs         fs.FS
+		fs         *writer.MemoryWriter
 		ctx        *core.Context
 		site       *site.Site
 		livereload *Livereload
@@ -118,9 +120,9 @@ func (m *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (srv *Server) Start(listen string) error {
+func (s *Server) Start(listen string) error {
 	if listen == "" {
-		listen = srv.ctx.GetBaseURL()
+		listen = s.ctx.GetBaseURL()
 	}
 	u, err := url.Parse(listen)
 	if err != nil {
@@ -128,28 +130,42 @@ func (srv *Server) Start(listen string) error {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", srv)
+	mux.Handle("/", s)
 
-	if srv.livereload != nil {
-		mux.HandleFunc("/livereload", srv.livereload.HandleWS)
-		mux.HandleFunc("/livereload.js", srv.livereload.HandleJS)
+	if s.livereload != nil {
+		mux.HandleFunc("/livereload", s.livereload.HandleWS)
+		mux.HandleFunc("/livereload.js", s.livereload.HandleJS)
 	}
 
-	srv.ctx.Logger.Infoln("Listen", u.String(), "...")
+	s.ctx.Logger.Infoln("Listen", u.String(), "...")
 	return http.ListenAndServe(u.Host, mux)
 }
 
-func New(ctx *core.Context, site *site.Site, fs fs.FS, autoload bool) (*Server, error) {
-	srv := &Server{
-		fs:   fs,
-		ctx:  ctx,
-		site: site,
+func Serve(conf *core.Config, listen string, autoload bool, includeDrafts bool) error {
+	ctx, err := core.NewContext(conf)
+	if err != nil {
+		return err
 	}
+
+	s := &Server{
+		fs:  writer.NewMemoryWriter(),
+		ctx: ctx,
+	}
+
+	site, err := site.New(ctx, site.IncludeDrafts(includeDrafts))
+	if err != nil {
+		return err
+	}
+	if err := site.Build(context.TODO(), s.fs); err != nil {
+		return err
+	}
+
+	s.site = site
 	if autoload {
-		srv.livereload = &Livereload{
+		s.livereload = &Livereload{
 			clients: make(map[*client]struct{}),
 		}
-		go srv.watchFiles()
+		go s.watchFiles()
 	}
-	return srv, nil
+	return s.Start(listen)
 }

@@ -6,23 +6,19 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/utils"
 )
 
 type DiskWriter struct {
-	ctx *core.Context
+	outputDir string
 }
-
-func (w *DiskWriter) Reset() {}
 
 func (w *DiskWriter) WriteFile(ctx context.Context, file string, r io.Reader) error {
 	if file == "" {
 		return nil
 	}
-	output := filepath.Join(w.ctx.GetOutputDir(), filepath.FromSlash(file))
+	output := filepath.Join(w.outputDir, filepath.FromSlash(file))
 
-	// w.ctx.Logger.Debugln("Writing", output)
 	if dir := filepath.Dir(output); !utils.FileExists(output) {
 		os.MkdirAll(dir, 0755)
 	}
@@ -36,6 +32,6 @@ func (w *DiskWriter) WriteFile(ctx context.Context, file string, r io.Reader) er
 	return err
 }
 
-func NewDiskWriter(ctx *core.Context) *DiskWriter {
-	return &DiskWriter{ctx: ctx}
+func NewDiskWriter(outputDir string) *DiskWriter {
+	return &DiskWriter{outputDir: outputDir}
 }

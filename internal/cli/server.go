@@ -1,13 +1,7 @@
 package cli
 
 import (
-	"context"
-	"slices"
-
-	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/server"
-	"github.com/honmaple/snow/internal/site"
-	"github.com/honmaple/snow/internal/writer"
 	"github.com/urfave/cli/v2"
 )
 
@@ -15,7 +9,19 @@ var (
 	serverCommand = &cli.Command{
 		Name:  "server",
 		Usage: "Server site",
-		Flags: slices.Concat(flags, []cli.Flag{
+		Flags: []cli.Flag{
+			&cli.PathFlag{
+				Name:    "config",
+				Aliases: []string{"c"},
+				Value:   "",
+				Usage:   "load configuration from `FILE`",
+			},
+			&cli.BoolFlag{
+				Name:    "debug",
+				Aliases: []string{"D"},
+				Value:   false,
+				Usage:   "enable debug mode",
+			},
 			&cli.StringFlag{
 				Name:    "listen",
 				Aliases: []string{"l"},
@@ -24,10 +30,21 @@ var (
 			},
 			&cli.BoolFlag{
 				Name:    "autoload",
-				Aliases: []string{"r"},
+				Aliases: []string{"R"},
 				Usage:   "autoload when file change",
 			},
-		}),
+			&cli.StringFlag{
+				Name:    "mode",
+				Aliases: []string{"m"},
+				Value:   "",
+				Usage:   "build site with special mode",
+			},
+			&cli.BoolFlag{
+				Name:  "include-drafts",
+				Usage: "include content marked as draft",
+				Value: false,
+			},
+		},
 		Action: serverAction,
 	}
 )
@@ -37,27 +54,5 @@ func serverAction(clx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
-	ctx, err := core.NewContext(conf)
-	if err != nil {
-		return err
-	}
-
-	memFS := writer.NewMemoryWriter(ctx)
-
-	site, err := site.New(ctx, site.WithWriter(memFS), site.WithOption(&site.Option{
-		IncludeDrafts: clx.Bool("include-drafts"),
-	}))
-	if err != nil {
-		return err
-	}
-	if err := site.Build(context.TODO()); err != nil {
-		return err
-	}
-
-	srv, err := server.New(ctx, site, memFS, clx.Bool("autoload"))
-	if err != nil {
-		return err
-	}
-	return srv.Start(clx.String("listen"))
+	return server.Serve(conf, clx.String("listen"), clx.Bool("autoload"), clx.Bool("include-drafts"))
 }
