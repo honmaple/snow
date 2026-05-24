@@ -14,6 +14,7 @@ import (
 	"github.com/honmaple/snow/internal/site/template"
 	"github.com/spf13/viper"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 	goldmarkParser "github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 )
@@ -128,7 +129,9 @@ func (m *mdParser) Parse(r io.Reader) (*parser.Result, error) {
 }
 
 func New(opt *Option) *mdParser {
-	exts := make([]goldmark.Extender, 0)
+	exts := []goldmark.Extender{
+		extension.GFM,
+	}
 	if opt.Style != "" && opt.Style != "none" {
 		exts = append(exts, NewHighlightExtension(opt))
 	}

@@ -10,6 +10,12 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+snow
+docs/output
 example/content
 example/output
-example/snow
+
+package.json
+package-lock.json
+node_modules/

@@ -239,6 +239,24 @@ func (d *ContentStore) insertSection(section *content.Section) {
 	} else {
 		set.Add(section.File.Dir, section)
 	}
+
+	if section.File.Dir != "" {
+		currentDir := stdpath.Dir(section.File.Dir)
+		for {
+			if currentDir == "" || currentDir == "." {
+				currentDir = "/"
+			}
+			if parent := d.getSection(currentDir, section.Lang); parent != nil {
+				section.Parent = parent
+				parent.Children = append(parent.Children, section)
+				break
+			}
+			if currentDir == "/" {
+				break
+			}
+			currentDir = stdpath.Dir(currentDir)
+		}
+	}
 }
 
 func (d *ContentStore) insertPage(page *content.Page) {

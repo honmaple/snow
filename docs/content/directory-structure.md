@@ -1,4 +1,6 @@
-# 目录结构
+---
+title: "目录结构"
+---
 
 Snow 站点的标准文件布局：
 
@@ -15,11 +17,10 @@ mysite/
 │           └── _index.md
 ├── static/              # 静态文件（static_dir）
 ├── templates/           # 站点自定义模板（覆盖主题模板）
-├── templates/           # 站点自定义模板
 ├── themes/              # 主题目录（theme_dir）
 │   └── snow/            # 主题名称 = theme
 │       ├── theme.yaml
-│       ├── template/
+│       ├── templates/
 │       ├── static/
 │       └── i18n/
 ├── assets/              # 需启用 hooks.assets

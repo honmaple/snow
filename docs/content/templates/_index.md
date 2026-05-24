@@ -2,8 +2,6 @@
 title: "Templates"
 ---
 
-# 模板
-
 Snow 使用基于 [Pongo2](https://github.com/flosch/pongo2) 的模板引擎，语法兼容 Django/Jinja2。
 
 ## 基本语法

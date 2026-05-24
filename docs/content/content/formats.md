@@ -1,4 +1,6 @@
-# 输出格式
+---
+title: "输出格式"
+---
 
 Snow 可为 Section、Page、Taxonomy Term 生成 RSS、Atom、JSON 等多种输出格式。
 

@@ -1,4 +1,6 @@
-# 配置
+---
+title: "配置"
+---
 
 Snow 使用 YAML 格式配置，默认为站点根目录下的 `config.yaml`，可通过 `--config` 参数指定其他文件。
 
@@ -20,7 +22,6 @@ language: "en"
 content_dir: "content"
 static_dir: "static"
 output_dir: "output"
-theme_dir: "themes"
 
 #─────────────────────────────────────
 # 内容处理
@@ -38,10 +39,8 @@ ignored_static:
 #─────────────────────────────────────
 # 主题
 #─────────────────────────────────────
-theme:
-  name: "snow"
-  config: "theme.yaml"
-  override: "layouts"
+theme: "snow"
+theme_dir: "themes"
 ```
 
 ## 站点信息
@@ -204,36 +203,6 @@ languages:
 ```
 
 每个语言可覆盖任何全局配置。
-
-## 插件
-
-```yaml
-hooks:
-  assets:
-    enabled: true
-  encrypt:
-    enabled: true
-    weight: 2
-    option:
-      password: "123456"
-  shortcode:
-    enabled: true
-    weight: 1
-  minify:
-    enabled: false
-    option:
-      html: true
-      css: true
-      js: true
-  rewrite:
-    enabled: false
-    option:
-      - src: "tag"
-        dst: "tags"
-        type: "list"
-```
-
-`assets`、`encrypt`、`shortcode` 默认启用。`weight` 控制执行顺序，越大越先执行。
 
 ## 主题
 

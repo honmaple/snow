@@ -1,14 +1,14 @@
 base_url: "http://127.0.0.1:8000"
-title: "Snow Documentation"
+title: "Snow文档"
 description: "A Go static site generator"
 author: "honmaple"
 language: "zh"
 
-theme: "snow-docs"
+# theme: "snow-docs"
 
 modes:
   publish:
-    base_url: "https://honmaple.me/snow"
+    base_url: "https://snow.honmaple.com"
 
 params:
   menus:
@@ -29,6 +29,61 @@ sections:
 pages:
   _default:
     path: "{path:slug}/{slug}/"
-  content:
-    path: "{path:slug}/{slug}.html"
-    template: "page.html"
+
+params.navbar:
+  - name: "博客"
+    link: "https://honmaple.me"
+  - name: "GitHub"
+    link: "https://github.com/honmaple/snow"
+
+params.sidebar:
+  - name: "快速开始"
+    link: "/getting-started/"
+  - name: "配置"
+    link: "/configuration/"
+  - name: "目录结构"
+    link: "/directory-structure/"
+  - name: "主题"
+    link: "/themes/"
+  - name: "内容(CONTENT)"
+    items:
+      - name: "Overview"
+        link: "/content/"
+      - name: "栏目"
+        link: "/content/sections/"
+      - name: "页面"
+        link: "/content/pages/"
+      - name: "分类系统"
+        link: "/content/taxonomies/"
+      - name: "分页"
+        link: "/content/pagination/"
+      - name: "多语言"
+        link: "/content/multilingual/"
+      - name: "短代码"
+        link: "/content/shortcodes/"
+      - name: "输出格式"
+        link: "/content/formats/"
+  - name: "模版 (TEMPLATE)"
+    items:
+      - name: "Overview"
+        link: "/templates/"
+      - name: "模版函数"
+        link: "/templates/functions/"
+  - name: "插件"
+    items:
+      - name: "Overview"
+        link: "/hooks/"
+      - name: "filter"
+        link: "/hooks/filter/"
+      - name: "shortcode"
+        link: "/hooks/shortcode/"
+      - name: "encrypt"
+        link: "/hooks/encrypt/"
+      - name: "assets"
+        link: "/hooks/assets/"
+      - name: "minify"
+        link: "/hooks/minify/"
+      - name: "rewrite"
+        link: "/hooks/rewrite/"
+      - name: "pelican"
+        link: "/hooks/pelican/"

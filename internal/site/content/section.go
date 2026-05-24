@@ -15,6 +15,7 @@ type (
 		Path      string
 		Permalink string
 
+		Parent   *Section
 		Pages    Pages
 		Assets   Assets
 		Formats  Formats

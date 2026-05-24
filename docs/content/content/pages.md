@@ -1,4 +1,6 @@
-# 页面 (Page)
+---
+title: "页面 (Page)"
+---
 
 Page 是 Snow 中最基本的内容单元。
 
@@ -46,22 +48,22 @@ categories:
 
 ### 所有 FrontMatter 字段
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `title` | string | 页面标题 |
-| `slug` | string | URL slug，默认从标题生成 |
-| `date` | datetime | 创建时间 |
-| `modified` | datetime | 修改时间 |
-| `draft` | bool | 草稿，构建时默认跳过 |
-| `hidden` | bool | 隐藏页面，不出现在列表中 |
-| `render` | bool | 是否渲染 |
-| `path` | string | 自定义输出路径 |
-| `template` | string | 自定义模板 |
-| `aliases` | []string | 重定向别名 |
-| `asset_path` | string | 附属资源输出路径 |
-| `formats.{name}.path` | string | 格式输出路径 |
-| `formats.{name}.template` | string | 格式输出模板 |
-| `{taxonomy}` | any | 自定义分类字段（如 `tags`、`authors`） |
+| 字段                       | 类型      | 说明                                |
+|---------------------------|----------|------------------------------------|
+| `title`                   | string   | 页面标题                             |
+| `slug`                    | string   | URL slug，默认从标题生成              |
+| `date`                    | datetime | 创建时间                             |
+| `modified`                | datetime | 修改时间                             |
+| `draft`                   | bool     | 草稿，构建时默认跳过                  |
+| `hidden`                  | bool     | 隐藏页面，不出现在列表中               |
+| `render`                  | bool     | 是否渲染                             |
+| `path`                    | string   | 自定义输出路径                       |
+| `template`                | string   | 自定义模板                           |
+| `aliases`                 | []string | 重定向别名                           |
+| `asset_path`              | string   | 附属资源输出路径                      |
+| `formats.{name}.path`     | string   | 格式输出路径                         |
+| `formats.{name}.template` | string   | 格式输出模板                         |
+| `{taxonomy}`              | any      | 自定义分类字段（如 `tags`、`authors`） |
 
 ## 页面配置
 
@@ -84,18 +86,18 @@ pages:
 
 ## 路径变量
 
-| 变量 | 说明 | 示例 |
-|------|------|------|
-| `{date:%Y}` | 年 (4位) | `2024` |
-| `{date:%m}` | 月 (2位) | `01` |
-| `{date:%d}` | 日 (2位) | `15` |
-| `{date:%H}` | 时 (2位) | `20` |
-| `{lang}` | 语言代码 | `en` |
-| `{lang:optional}` | 语言代码，默认语言为空 | `en` 或空 |
-| `{path}` | 文件位置路径 | `posts` |
-| `{path:slug}` | 路径 slug 化 | `posts` |
-| `{slug}` | 页面 slug | `hello-world` |
-| `{title}` | 页面标题 | `Hello World` |
+| 变量               | 说明                | 示例           |
+|-------------------|--------------------|---------------|
+| `{date:%Y}`       | 年 (4位)            | `2024`        |
+| `{date:%m}`       | 月 (2位)            | `01`          |
+| `{date:%d}`       | 日 (2位)            | `15`          |
+| `{date:%H}`       | 时 (2位)            | `20`          |
+| `{lang}`          | 语言代码             | `en`          |
+| `{lang:optional}` | 语言代码，默认语言为空 | `en` 或空      |
+| `{path}`          | 文件位置路径         | `posts`       |
+| `{path:slug}`     | 路径 slug 化        | `posts`       |
+| `{slug}`          | 页面 slug           | `hello-world` |
+| `{title}`         | 页面标题             | `Hello World` |
 
 > 注意：代码中不存在 `{filename}` 变量。
 
@@ -108,30 +110,30 @@ pages:
 
 ## 模板变量
 
-| 属性 | 说明 |
-|------|------|
-| `page.Title` | 页面标题 |
-| `page.Slug` | URL slug |
-| `page.Lang` | 语言代码 |
-| `page.Date` | 创建时间 |
-| `page.Modified` | 修改时间 |
-| `page.Path` | 相对 URL |
-| `page.Permalink` | 绝对 URL |
-| `page.Summary` | 摘要 |
-| `page.Content` | 渲染后 HTML |
-| `page.RawContent` | 原始内容 |
-| `page.FrontMatter.{xxx}` | 自定义字段值 |
-| `page.Aliases` | 重定向别名 |
-| `page.Formats` | 其他输出格式 |
-| `page.Prev` | 上一篇文章 |
-| `page.Next` | 下一篇文章 |
-| `page.HasPrev()` | 是否有上一篇文章 |
-| `page.HasNext()` | 是否有下一篇文章 |
-| `page.IsBundle` | 是否为 Bundle |
-| `page.Draft` | 是否为草稿 |
-| `page.Hidden` | 是否隐藏 |
-| `page.IsPage` | 是否为 Page |
-| `page.IsHidden` | IsHidden() 方法 |
+| 属性                      | 说明            |
+|--------------------------|----------------|
+| `page.Title`             | 页面标题         |
+| `page.Slug`              | URL slug       |
+| `page.Lang`              | 语言代码         |
+| `page.Date`              | 创建时间         |
+| `page.Modified`          | 修改时间         |
+| `page.Path`              | 相对 URL        |
+| `page.Permalink`         | 绝对 URL        |
+| `page.Summary`           | 摘要            |
+| `page.Content`           | 渲染后 HTML     |
+| `page.RawContent`        | 原始内容         |
+| `page.FrontMatter.{xxx}` | 自定义字段值     |
+| `page.Aliases`           | 重定向别名       |
+| `page.Formats`           | 其他输出格式     |
+| `page.Prev`              | 上一篇文章       |
+| `page.Next`              | 下一篇文章       |
+| `page.HasPrev()`         | 是否有上一篇文章  |
+| `page.HasNext()`         | 是否有下一篇文章  |
+| `page.IsBundle`          | 是否为 Bundle   |
+| `page.Draft`             | 是否为草稿       |
+| `page.Hidden`            | 是否隐藏         |
+| `page.IsPage`            | 是否为 Page     |
+| `page.IsHidden`          | IsHidden() 方法 |
 
 ## 草稿 (Draft)
 

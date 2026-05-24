@@ -1,4 +1,6 @@
-# 分页
+---
+title: "分页"
+---
 
 Snow 支持 Section 和 Taxonomy Term 级别的分页。
 

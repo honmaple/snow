@@ -21,9 +21,9 @@ type (
 	Page struct {
 		*Node
 
-		IsBundle  bool
 		Draft     bool
 		Hidden    bool
+		IsBundle  bool
 		WordCount int64
 
 		Date     time.Time
@@ -54,6 +54,13 @@ func (pages Pages) Last() *Page {
 
 func (pages Pages) Related(page *Page) *Related[*Page] {
 	return &Related[*Page]{list: pages, cur: page}
+}
+
+func (pages Pages) Limit(n int) Pages {
+	if n >= len(pages) {
+		return pages
+	}
+	return pages[:n]
 }
 
 func (pages Pages) Reverse() Pages {

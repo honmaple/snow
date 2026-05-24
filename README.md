@@ -1,65 +1,60 @@
 # Snow
 
-静态站点生成器，使用 Go 语言编写。
-
-## 快速开始
-
-```bash
-# 安装
-go install github.com/honmaple/snow@latest
-
-# 创建站点
-snow init myblog
-cd myblog
-
-# 新建文章
-mkdir -p content/posts
-cat > content/posts/hello.md << 'EOF'
----
-title: "Hello World"
-date: 2024-01-15
-tags: [intro]
----
-## Hello World
-
-这是我的第一篇文章！
-EOF
-
-# 启动开发服务器
-snow server -D
-# → http://127.0.0.1:8000
-```
-
-## CLI
-
-```
-snow init [dir]       创建新站点
-snow build             构建
-snow server            开发服务器（支持热重载）
-snow hooks             查看已启用的插件
-```
-
-构建选项：
-
-```
-snow build --clean -C         清理输出
-snow build --debug -D         调试模式
-snow build --output-dir -o    指定输出目录
-snow build --mode -m          指定构建模式（如 publish）
-snow build --include-drafts   包含草稿
-snow build --dry-run          预演（不写文件）
-```
+静态站点生成器
 
 ## 核心特性
 
-- **多格式** — Markdown (goldmark)、Org-mode、HTML
+- **多格式** — Markdown、Org-mode、HTML
 - **多语言** — 按目录、文件后缀或 FrontMatter 区分语言，内置 i18n
-- **Taxonomy** — 自动生成标签/分类/作者等分类页面，支持时间归档
-- **分页** — Section 和 Taxonomy 级别分页
+- **分类系统** — 自动生成标签/分类/作者等分类页面，支持时间归档
 - **输出格式** — RSS、Atom、JSON 等自定义格式
-- **Pongo2 模板** — Django/Jinja2 风格语法
+- **模板** — 使用 Pongo2 模版，Django/Jinja2 风格语法
 - **主题系统** — 可复用主题，站点目录优先覆盖
 - **实时预览** — 内置开发服务器 + WebSocket livereload
+
+## 快速开始
+
+- 安装
+  ```bash
+  $ go install github.com/honmaple/snow@latest
+  ```
+  or
+  ```bash
+  $ brew install honmaple/tap/snow
+  ```
+
+- 创建站点
+  ```bash
+  $ snow init myblog
+  $ cd myblog
+  ```
+
+- 新建文章
+  ```bash
+  $ mkdir -p content/posts
+  $ cat > content/posts/hello.md << 'EOF'
+  ---
+  title: "Hello World"
+  date: 2024-01-15
+  tags: [intro]
+  ---
+  ## Hello World
+  
+  这是我的第一篇文章！
+  EOF
+  ```
+
+- 启动开发服务器
+  ```bash
+  $ snow server -D
+  INFO Copying static...
+  INFO Done: in 6.084µs
+  INFO Building en site...
+  DEBU write page [posts/first-page.md] -> /posts/first-page/
+  DEBU write page [posts/hello.md] -> /posts/hello/
+  INFO Done: 0 sections, 2 pages, 0 hidden pages and 0 taxonomies in 5.59625ms
+  INFO Listen http://127.0.0.1:8000 ...
+  ```
 
 ## 内容管理
 

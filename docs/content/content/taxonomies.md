@@ -1,4 +1,6 @@
-# 分类系统 (Taxonomy)
+---
+title: "分类系统 (Taxonomy)"
+---
 
 Snow 根据 Page FrontMatter 字段自动生成分类页面。类似 Hugo 的 Taxonomy 或 Zola 的 Taxonomies。
 

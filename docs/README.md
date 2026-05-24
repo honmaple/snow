@@ -4,13 +4,13 @@ Snow 是一个用 Go 语言编写的静态站点生成器，支持 Markdown、Or
 
 ## 文档导航
 
-- [快速开始](/getting-started) — 安装、初始化、构建与开发服务器
-- [目录结构](/directory-structure) — 站点文件与目录布局
-- [配置](/configuration) — 完整配置选项参考
-- [内容管理](/content) — 页面、栏目、分类、短代码、多语言、分页、输出格式
-- [模板](/templates) — 模板语法、变量与函数
-- [主题](/themes) — 创建与使用主题
-- [插件](/hooks) — 插件系统与内置插件
+- [快速开始](content/getting-started.md) — 安装、初始化、构建与开发服务器
+- [目录结构](content/directory-structure.md) — 站点文件与目录布局
+- [配置](content/configuration.md) — 完整配置选项参考
+- [内容管理](content/content/) — 页面、栏目、分类、短代码、多语言、分页、输出格式
+- [模板](content/templates/) — 模板语法、变量与函数
+- [主题](content/themes.md) — 创建与使用主题
+- [插件](content/hooks/) — 插件系统与内置插件
 
 ## 核心特性
 

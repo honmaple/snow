@@ -1,4 +1,6 @@
-# 栏目 (Section)
+---
+title: "栏目 (Section)"
+---
 
 Section 是组织 Pages 的树状层级结构。包含 `_index.{md,org,html}` 文件的目录即为 Section。
 
