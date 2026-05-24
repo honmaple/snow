@@ -44,20 +44,62 @@ func (site *Site) loadContent() (*ContentStore, error) {
 		return nil, fmt.Errorf("The content dir is null")
 	}
 
-	pages := make(content.Pages, 0)
-	sections := make(content.Sections, 0)
+	var store = NewContentStore()
+
+	type node struct {
+		Type     string
+		File     string
+		IsBundle bool
+	}
+
+	tasks := taskutil.NewPool[node](100, func(arg node) (err error) {
+		if arg.Type == "section" {
+			section, err := site.contentProcessor.ParseSection(arg.File)
+			if err != nil {
+				return err
+			}
+			if section.FrontMatter.IsSet("render") && !section.FrontMatter.GetBool("render") {
+				return nil
+			}
+			section = site.hook.HandleSection(section)
+			if section == nil {
+				return nil
+			}
+
+			store.insertSection(section)
+			return nil
+		}
+		page, err := site.contentProcessor.ParsePage(arg.File, arg.IsBundle)
+		if err != nil {
+			return err
+		}
+
+		if page.Draft && !site.includeDrafts {
+			return nil
+		}
+		if page.FrontMatter.IsSet("render") && !page.FrontMatter.GetBool("render") {
+			return nil
+		}
+		page = site.hook.HandlePage(page)
+		if page == nil {
+			return nil
+		}
+
+		store.insertPage(page)
+		return nil
+	})
 
 	walkDir := func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if path == contentDir {
-			roots, err := site.contentProcessor.ParseRootSection(path)
-			if err != nil {
-				return err
-			}
-			for _, section := range roots {
-				sections = append(sections, section)
+			sectionFiles, _ := site.contentProcessor.IsSection(path)
+			for _, file := range sectionFiles {
+				tasks.Invoke(node{
+					Type: "section",
+					File: filepath.Join(path, file),
+				})
 			}
 			return nil
 		}
@@ -72,22 +114,20 @@ func (site *Site) loadContent() (*ContentStore, error) {
 			indexFiles, ok := site.contentProcessor.IsPageBundle(path)
 			if ok {
 				for _, file := range indexFiles {
-					page, err := site.contentProcessor.ParsePage(filepath.Join(path, file), true)
-					if err != nil {
-						return err
-					}
-					pages = append(pages, page)
+					tasks.Invoke(node{
+						File:     filepath.Join(path, file),
+						IsBundle: true,
+					})
 				}
 				return fs.SkipDir
 			}
 			sectionFiles, ok := site.contentProcessor.IsSection(path)
 			if len(sectionFiles) > 0 {
 				for _, file := range sectionFiles {
-					section, err := site.contentProcessor.ParseSection(filepath.Join(path, file))
-					if err != nil {
-						return err
-					}
-					sections = append(sections, section)
+					tasks.Invoke(node{
+						Type: "section",
+						File: filepath.Join(path, file),
+					})
 				}
 				return nil
 			}
@@ -102,42 +142,17 @@ func (site *Site) loadContent() (*ContentStore, error) {
 			return nil
 		}
 
-		page, err := site.contentProcessor.ParsePage(path, false)
-		if err != nil {
-			return err
-		}
-		pages = append(pages, page)
+		tasks.Invoke(node{
+			File:     path,
+			IsBundle: false,
+		})
 		return nil
 	}
 
 	if err := filepath.WalkDir(contentDir, walkDir); err != nil {
 		return nil, err
 	}
-
-	store := NewContentStore()
-	for _, section := range sections {
-		if section.FrontMatter.IsSet("render") && !section.FrontMatter.GetBool("render") {
-			continue
-		}
-		section = site.hook.HandleSection(section)
-		if section == nil {
-			continue
-		}
-		store.insertSection(section)
-	}
-	for _, page := range pages {
-		if page.Draft && !site.includeDrafts {
-			continue
-		}
-		if page.FrontMatter.IsSet("render") && !page.FrontMatter.GetBool("render") {
-			continue
-		}
-		page = site.hook.HandlePage(page)
-		if page == nil {
-			continue
-		}
-		store.insertPage(page)
-	}
+	tasks.StopAndWait()
 
 	for _, sections := range store.AllSections() {
 		sort.SliceStable(sections, func(i, j int) bool {
@@ -164,6 +179,8 @@ func (site *Site) loadContent() (*ContentStore, error) {
 }
 
 func (site *Site) BuildContent(ctx context.Context, writer core.Writer) error {
+	now := time.Now()
+
 	store, err := site.loadContent()
 	if err != nil {
 		return err
@@ -178,7 +195,7 @@ func (site *Site) BuildContent(ctx context.Context, writer core.Writer) error {
 			TemplateSet: site.tplset,
 		}
 
-		tasks := taskutil.NewPool[any](20, func(arg any) (err error) {
+		tasks := taskutil.NewPool[any](100, func(arg any) (err error) {
 			switch v := arg.(type) {
 			case *content.Section:
 				err = site.contentProcessor.RenderSection(v, tplset, writer)
@@ -193,7 +210,6 @@ func (site *Site) BuildContent(ctx context.Context, writer core.Writer) error {
 			return nil
 		})
 
-		now := time.Now()
 		for _, section := range store.Sections(lang) {
 			tasks.Invoke(section)
 		}

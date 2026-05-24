@@ -1,0 +1,204 @@
+---
+title: "Templates"
+---
+
+# 模板
+
+Snow 使用基于 [Pongo2](https://github.com/flosch/pongo2) 的模板引擎，语法兼容 Django/Jinja2。
+
+## 基本语法
+
+```html
+{# 注释 #}
+
+<!-- 变量输出 -->
+<h1>{{ page.Title }}</h1>
+<p>{{ page.Date | date:"2006-01-02" }}</p>
+
+<!-- 条件 -->
+{% if page.Draft %}
+  <span>草稿</span>
+{% endif %}
+
+<!-- 循环 -->
+{% for page in pages %}
+  <li><a href="{{ page.Path }}">{{ page.Title }}</a></li>
+{% endfor %}
+
+<!-- 翻译 -->
+{% i18n "tags" %}
+{{ _("共 %d 篇", 12) }}
+```
+
+## 全局变量
+
+| 变量 | 说明 |
+|------|------|
+| `config` | 站点配置对象 |
+| `pages` | 所有页面列表（Page） |
+| `hidden_pages` | 隐藏页面列表 |
+| `sections` | 所有栏目列表（Sections） |
+| `taxonomies` | 所有分类列表（Taxonomies） |
+| `page` | 当前页面（单页模板） |
+| `section` | 当前栏目（栏目模板） |
+| `term` | 当前分类项（Term 模板） |
+| `taxonomy` | 当前分类（列表模板） |
+| `terms` | `taxonomy.Terms` 引用（列表模板） |
+| `paginator` | 分页对象 |
+
+## 页面变量
+
+`page` 对象属性：
+
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `page.Title` | string | 标题 |
+| `page.Slug` | string | URL slug |
+| `page.Lang` | string | 语言 |
+| `page.Date` | time.Time | 创建时间 |
+| `page.Modified` | time.Time | 修改时间 |
+| `page.Path` | string | 相对 URL |
+| `page.Permalink` | string | 绝对 URL |
+| `page.Summary` | string | 摘要 |
+| `page.Content` | string | 渲染后 HTML |
+| `page.RawContent` | string | 原始内容 |
+| `page.FrontMatter.{xxx}` | any | 自定义字段值 |
+| `page.Aliases` | []string | 重定向别名 |
+| `page.Formats` | Formats | 其他格式 |
+| `page.Prev` | *Page | 上一篇 |
+| `page.Next` | *Page | 下一篇 |
+| `page.HasPrev()` | bool | 是否有上一篇 |
+| `page.HasNext()` | bool | 是否有下一篇 |
+| `page.Draft` | bool | 是否草稿 |
+| `page.Hidden` | bool | 是否隐藏 |
+| `page.IsPage` | bool | 是否为 Page |
+| `page.IsHidden` | bool | IsHidden() 方法 |
+
+## 栏目变量
+
+| 属性 | 说明 |
+|------|------|
+| `section.Title` | 标题 |
+| `section.Slug` | slug |
+| `section.Lang` | 语言 |
+| `section.Path` | 相对 URL |
+| `section.Permalink` | 绝对 URL |
+| `section.Content` | 正文 HTML |
+| `section.Pages` | 页面列表 |
+| `section.Children` | 子栏目 |
+| `section.Parent` | 父栏目 |
+| `section.Formats` | 其他格式 |
+
+## 分类变量
+
+| 属性 | 说明 |
+|------|------|
+| `taxonomy.Name` | 分类名称 |
+| `taxonomy.Lang` | 语言 |
+| `taxonomy.Path` | 相对 URL |
+| `taxonomy.Permalink` | 绝对 URL |
+| `taxonomy.Terms` | Term 列表 |
+| `term.Name` | Term 名称 |
+| `term.Slug` | slug |
+| `term.Path` | 相对 URL |
+| `term.Permalink` | 绝对 URL |
+| `term.List` | 页面列表 |
+| `term.Children` | 子 Term |
+| `term.Parent` | 父 Term |
+| `term.Formats` | 其他格式 |
+| `term.Taxonomy` | 所属 Taxonomy |
+
+## 全局函数
+
+| 函数 | 说明 |
+|------|------|
+| `pages` | 当前语言所有页面 |
+| `hidden_pages` | 隐藏页面 |
+| `sections([lang])` | 栏目列表 |
+| `taxonomies([lang])` | 分类列表 |
+| `get_page(path, [lang])` | 按路径获取页面 |
+| `get_page_url(path, [lang])` | 页面绝对链接 |
+| `get_section(path, [lang])` | 栏目 |
+| `get_section_url(path, [lang])` | 栏目绝对链接 |
+| `get_taxonomy(name, [lang])` | 分类 |
+| `get_taxonomy_url(name, [lang])` | 分类绝对链接 |
+| `get_taxonomy_term(taxonomy, name, [lang])` | 分类项 |
+| `get_taxonomy_term_url(taxonomy, name, [lang])` | 分类项绝对链接 |
+| `i18n(key)` | 翻译 |
+| `T(key, args...)` | 格式化翻译 |
+| `_(key, args...)` | 格式化翻译 |
+
+语言参数可选，省略则用当前语言。
+
+## 页面列表方法
+
+`pages` / `section.Pages` 等是 `Pages` 类型，支持链式操作：
+
+### SortBy
+
+```html
+{% for page in pages.SortBy("date desc, title asc") %}
+```
+
+可用字段：`date`、`modified`、`title`、`weight` 及任意 FrontMatter 字段。
+
+### GroupBy
+
+```html
+{% for group in pages.GroupBy("date:2006-01").OrderBy("name desc") %}
+  <h2>{{ group.Name }}</h2>
+  {% for page in group.List %}
+    <li>{{ page.Title }}</li>
+  {% endfor %}
+{% endfor %}
+```
+
+`GroupBy` 参数：FrontMatter 字段名或 `date:{格式}`。
+
+### Limit
+
+```html
+{% for page in pages.Limit(5) %}
+```
+
+## 过滤器
+
+| 过滤器 | 说明 | 示例 |
+|--------|------|------|
+| `truncate:N` | 截取 N 字符 | `{{ text \| truncate:100 }}` |
+| `date:"layout"` | 时间格式化 | `{{ page.Date \| date:"2006-01-02" }}` |
+| `lower` | 转小写 | `{{ text \| lower }}` |
+| `upper` | 转大写 | `{{ text \| upper }}` |
+| `split:"sep"` | 分割字符串 | `{{ value \| split:"," }}` |
+| `encrypt:"pw"` | 密码加密 | `{{ content \| encrypt:"123" }}` |
+
+Date 格式示例：`"2006-01-02"`、`"2006/01/02"`、`"January 2, 2006"`、`"Mon, 02 Jan 2006 15:04:05 -0700"` (RSS)。
+
+## Shortcode
+
+```html
+<shortcode youtube id="xxx" />
+<shortcode code lang="python">
+print("hello")
+</shortcode>
+```
+
+模板位于 `templates/shortcodes/`。模板内变量：`params.{key}`、`body`、`name`、`counter`。
+
+## Assets
+
+```html
+{% assets css %}
+<link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
+{% endassets %}
+```
+
+需启用 `hooks.assets`。
+
+## 配置访问
+
+```html
+<title>{{ config.title }}</title>
+<base href="{{ config.base_url }}">
+<meta name="author" content="{{ config.author }}">
+```

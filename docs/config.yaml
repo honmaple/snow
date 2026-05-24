@@ -1,0 +1,34 @@
+base_url: "http://127.0.0.1:8000"
+title: "Snow Documentation"
+description: "A Go static site generator"
+author: "honmaple"
+language: "zh"
+
+theme: "snow-docs"
+
+modes:
+  publish:
+    base_url: "https://honmaple.me/snow"
+
+params:
+  menus:
+    - name: "GitHub"
+      url: "https://github.com/honmaple/snow"
+    - name: "Issues"
+      url: "https://github.com/honmaple/snow/issues"
+
+sections:
+  _default:
+    sort_by: "title asc"
+    paginate: 0
+  content:
+    paginate: 0
+  templates:
+    paginate: 0
+
+pages:
+  _default:
+    path: "{path:slug}/{slug}/"
+  content:
+    path: "{path:slug}/{slug}.html"
+    template: "page.html"

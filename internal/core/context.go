@@ -46,14 +46,15 @@ func (ctx *Context) VerifyLanguage(lang string) bool {
 }
 
 func (ctx *Context) GetFS(path string, internal bool) (fs.FS, error) {
-	fsys := []fs.FS{
-		os.DirFS(path),
+	fsys := make([]fs.FS, 0)
+
+	if _, err := os.Stat(path); err == nil {
+		fsys = append(fsys, os.DirFS(path))
 	}
 
 	if subFS, err := fs.Sub(ctx.ThemeFS, path); err == nil {
 		fsys = append(fsys, subFS)
 	}
-	// 是否包括内置主题文件
 	if internal {
 		if subFS, err := fs.Sub(ctx.ThemeFS, "internal/"+path); err == nil {
 			fsys = append(fsys, subFS)

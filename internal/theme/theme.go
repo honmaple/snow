@@ -28,6 +28,28 @@ func (t *Theme) Open(name string) (fs.File, error) {
 	return t.root.Open(name)
 }
 
+func (t *Theme) Sub(name string) (fs.FS, error) {
+	var (
+		err   error
+		subFS fs.FS
+	)
+
+	if name == "internal" {
+		subFS = internalFS
+	} else if strings.HasPrefix(name, "internal/") {
+		subFS, err = fs.Sub(internalFS, name[9:])
+	} else {
+		subFS, err = fs.Sub(t.root, name)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if _, err := fs.Stat(subFS, "."); err != nil {
+		return nil, err
+	}
+	return subFS, nil
+}
+
 func New(dir string, name string) (*Theme, error) {
 	if dir == "" {
 		dir = "themes"

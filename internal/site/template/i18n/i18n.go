@@ -38,17 +38,17 @@ func (i *I18n) Translate(id string, lang string) string {
 	return t.Tr
 }
 
-func (i *I18n) LoadTranslations(ctx *core.Context) error {
+func LoadTranslations(ctx *core.Context) (map[string]map[string]*Translation, error) {
 	trans := make(map[string]map[string]*Translation)
 
 	// 加载主题下以及当前目录下的的翻译文件
 	subFS, err := ctx.GetFS("i18n", false)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	entries, err := fs.ReadDir(subFS, ".")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -63,11 +63,11 @@ func (i *I18n) LoadTranslations(ctx *core.Context) error {
 
 		buf, err := fs.ReadFile(subFS, entry.Name())
 		if err != nil {
-			return err
+			return nil, err
 		}
 		ts := make([]*Translation, 0)
 		if err := yaml.Unmarshal(buf, &ts); err != nil {
-			return err
+			return nil, err
 		}
 		for _, t := range ts {
 			trans[lang][t.Id] = t
@@ -98,10 +98,10 @@ func (i *I18n) LoadTranslations(ctx *core.Context) error {
 			}
 			buf, err := os.ReadFile(file)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if err := yaml.Unmarshal(buf, &ts); err != nil {
-				return err
+				return nil, err
 			}
 		case reflect.Slice:
 			for _, c := range ctx.Config.GetSubSlice(k) {
@@ -123,18 +123,18 @@ func (i *I18n) LoadTranslations(ctx *core.Context) error {
 			}
 		}
 	}
-	i.translations = trans
-	return nil
+	return trans, nil
 }
 
 func New(ctx *core.Context) (*I18n, error) {
-	i18n := &I18n{}
-	if err := i18n.LoadTranslations(ctx); err != nil {
-		// return nil, &core.Error{
-		//	Op:   "load i18n translations",
-		//	Path: "i18n",
-		//	Err:  err,
-		// }
+	trans, err := LoadTranslations(ctx)
+	if err != nil {
+		return nil, &core.Error{
+			Op:   "load i18n translations",
+			Path: "i18n",
+			Err:  err,
+		}
 	}
+	i18n := &I18n{translations: trans}
 	return i18n, nil
 }

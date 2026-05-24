@@ -3,7 +3,6 @@ package content
 import (
 	"fmt"
 	stdpath "path"
-	"path/filepath"
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/template"
@@ -53,19 +52,6 @@ func (d *Processor) IsSection(fullpath string) ([]string, bool) {
 		return sectionFiles, true
 	}
 	return nil, false
-}
-
-func (d *Processor) ParseRootSection(fullpath string) (Sections, error) {
-	sections := make(Sections, 0)
-	sectionFiles := d.findIndexFiles(fullpath, "_index")
-	for _, file := range sectionFiles {
-		section, err := d.ParseSection(filepath.Join(fullpath, file))
-		if err != nil {
-			return nil, err
-		}
-		sections = append(sections, section)
-	}
-	return sections, nil
 }
 
 func (d *Processor) ParseSection(fullpath string) (*Section, error) {

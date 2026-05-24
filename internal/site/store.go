@@ -10,21 +10,16 @@ import (
 )
 
 type Set[T any] struct {
-	mu    sync.RWMutex
 	list  []T
 	index map[string]T
 }
 
 func (s *Set[T]) List() []T {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.list
 }
 
 func (s *Set[T]) Iter() iter.Seq2[int, T] {
 	return func(yield func(key int, value T) bool) {
-		s.mu.RLock()
-		defer s.mu.RUnlock()
 		for k, v := range s.list {
 			if !yield(k, v) {
 				return
@@ -34,9 +29,6 @@ func (s *Set[T]) Iter() iter.Seq2[int, T] {
 }
 
 func (s *Set[T]) Add(key string, val T) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if _, ok := s.index[key]; !ok {
 		s.list = append(s.list, val)
 		s.index[key] = val
@@ -44,9 +36,6 @@ func (s *Set[T]) Add(key string, val T) {
 }
 
 func (s *Set[T]) Find(key string) (T, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	value, ok := s.index[key]
 	return value, ok
 }
@@ -59,6 +48,7 @@ func newSet[T any]() *Set[T] {
 }
 
 type ContentStore struct {
+	mu            sync.RWMutex
 	pages         map[string]*Set[*content.Page]
 	hiddenPages   map[string]*Set[*content.Page]
 	sections      map[string]*Set[*content.Section]
@@ -67,6 +57,9 @@ type ContentStore struct {
 }
 
 func (d *ContentStore) Reset() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	d.pages = make(map[string]*Set[*content.Page])
 	d.hiddenPages = make(map[string]*Set[*content.Page])
 	d.sections = make(map[string]*Set[*content.Section])
@@ -75,6 +68,8 @@ func (d *ContentStore) Reset() {
 }
 
 func (d *ContentStore) AllSections() map[string]content.Sections {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	results := make(map[string]content.Sections)
 	for lang, set := range d.sections {
 		results[lang] = set.List()
@@ -83,6 +78,8 @@ func (d *ContentStore) AllSections() map[string]content.Sections {
 }
 
 func (d *ContentStore) Sections(lang string) content.Sections {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	set, ok := d.sections[lang]
 	if !ok {
 		return nil
@@ -90,13 +87,19 @@ func (d *ContentStore) Sections(lang string) content.Sections {
 	return set.List()
 }
 
-func (d *ContentStore) GetSection(path string, lang string) *content.Section {
+func (d *ContentStore) getSection(path string, lang string) *content.Section {
 	set, ok := d.sections[lang]
 	if !ok {
 		return nil
 	}
 	result, _ := set.Find(path)
 	return result
+}
+
+func (d *ContentStore) GetSection(path string, lang string) *content.Section {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.getSection(path, lang)
 }
 
 func (d *ContentStore) GetSectionURL(path string, lang string) string {
@@ -108,6 +111,8 @@ func (d *ContentStore) GetSectionURL(path string, lang string) string {
 }
 
 func (d *ContentStore) AllPages() map[string]content.Pages {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	results := make(map[string]content.Pages)
 	for lang, set := range d.pages {
 		results[lang] = set.List()
@@ -116,6 +121,8 @@ func (d *ContentStore) AllPages() map[string]content.Pages {
 }
 
 func (d *ContentStore) HiddenPages(lang string) content.Pages {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	set, ok := d.hiddenPages[lang]
 	if !ok {
 		return nil
@@ -124,6 +131,8 @@ func (d *ContentStore) HiddenPages(lang string) content.Pages {
 }
 
 func (d *ContentStore) Pages(lang string) content.Pages {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	set, ok := d.pages[lang]
 	if !ok {
 		return nil
@@ -132,6 +141,8 @@ func (d *ContentStore) Pages(lang string) content.Pages {
 }
 
 func (d *ContentStore) GetPage(path string, lang string) *content.Page {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	set, ok := d.pages[lang]
 	if !ok {
 		return nil
@@ -149,6 +160,8 @@ func (d *ContentStore) GetPageURL(path string, lang string) string {
 }
 
 func (d *ContentStore) AllTaxonomies() map[string]content.Taxonomies {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	results := make(map[string]content.Taxonomies)
 	for lang, set := range d.taxonomies {
 		results[lang] = set.List()
@@ -157,6 +170,8 @@ func (d *ContentStore) AllTaxonomies() map[string]content.Taxonomies {
 }
 
 func (d *ContentStore) Taxonomies(lang string) content.Taxonomies {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	set, ok := d.taxonomies[lang]
 	if !ok {
 		return nil
@@ -165,6 +180,8 @@ func (d *ContentStore) Taxonomies(lang string) content.Taxonomies {
 }
 
 func (d *ContentStore) GetTaxonomy(name string, lang string) *content.Taxonomy {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	set, ok := d.taxonomies[lang]
 	if !ok {
 		return nil
@@ -190,6 +207,8 @@ func (d *ContentStore) GetTaxonomyTerms(name string, lang string) content.Taxono
 }
 
 func (d *ContentStore) GetTaxonomyTerm(taxonomyName string, name string, lang string) *content.TaxonomyTerm {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
 	set, ok := d.taxonomyTerms[lang]
 	if !ok {
 		return nil
@@ -207,10 +226,12 @@ func (d *ContentStore) GetTaxonomyTermURL(taxonomyName string, name string, lang
 }
 
 func (d *ContentStore) insertSection(section *content.Section) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	set, ok := d.sections[section.Lang]
 	if !ok {
 		set = newSet[*content.Section]()
-
 		d.sections[section.Lang] = set
 	}
 	if section.File.Dir == "" {
@@ -221,6 +242,9 @@ func (d *ContentStore) insertSection(section *content.Section) {
 }
 
 func (d *ContentStore) insertPage(page *content.Page) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	if page.Hidden {
 		set, ok := d.hiddenPages[page.Lang]
 		if !ok {
@@ -248,18 +272,21 @@ func (d *ContentStore) insertPage(page *content.Page) {
 		if currentDir == "" || currentDir == "." {
 			break
 		}
-		section := d.GetSection(currentDir, page.Lang)
+		section := d.getSection(currentDir, page.Lang)
 		if section != nil {
 			section.Pages = append(section.Pages, page)
 		}
 		currentDir = stdpath.Dir(currentDir)
 	}
-	if root := d.GetSection("/", page.Lang); root != nil {
+	if root := d.getSection("/", page.Lang); root != nil {
 		root.Pages = append(root.Pages, page)
 	}
 }
 
 func (d *ContentStore) insertTaxonomy(taxonomy *content.Taxonomy) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	set, ok := d.taxonomies[taxonomy.Lang]
 	if !ok {
 		set = newSet[*content.Taxonomy]()
@@ -269,6 +296,12 @@ func (d *ContentStore) insertTaxonomy(taxonomy *content.Taxonomy) {
 }
 
 func (d *ContentStore) insertTaxonomyTerm(term *content.TaxonomyTerm) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.addTaxonomyTerm(term)
+}
+
+func (d *ContentStore) addTaxonomyTerm(term *content.TaxonomyTerm) {
 	set, ok := d.taxonomyTerms[term.Taxonomy.Lang]
 	if !ok {
 		set = newSet[*content.TaxonomyTerm]()
@@ -277,7 +310,7 @@ func (d *ContentStore) insertTaxonomyTerm(term *content.TaxonomyTerm) {
 	set.Add(fmt.Sprintf("%s:%s", term.Taxonomy.Name, term.GetFullName()), term)
 
 	for _, child := range term.Children {
-		d.insertTaxonomyTerm(child)
+		d.addTaxonomyTerm(child)
 	}
 }
 

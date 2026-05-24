@@ -28,6 +28,10 @@ func (m *mergedFS) Open(name string) (fs.File, error) {
 		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
 	}
 
+	if len(m.fsys) == 0 && name == "." {
+		return &emptyDir{}, nil
+	}
+
 	var dirs []fs.File
 
 	for _, fsys := range m.fsys {
@@ -172,3 +176,31 @@ func (i *mergedDirInfo) Mode() fs.FileMode  { return fs.ModeDir | 0o555 }
 func (i *mergedDirInfo) ModTime() time.Time { return time.Time{} }
 func (i *mergedDirInfo) IsDir() bool        { return true }
 func (i *mergedDirInfo) Sys() any           { return nil }
+
+type emptyDir struct{}
+
+func (d *emptyDir) Stat() (fs.FileInfo, error) {
+	return &emptyDirInfo{}, nil
+}
+
+func (d *emptyDir) Read([]byte) (int, error) {
+	return 0, &fs.PathError{Op: "read", Path: ".", Err: io.EOF}
+}
+
+func (d *emptyDir) Close() error { return nil }
+
+func (d *emptyDir) ReadDir(n int) ([]fs.DirEntry, error) {
+	if n <= 0 {
+		return nil, nil
+	}
+	return nil, io.EOF
+}
+
+type emptyDirInfo struct{}
+
+func (i *emptyDirInfo) Name() string       { return "." }
+func (i *emptyDirInfo) Size() int64        { return 0 }
+func (i *emptyDirInfo) Mode() fs.FileMode  { return fs.ModeDir | 0o555 }
+func (i *emptyDirInfo) ModTime() time.Time { return time.Time{} }
+func (i *emptyDirInfo) IsDir() bool        { return true }
+func (i *emptyDirInfo) Sys() any           { return nil }

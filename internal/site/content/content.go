@@ -16,13 +16,12 @@ var (
 
 type (
 	Processor struct {
-		ctx         *core.Context
-		parser      parser.Parser
-		parserExts  map[string]bool
+		ctx        *core.Context
+		parser     parser.Parser
+		parserExts map[string]bool
 	}
 	ProcessorOption func(*Processor)
 )
-
 
 func (d *Processor) resolvePath(path string, vars map[string]string) string {
 	if vars == nil || path == "" {
