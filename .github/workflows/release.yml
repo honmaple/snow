@@ -43,13 +43,10 @@ jobs:
         run: go mod download
 
       - name: Build
-        run: go build -v -o snow .
+        run: go build -o snow .
 
       - name: Prepare Packaging
         run: tar zcvf snow-${{ matrix.archive-name }} snow LICENSE
-
-      - name: Checksum
-        run: shasum -a 256 snow-${{ matrix.archive-name }} | tee snow-${{ matrix.archive-name }}.sha256
 
       - name: Release version
         uses: softprops/action-gh-release@v2
@@ -57,5 +54,4 @@ jobs:
         with:
           files: |
             snow-${{ matrix.archive-name }}
-            snow-${{ matrix.archive-name }}.sha256
           token: ${{ secrets.GITHUB_TOKEN }}
