@@ -260,18 +260,13 @@ func (d *ContentStore) insertSection(section *content.Section) {
 }
 
 func (d *ContentStore) insertPage(page *content.Page) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
 	if page.Hidden {
-		set, ok := d.hiddenPages[page.Lang]
-		if !ok {
-			set = newSet[*content.Page]()
-			d.hiddenPages[page.Lang] = set
-		}
-		set.Add(page.File.Path, page)
+		d.insertHiddenPage(page)
 		return
 	}
+
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	set, ok := d.pages[page.Lang]
 	if !ok {
@@ -298,6 +293,38 @@ func (d *ContentStore) insertPage(page *content.Page) {
 	}
 	if root := d.getSection("/", page.Lang); root != nil {
 		root.Pages = append(root.Pages, page)
+	}
+}
+
+func (d *ContentStore) insertHiddenPage(page *content.Page) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	set, ok := d.hiddenPages[page.Lang]
+	if !ok {
+		set = newSet[*content.Page]()
+		d.hiddenPages[page.Lang] = set
+	}
+	set.Add(page.File.Path, page)
+
+	sectionPath := page.File.Dir
+	if page.IsBundle {
+		sectionPath = stdpath.Dir(sectionPath)
+	}
+
+	currentDir := sectionPath
+	for {
+		if currentDir == "" || currentDir == "." {
+			break
+		}
+		section := d.getSection(currentDir, page.Lang)
+		if section != nil {
+			section.HiddenPages = append(section.HiddenPages, page)
+		}
+		currentDir = stdpath.Dir(currentDir)
+	}
+	if root := d.getSection("/", page.Lang); root != nil {
+		root.HiddenPages = append(root.HiddenPages, page)
 	}
 }
 

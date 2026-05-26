@@ -44,32 +44,10 @@ func (site *Site) loadContent() (*ContentStore, error) {
 		return nil, fmt.Errorf("The content dir is null")
 	}
 
-	var store = NewContentStore()
+	store := NewContentStore()
 
-	type node struct {
-		Type     string
-		File     string
-		IsBundle bool
-	}
-
-	tasks := taskutil.NewPool[node](100, func(arg node) (err error) {
-		if arg.Type == "section" {
-			section, err := site.contentProcessor.ParseSection(arg.File)
-			if err != nil {
-				return err
-			}
-			if section.FrontMatter.IsSet("render") && !section.FrontMatter.GetBool("render") {
-				return nil
-			}
-			section = site.hook.HandleSection(section)
-			if section == nil {
-				return nil
-			}
-
-			store.insertSection(section)
-			return nil
-		}
-		page, err := site.contentProcessor.ParsePage(arg.File, arg.IsBundle)
+	insertPage := func(file string, isBundle bool) error {
+		page, err := site.contentProcessor.ParsePage(file, isBundle)
 		if err != nil {
 			return err
 		}
@@ -77,16 +55,40 @@ func (site *Site) loadContent() (*ContentStore, error) {
 		if page.Draft && !site.includeDrafts {
 			return nil
 		}
-		if page.FrontMatter.IsSet("render") && !page.FrontMatter.GetBool("render") {
+		if !page.FrontMatter.GetBool("render", true) {
 			return nil
 		}
 		page = site.hook.HandlePage(page)
 		if page == nil {
 			return nil
 		}
-
 		store.insertPage(page)
 		return nil
+	}
+
+	insertSection := func(file string) error {
+		section, err := site.contentProcessor.ParseSection(file)
+		if err != nil {
+			return err
+		}
+		if !section.FrontMatter.GetBool("render", true) {
+			return nil
+		}
+		section = site.hook.HandleSection(section)
+		if section == nil {
+			return nil
+		}
+		store.insertSection(section)
+		return nil
+	}
+
+	type node struct {
+		File     string
+		IsBundle bool
+	}
+
+	tasks := taskutil.NewPool[node](100, func(arg node) (err error) {
+		return insertPage(arg.File, arg.IsBundle)
 	})
 
 	walkDir := func(path string, info fs.DirEntry, err error) error {
@@ -96,10 +98,9 @@ func (site *Site) loadContent() (*ContentStore, error) {
 		if path == contentDir {
 			sectionFiles, _ := site.contentProcessor.IsSection(path)
 			for _, file := range sectionFiles {
-				tasks.Invoke(node{
-					Type: "section",
-					File: filepath.Join(path, file),
-				})
+				if err := insertSection(filepath.Join(path, file)); err != nil {
+					return err
+				}
 			}
 			return nil
 		}
@@ -124,10 +125,9 @@ func (site *Site) loadContent() (*ContentStore, error) {
 			sectionFiles, ok := site.contentProcessor.IsSection(path)
 			if len(sectionFiles) > 0 {
 				for _, file := range sectionFiles {
-					tasks.Invoke(node{
-						Type: "section",
-						File: filepath.Join(path, file),
-					})
+					if err := insertSection(filepath.Join(path, file)); err != nil {
+						return err
+					}
 				}
 				return nil
 			}
@@ -231,12 +231,16 @@ func (site *Site) BuildContent(ctx context.Context, writer core.Writer) error {
 		}
 		tasks.StopAndWait()
 
-		site.ctx.Logger.Infof("Done: %d sections, %d pages, %d hidden pages and %d taxonomies (%s) in %v",
+		tstat := ""
+		if len(ts) > 0 {
+			tstat = fmt.Sprintf(" (%s)", strings.Join(ts, ", "))
+		}
+		site.ctx.Logger.Infof("Done: %d sections, %d pages, %d hidden pages and %d taxonomies%s in %v",
 			len(store.Sections(lang)),
 			len(store.Pages(lang)),
 			len(store.HiddenPages(lang)),
 			len(store.Taxonomies(lang)),
-			strings.Join(ts, ", "),
+			tstat,
 			time.Since(now),
 		)
 	}

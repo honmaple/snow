@@ -15,10 +15,12 @@ type (
 		Path      string
 		Permalink string
 
+		Pages       Pages
+		HiddenPages Pages
+		Assets      Assets
+		Formats     Formats
+
 		Parent   *Section
-		Pages    Pages
-		Assets   Assets
-		Formats  Formats
 		Children Sections
 	}
 	Sections []*Section
@@ -63,10 +65,11 @@ func (d *Processor) ParseSection(fullpath string) (*Section, error) {
 	lctx := d.ctx.For(node.Lang)
 
 	section := &Section{
-		Node:     node,
-		Pages:    make(Pages, 0),
-		Assets:   make(Assets, 0),
-		Children: make(Sections, 0),
+		Node:        node,
+		Pages:       make(Pages, 0),
+		HiddenPages: make(Pages, 0),
+		Assets:      make(Assets, 0),
+		Children:    make(Sections, 0),
 	}
 	if section.Title == "" {
 		if section.File.Dir == "" {

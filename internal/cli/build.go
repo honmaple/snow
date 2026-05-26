@@ -96,7 +96,6 @@ func buildAction(clx *cli.Context) error {
 				return err
 			}
 		}
-		return nil
 	}
 
 	s, err := site.New(ctx, site.IncludeDrafts(clx.Bool("include-drafts")))
