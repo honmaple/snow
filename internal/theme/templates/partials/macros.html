@@ -1,0 +1,26 @@
+{%- macro page_list(pages) export -%}
+  {% for term in pages.GroupBy("date:2006").OrderBy("name desc") %}
+    <div class="flex items-baseline gap-2 mt-8 mb-4 first:mt-0">
+      <h2 class="text-xl font-semibold text-text">{{ term.Name }}</h2>
+      <span class="text-xs text-text-muted">({{ term.Pages | length }} 篇文章)</span>
+    </div>
+    {% for page in term.Pages.OrderBy("date desc") %}
+      <div class="flex items-stretch">
+        <time class="text-sm text-date/70 w-20 shrink-0 flex items-center">{{ page.Date | date:"01-02" }}</time>
+        <div class="flex-1 border-b border-border-lighter">
+          <div class="flex justify-between items-center py-3 px-3 -mx-3 rounded transition-colors hover:bg-accent-lighter/30">
+            <a href="{{ page.Permalink }}" class="text-accent font-medium">{{ page.Title }}</a>
+            {% set tags = page.FrontMatter.Get("tags") %}
+            {% if tags %}
+              <span class="flex gap-1">
+                {% for tag in tags %}
+                  <a href="{{ get_taxonomy_term_url("tags", tag) }}" class="text-xs bg-accent/10 text-accent px-2.5 py-1 rounded-full hover:bg-accent/20 transition-colors">{{ tag }}</a>
+                {% endfor %}
+              </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% endfor %}
+{% endmacro %}

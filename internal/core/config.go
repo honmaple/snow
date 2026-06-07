@@ -202,14 +202,12 @@ var (
 		"formats.atom.template":     "partials/atom.xml",
 	}
 	pageConfig = map[string]any{
-		"pages._default.path":     "{path:slug}/{slug}/",
-		// "pages._default.template": "page.html",
+		"pages._default.path": "{path:slug}/{slug}/",
 	}
 	sectionConfig = map[string]any{
 		"sections._default.path":          "{path:slug}/",
-		// "sections._default.template":      "section.html",
 		"sections._default.sort_by":       "date desc",
-		"sections._default.paginate":      10,
+		"sections._default.paginate":      0,
 		"sections._default.paginate_path": "{name}{number:optional}{extension}",
 	}
 	taxonomyConfig = map[string]any{

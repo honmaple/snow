@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -155,9 +154,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 	tasks.StopAndWait()
 
 	for _, sections := range store.AllSections() {
-		sort.SliceStable(sections, func(i, j int) bool {
-			return sections[i].File.Path > sections[j].File.Path
-		})
+		sections.SortBy("weight")
 
 		for _, section := range sections {
 			section.Pages.SortBy(section.FrontMatter.GetString("sort_by"))

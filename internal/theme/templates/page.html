@@ -1,20 +1,48 @@
-{% extends "layout.html" %}
+{% extends "base.html" %}
+
+{% block title %}{{ page.Title }} - {{ config.title }}{% endblock %}
+
 {% block content %}
-  <div style="text-align: center;">
-    <h1>{{ page.Title }}</h1>
-    {% include "page.info.html" %}
-    <hr/>
-  </div>
-  <div class="content">
-    {{ page.Content | safe }}
-  </div>
-  <hr/>
-  <ul class="pager">
-    {% if page.Prev %}
-      <li>Prev:<a href="{{ page.Prev.Permalink }}">{{ page.Prev.Title }}</a></li>
+  <article>
+    <h1 class="text-2xl font-bold text-text mb-6">{{ page.Title }}</h1>
+    {% if page.Date or page.FrontMatter.IsSet("tags") %}
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          {% if page.FrontMatter.IsSet("tags") %}
+            <div class="flex flex-wrap gap-2">
+              {% for tag in page.FrontMatter.GetStringSlice("tags") %}
+                <a href="{{ get_taxonomy_term_url("tags", tag) }}" class="text-xs bg-accent/10 text-accent px-2.5 py-1 rounded-full hover:bg-accent/20 transition-colors">{{ tag }}</a>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+        {% if page.Date %}
+          <time class="text-sm text-date/70">{{ page.Date | date:"2006-01-02" }}</time>
+        {% endif %}
+      </div>
     {% endif %}
-    {% if page.Next %}
-      <li>Next:<a href="{{ page.Next.Permalink }}">{{ page.Next.Title }}</a></li>
-    {% endif %}
-  </ul>
+    <div class="prose prose-neutral max-w-none">
+      {{ page.Content | safe }}
+    </div>
+    {% with related = pages.Related(page) %}
+      {% set prev = related.Prev() %}
+      {% set next = related.Next() %}
+      {%- if prev or next %}
+        <nav class="flex justify-between mt-8 pt-8 border-t border-border">
+          <div class="max-w-[45%]">
+            {% if prev %}
+              <span class="text-text-muted text-sm">← 上一篇</span><br>
+              <a href="{{ prev.Permalink }}" class="text-accent hover:underline">{{ prev.Title }}</a>
+            {% endif %}
+          </div>
+          <div class="max-w-[45%] text-right">
+            {% if next %}
+              <span class="text-text-muted text-sm">下一篇 →</span><br>
+              <a href="{{ next.Permalink }}" class="text-accent hover:underline">{{ next.Title }}</a>
+            {% endif %}
+          </div>
+        </nav>
+      {% endif %}
+    {% endwith %}
+  </article>
 {% endblock %}

@@ -3,9 +3,12 @@ package content
 import (
 	"fmt"
 	stdpath "path"
+	"sort"
+	"strings"
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/template"
+	"github.com/honmaple/snow/internal/utils"
 )
 
 type (
@@ -26,9 +29,38 @@ type (
 	Sections []*Section
 )
 
-func (secs Sections) Len() int           { return len(secs) }
-func (secs Sections) Swap(i, j int)      { secs[i], secs[j] = secs[j], secs[i] }
-func (secs Sections) Less(i, j int) bool { return secs[i].Title < secs[j].Title }
+func (sections Sections) Reverse() Sections {
+	ns := make(Sections, len(sections))
+	for i, j := 0, len(sections)-1; j >= 0; i, j = i+1, j-1 {
+		ns[i] = sections[j]
+	}
+	return ns
+}
+
+func (sections Sections) SortBy(key string) {
+	sort.SliceStable(sections, utils.Sort(key, func(k string, i int, j int) int {
+		switch k {
+		case "-":
+			return strings.Compare(sections[i].File.Path, sections[j].File.Path)
+		case "title":
+			return strings.Compare(sections[i].Title, sections[j].Title)
+		default:
+			return utils.Compare(sections[i].FrontMatter.Get(k), sections[j].FrontMatter.Get(k))
+		}
+	}))
+
+	for _, section := range sections {
+		section.Children.SortBy(key)
+	}
+}
+
+func (sections Sections) OrderBy(key string) Sections {
+	ns := make(Sections, len(sections))
+	copy(ns, sections)
+
+	ns.SortBy(key)
+	return ns
+}
 
 func (d *Processor) resolveSectionPath(section *Section, customPath string) string {
 	lctx := d.ctx.For(section.Lang)
