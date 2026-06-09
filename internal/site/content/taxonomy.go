@@ -29,8 +29,9 @@ func (ts Taxonomies) SortBy(key string) {
 			return 0 - strings.Compare(ts[i].Name, ts[j].Name)
 		case "name":
 			return strings.Compare(ts[i].Name, ts[j].Name)
-		case "weigt":
-			return utils.Compare(ts[i].Weight, ts[j].Weight)
+		case "weight":
+			// 默认weight越小越在前
+			return 0 - utils.Compare(ts[i].Weight, ts[j].Weight)
 		default:
 			return 0
 		}
@@ -78,9 +79,8 @@ func (d *Processor) RenderTaxonomy(taxonomy *Taxonomy, tplset template.TemplateS
 
 	lookups := []string{
 		lctx.GetTaxonomyConfig(taxonomy.Name, "template").String(),
-		fmt.Sprintf("%s/taxonomy.html", taxonomy.Name),
+		fmt.Sprintf("%s/list.html", taxonomy.Name),
 		"taxonomy_list.html",
-		"taxonomy.html",
 	}
 	if tpl := tplset.Lookup(lookups...); tpl != nil {
 		d.ctx.Logger.Debugf("write taxonomy [%s] -> %s", taxonomy.Name, taxonomy.Path)

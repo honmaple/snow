@@ -23,7 +23,7 @@ type (
 	Heading = parser.Heading
 )
 
-func (d *Processor) parseNode(fullpath string, isPage bool) (*Node, error) {
+func (d *Processor) parseNode(fullpath string) (*Node, error) {
 	file, err := d.parseFile(fullpath)
 	if err != nil {
 		return nil, err
@@ -35,15 +35,15 @@ func (d *Processor) parseNode(fullpath string, isPage bool) (*Node, error) {
 		return nil, err
 	}
 
-	meta := NewFrontMatter(result.FrontMatter)
+	fm := NewFrontMatter(result.FrontMatter)
 	// 合并配置
-	if isPage {
-		meta.MergeFrom(d.ctx.GetPageConfig(file.Dir))
+	if strings.HasPrefix(file.Name, "_index.") {
+		fm.MergeFrom(d.ctx.GetSectionConfig(file.Dir))
 	} else {
-		meta.MergeFrom(d.ctx.GetSectionConfig(file.Dir))
+		fm.MergeFrom(d.ctx.GetPageConfig(file.Dir))
 	}
 
-	lang := meta.GetString("lang")
+	lang := fm.GetString("lang")
 	if lang == "" {
 		langExt := stdpath.Ext(file.BaseName)
 		if langExt != "" {
@@ -60,18 +60,18 @@ func (d *Processor) parseNode(fullpath string, isPage bool) (*Node, error) {
 	}
 
 	node := &Node{
-		FrontMatter: meta,
+		FrontMatter: fm,
 		File:        file,
 		Lang:        lang,
-		Slug:        meta.GetString("slug"),
-		Title:       meta.GetString("title"),
+		Slug:        fm.GetString("slug"),
+		Title:       fm.GetString("title"),
 		Content:     result.Content,
 		Summary:     result.Summary,
 		Toc:         result.Toc,
 	}
 	lctx := d.ctx.For(lang)
-	if node.Summary == "" {
-		node.Summary = lctx.GetSummary(result.Content)
+	if node.Summary == "" && node.Content != "" {
+		node.Summary = lctx.GetSummary(node.Content)
 	}
 	return node, nil
 }

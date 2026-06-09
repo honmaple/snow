@@ -29,6 +29,24 @@ type (
 	TaxonomyTerms []*TaxonomyTerm
 )
 
+func SortTaxonomyTerms(terms TaxonomyTerms, key string) {
+	sort.SliceStable(terms, utils.Sort(key, func(k string, i int, j int) int {
+		switch k {
+		case "-":
+			return 0 - strings.Compare(terms[i].Name, terms[j].Name)
+		case "name":
+			return strings.Compare(terms[i].Name, terms[j].Name)
+		case "count":
+			return utils.Compare(len(terms[i].Pages), len(terms[j].Pages))
+		default:
+			return 0
+		}
+	}))
+	for _, term := range terms {
+		SortTaxonomyTerms(term.Children, key)
+	}
+}
+
 func (term *TaxonomyTerm) GetFullName() string {
 	currentTerm := term
 	currentName := ""
@@ -55,35 +73,17 @@ func (term *TaxonomyTerm) FindChild(name string) *TaxonomyTerm {
 	return nil
 }
 
-func (terms TaxonomyTerms) SortBy(key string) {
-	sort.SliceStable(terms, utils.Sort(key, func(k string, i int, j int) int {
-		switch k {
-		case "-":
-			return 0 - strings.Compare(terms[i].Name, terms[j].Name)
-		case "name":
-			return strings.Compare(terms[i].Name, terms[j].Name)
-		case "count":
-			return utils.Compare(len(terms[i].Pages), len(terms[j].Pages))
-		default:
-			return 0
-		}
-	}))
-	for _, term := range terms {
-		term.Children.SortBy(key)
-	}
-}
-
 func (terms TaxonomyTerms) OrderBy(key string) TaxonomyTerms {
 	newTerms := make(TaxonomyTerms, len(terms))
 	copy(newTerms, terms)
 
-	newTerms.SortBy(key)
+	SortTaxonomyTerms(newTerms, key)
 	return newTerms
 }
 
 func (d *Processor) sortTaxonomyTermsPages(terms TaxonomyTerms, key string) {
 	for _, term := range terms {
-		term.Pages.SortBy(key)
+		SortPages(term.Pages, key)
 
 		d.sortTaxonomyTermsPages(term.Children, key)
 	}
@@ -179,7 +179,7 @@ func (d *Processor) ParseTaxonomyTerms(taxonomy *Taxonomy, pages Pages, lang str
 	}
 	d.sortTaxonomyTermsPages(results, lctx.GetTaxonomyConfig(taxonomy.Name, "term.sort_by").String())
 
-	results.SortBy(lctx.GetTaxonomyConfig(taxonomy.Name, "sort_by").String())
+	SortTaxonomyTerms(results, lctx.GetTaxonomyConfig(taxonomy.Name, "sort_by").String())
 	return results
 }
 
@@ -219,9 +219,8 @@ func (d *Processor) RenderTaxonomyTerm(term *TaxonomyTerm, tplset template.Templ
 
 	lookups := []string{
 		lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.template").String(),
-		fmt.Sprintf("%s/taxonomy.terms.html", term.Taxonomy.Name),
+		fmt.Sprintf("%s/single.html", term.Taxonomy.Name),
 		"taxonomy_single.html",
-		"taxonomy.terms.html",
 	}
 	if tpl := tplset.Lookup(lookups...); tpl != nil {
 		d.ctx.Logger.Debugf("write taxonomy term [%s:%s] -> %s", term.Taxonomy.Name, term.GetFullName(), term.Path)

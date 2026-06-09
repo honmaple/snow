@@ -238,16 +238,13 @@ func (d *ContentStore) insertSection(section *content.Section) {
 		set.Add("/", section)
 	} else {
 		set.Add(section.File.Dir, section)
-	}
 
-	if section.File.Dir != "" {
 		currentDir := stdpath.Dir(section.File.Dir)
 		for {
 			if currentDir == "" || currentDir == "." {
 				currentDir = "/"
 			}
 			if parent := d.getSection(currentDir, section.Lang); parent != nil {
-				section.Parent = parent
 				parent.Children = append(parent.Children, section)
 				break
 			}
@@ -283,16 +280,16 @@ func (d *ContentStore) insertPage(page *content.Page) {
 	currentDir := sectionPath
 	for {
 		if currentDir == "" || currentDir == "." {
+			currentDir = "/"
+		}
+		if section := d.getSection(currentDir, page.Lang); section != nil {
+			section.Pages = append(section.Pages, page)
 			break
 		}
-		section := d.getSection(currentDir, page.Lang)
-		if section != nil {
-			section.Pages = append(section.Pages, page)
+		if currentDir == "/" {
+			break
 		}
 		currentDir = stdpath.Dir(currentDir)
-	}
-	if root := d.getSection("/", page.Lang); root != nil {
-		root.Pages = append(root.Pages, page)
 	}
 }
 
@@ -315,16 +312,16 @@ func (d *ContentStore) insertHiddenPage(page *content.Page) {
 	currentDir := sectionPath
 	for {
 		if currentDir == "" || currentDir == "." {
+			currentDir = "/"
+		}
+		if section := d.getSection(currentDir, page.Lang); section != nil {
+			section.HiddenPages = append(section.HiddenPages, page)
 			break
 		}
-		section := d.getSection(currentDir, page.Lang)
-		if section != nil {
-			section.HiddenPages = append(section.HiddenPages, page)
+		if currentDir == "/" {
+			break
 		}
 		currentDir = stdpath.Dir(currentDir)
-	}
-	if root := d.getSection("/", page.Lang); root != nil {
-		root.HiddenPages = append(root.HiddenPages, page)
 	}
 }
 

@@ -128,9 +128,9 @@ func New(ctx *core.Context) (*Registry, error) {
 		wi := ctx.Config.GetInt("hooks." + names[i] + ".weight")
 		wj := ctx.Config.GetInt("hooks." + names[j] + ".weight")
 		if wi == wj {
-			return names[i] > names[j]
+			return names[i] < names[j]
 		}
-		return wi > wj
+		return wi < wj
 	})
 
 	hooks := make([]Hook, 0)
@@ -162,22 +162,23 @@ func Unmarshal(data any, value any) error {
 }
 
 func Print(ctx *core.Context) {
-	nameMap := make(map[string]bool, 0)
-	for name := range ctx.Config.GetStringMap("hooks") {
-		if !ctx.Config.GetBool(fmt.Sprintf("hooks.%s.enabled", name)) {
-			continue
-		}
-		nameMap[name] = true
-	}
 	names := make([]string, 0)
 	for name := range factories {
-		if nameMap[name] {
-			names = append(names, name+"(enabled)")
-		} else {
-			names = append(names, name)
+		names = append(names, name)
+	}
+	sort.SliceStable(names, func(i, j int) bool {
+		wi := ctx.Config.GetInt("hooks." + names[i] + ".weight")
+		wj := ctx.Config.GetInt("hooks." + names[j] + ".weight")
+		if wi == wj {
+			return names[i] < names[j]
+		}
+		return wi < wj
+	})
+	for i, name := range names {
+		if ctx.Config.GetBool(fmt.Sprintf("hooks.%s.enabled", name)) {
+			names[i] = name + "(enabled)"
 		}
 	}
-	sort.Strings(names)
 	fmt.Println(strings.Join(names, ", "))
 }
 

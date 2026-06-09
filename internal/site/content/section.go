@@ -3,6 +3,8 @@ package content
 import (
 	"fmt"
 	stdpath "path"
+	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -23,11 +25,48 @@ type (
 		Assets      Assets
 		Formats     Formats
 
-		Parent   *Section
 		Children Sections
 	}
 	Sections []*Section
 )
+
+func SortSections(sections Sections, key string) {
+	sort.SliceStable(sections, utils.Sort(key, func(k string, i int, j int) int {
+		switch k {
+		case "-":
+			return strings.Compare(sections[i].File.Path, sections[j].File.Path)
+		case "title":
+			return strings.Compare(sections[i].Title, sections[j].Title)
+		case "weight":
+			// 默认weight越小越在前
+			return 0 - utils.Compare(sections[i].FrontMatter.Get(k), sections[j].FrontMatter.Get(k))
+		default:
+			return utils.Compare(sections[i].FrontMatter.Get(k), sections[j].FrontMatter.Get(k))
+		}
+	}))
+
+	for _, section := range sections {
+		SortSections(section.Children, key)
+	}
+}
+
+func (sec *Section) RecursivePages() Pages {
+	ns := slices.Clone(sec.Pages)
+	for _, child := range sec.Children {
+		ns = append(ns, child.RecursivePages()...)
+	}
+	SortPages(ns, sec.FrontMatter.GetString("sort_by"))
+	return ns
+}
+
+func (sec *Section) RecursiveHiddenPages() Pages {
+	ns := slices.Clone(sec.HiddenPages)
+	for _, child := range sec.Children {
+		ns = append(ns, child.RecursiveHiddenPages()...)
+	}
+	SortPages(ns, sec.FrontMatter.GetString("sort_by"))
+	return ns
+}
 
 func (sections Sections) Reverse() Sections {
 	ns := make(Sections, len(sections))
@@ -37,28 +76,11 @@ func (sections Sections) Reverse() Sections {
 	return ns
 }
 
-func (sections Sections) SortBy(key string) {
-	sort.SliceStable(sections, utils.Sort(key, func(k string, i int, j int) int {
-		switch k {
-		case "-":
-			return strings.Compare(sections[i].File.Path, sections[j].File.Path)
-		case "title":
-			return strings.Compare(sections[i].Title, sections[j].Title)
-		default:
-			return utils.Compare(sections[i].FrontMatter.Get(k), sections[j].FrontMatter.Get(k))
-		}
-	}))
-
-	for _, section := range sections {
-		section.Children.SortBy(key)
-	}
-}
-
 func (sections Sections) OrderBy(key string) Sections {
 	ns := make(Sections, len(sections))
 	copy(ns, sections)
 
-	ns.SortBy(key)
+	SortSections(ns, key)
 	return ns
 }
 
@@ -89,8 +111,58 @@ func (d *Processor) IsSection(fullpath string) ([]string, bool) {
 	return nil, false
 }
 
+func (d *Processor) ParseHomeSections(fullpath string) (Sections, error) {
+	langs := make(map[string]bool)
+
+	sections := make(Sections, 0)
+	sectionFiles, _ := d.IsSection(fullpath)
+	for _, file := range sectionFiles {
+		section, err := d.ParseSection(filepath.Join(fullpath, file))
+		if err != nil {
+			return nil, err
+		}
+		sections = append(sections, section)
+
+		langs[section.Lang] = true
+	}
+
+	for _, lang := range d.ctx.GetAllLanguages() {
+		if langs[lang] {
+			continue
+		}
+		indexFile := filepath.Join(fullpath, "_index.md")
+		if lang != d.ctx.GetDefaultLanguage() {
+			indexFile = filepath.Join(fullpath, "_index."+lang+".md")
+		}
+		file, err := d.parseFile(indexFile)
+		if err != nil {
+			return nil, err
+		}
+		section := &Section{
+			Node: &Node{
+				File:        file,
+				Lang:        lang,
+				Slug:        "index",
+				Title:       "index",
+				FrontMatter: NewFrontMatter(nil),
+			},
+			Pages:  make(Pages, 0),
+			Assets: make([]*Asset, 0),
+		}
+		if lang == d.ctx.GetDefaultLanguage() {
+			section.Path = "/index.html"
+		} else {
+			section.Path = "/" + lang + "/index.html"
+		}
+		section.Permalink = d.ctx.GetURL(section.Path)
+
+		sections = append(sections, section)
+	}
+	return sections, nil
+}
+
 func (d *Processor) ParseSection(fullpath string) (*Section, error) {
-	node, err := d.parseNode(fullpath, false)
+	node, err := d.parseNode(fullpath)
 	if err != nil {
 		return nil, err
 	}
@@ -178,6 +250,7 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 
 	lookups := []string{
 		customTemplate,
+		fmt.Sprintf("%s/section.html", section.File.Dir),
 		"section.html",
 	}
 	// 首页content/_index.md
@@ -202,7 +275,6 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 			if err := d.RenderTemplate(por.Path, tpl, map[string]any{
 				"paginator":     por,
 				"section":       section,
-				"pages":         section.Pages,
 				"current_lang":  section.Lang,
 				"current_index": por.PageNum,
 			}, writer); err != nil {
@@ -216,7 +288,6 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 			d.ctx.Logger.Debugf("write section format [%s] -> %s", section.File.Path, format.Path)
 			if err := d.RenderTemplate(format.Path, tpl, map[string]any{
 				"section":      section,
-				"pages":        section.Pages,
 				"current_lang": section.Lang,
 			}, writer); err != nil {
 				return err

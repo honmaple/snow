@@ -38,6 +38,29 @@ type (
 	Pages []*Page
 )
 
+func SortPages(pages Pages, key string) {
+	if key == "" {
+		key = "date DESC"
+	}
+	sort.SliceStable(pages, utils.Sort(key, func(k string, i int, j int) int {
+		switch k {
+		case "-":
+			// "-"表示默认排序, 避免时间相同时排序混乱
+			return 0 - strings.Compare(pages[i].Title, pages[j].Title)
+		case "title":
+			return strings.Compare(pages[i].Title, pages[j].Title)
+		case "date":
+			return utils.Compare(pages[i].Date, pages[j].Date)
+		case "modified":
+			return utils.Compare(pages[i].Modified, pages[j].Modified)
+		case "weight":
+			return 0 - utils.Compare(pages[i].FrontMatter.Get(k), pages[j].FrontMatter.Get(k))
+		default:
+			return utils.Compare(pages[i].FrontMatter.Get(k), pages[j].FrontMatter.Get(k))
+		}
+	}))
+}
+
 func (pages Pages) First() *Page {
 	if len(pages) > 0 {
 		return pages[0]
@@ -86,29 +109,11 @@ func (pages Pages) FilterBy(filter string) Pages {
 	return npages
 }
 
-func (pages Pages) SortBy(key string) {
-	sort.SliceStable(pages, utils.Sort(key, func(k string, i int, j int) int {
-		switch k {
-		case "-":
-			// "-"表示默认排序, 避免时间相同时排序混乱
-			return 0 - strings.Compare(pages[i].Title, pages[j].Title)
-		case "title":
-			return strings.Compare(pages[i].Title, pages[j].Title)
-		case "date":
-			return utils.Compare(pages[i].Date, pages[j].Date)
-		case "modified":
-			return utils.Compare(pages[i].Modified, pages[j].Modified)
-		default:
-			return utils.Compare(pages[i].FrontMatter.Get(k), pages[j].FrontMatter.Get(k))
-		}
-	}))
-}
-
 func (pages Pages) OrderBy(key string) Pages {
 	newPs := make(Pages, len(pages))
 	copy(newPs, pages)
 
-	newPs.SortBy(key)
+	SortPages(newPs, key)
 	return newPs
 }
 
@@ -230,7 +235,7 @@ func (d *Processor) IsPageBundle(fullpath string) ([]string, bool) {
 }
 
 func (d *Processor) ParsePage(fullpath string, isBundle bool) (*Page, error) {
-	node, err := d.parseNode(fullpath, true)
+	node, err := d.parseNode(fullpath)
 	if err != nil {
 		return nil, err
 	}
@@ -352,20 +357,24 @@ func (d *Processor) ParsePageFormats(page *Page) Formats {
 }
 
 func (d *Processor) RenderPage(page *Page, tplset template.TemplateSet, writer core.Writer) error {
-	vars := map[string]any{
-		"page":         page,
-		"current_url":  page.Permalink,
-		"current_path": page.Path,
-		"current_lang": page.Lang,
-	}
 	if tpl := tplset.Lookup(page.FrontMatter.GetString("template"), "page.html"); tpl != nil {
 		d.ctx.Logger.Debugf("write page [%s] -> %s", page.File.Path, page.Path)
-		if err := d.RenderTemplate(page.Path, tpl, vars, writer); err != nil {
+		if err := d.RenderTemplate(page.Path, tpl, map[string]any{
+			"page":         page,
+			"current_lang": page.Lang,
+			"current_url":  page.Permalink,
+			"current_path": page.Path,
+		}, writer); err != nil {
 			return err
 		}
 	}
 	if tpl := tplset.Lookup("alias.html", "partials/alias.html"); tpl != nil {
 		for _, alias := range page.FrontMatter.GetStringSlice("aliases") {
+			if alias == "" || alias == "." || stdpath.Clean(alias) != alias {
+				d.ctx.Logger.Warnf("invalid alias '%s' for %s", alias, page.File.Path)
+				continue
+			}
+			// aliases: ["alias.html", "/alias.html"]
 			if !strings.HasPrefix(alias, "/") {
 				if strings.HasSuffix(page.Path, "/") {
 					alias = stdpath.Join(page.Path, alias)
@@ -374,7 +383,12 @@ func (d *Processor) RenderPage(page *Page, tplset template.TemplateSet, writer c
 				}
 			}
 			d.ctx.Logger.Debugf("write page alias [%s] -> %s", page.File.Path, alias)
-			if err := d.RenderTemplate(alias, tpl, vars, writer); err != nil {
+			if err := d.RenderTemplate(alias, tpl, map[string]any{
+				"page":         page,
+				"current_lang": page.Lang,
+				"current_url":  d.ctx.GetURL(alias),
+				"current_path": alias,
+			}, writer); err != nil {
 				return err
 			}
 		}

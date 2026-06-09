@@ -221,15 +221,21 @@ var (
 		"markups._default.style":             "monokai",
 		"markups._default.show_toc":          true,
 		"markups._default.show_line_numbers": true,
+		"markups._default.prevent_pre_code":  true,
 	}
 	hookConfig = map[string]any{
 		"hooks.assets.enabled":    true,
 		"hooks.encrypt.enabled":   true,
 		"hooks.shortcode.enabled": true,
 
-		// 先encrypt再shortcode
-		"hooks.encrypt.weight":   2,
-		"hooks.shortcode.weight": 1,
+		// hook的执行顺序，先encrypt再shortcode
+		"hooks.assets.weight":    0,
+		"hooks.pelican.weight":   10,
+		"hooks.rewrite.weight":   10,
+		"hooks.filter.weight":    20,
+		"hooks.encrypt.weight":   30,
+		"hooks.shortcode.weight": 40,
+		"hooks.minify.weight":    50,
 	}
 )
 

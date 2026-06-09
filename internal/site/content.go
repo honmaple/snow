@@ -45,7 +45,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 
 	store := NewContentStore()
 
-	insertPage := func(file string, isBundle bool) error {
+	insertPageByFile := func(file string, isBundle bool) error {
 		page, err := site.contentProcessor.ParsePage(file, isBundle)
 		if err != nil {
 			return err
@@ -65,19 +65,23 @@ func (site *Site) loadContent() (*ContentStore, error) {
 		return nil
 	}
 
-	insertSection := func(file string) error {
+	insertSection := func(section *content.Section) {
+		if !section.FrontMatter.GetBool("render", true) {
+			return
+		}
+		section = site.hook.HandleSection(section)
+		if section == nil {
+			return
+		}
+		store.insertSection(section)
+	}
+
+	insertSectionByFile := func(file string) error {
 		section, err := site.contentProcessor.ParseSection(file)
 		if err != nil {
 			return err
 		}
-		if !section.FrontMatter.GetBool("render", true) {
-			return nil
-		}
-		section = site.hook.HandleSection(section)
-		if section == nil {
-			return nil
-		}
-		store.insertSection(section)
+		insertSection(section)
 		return nil
 	}
 
@@ -87,7 +91,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 	}
 
 	tasks := taskutil.NewPool[node](100, func(arg node) (err error) {
-		return insertPage(arg.File, arg.IsBundle)
+		return insertPageByFile(arg.File, arg.IsBundle)
 	})
 
 	walkDir := func(path string, info fs.DirEntry, err error) error {
@@ -95,11 +99,12 @@ func (site *Site) loadContent() (*ContentStore, error) {
 			return err
 		}
 		if path == contentDir {
-			sectionFiles, _ := site.contentProcessor.IsSection(path)
-			for _, file := range sectionFiles {
-				if err := insertSection(filepath.Join(path, file)); err != nil {
-					return err
-				}
+			sections, err := site.contentProcessor.ParseHomeSections(path)
+			if err != nil {
+				return err
+			}
+			for _, section := range sections {
+				insertSection(section)
 			}
 			return nil
 		}
@@ -124,7 +129,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 			sectionFiles, ok := site.contentProcessor.IsSection(path)
 			if len(sectionFiles) > 0 {
 				for _, file := range sectionFiles {
-					if err := insertSection(filepath.Join(path, file)); err != nil {
+					if err := insertSectionByFile(filepath.Join(path, file)); err != nil {
 						return err
 					}
 				}
@@ -153,23 +158,33 @@ func (site *Site) loadContent() (*ContentStore, error) {
 	}
 	tasks.StopAndWait()
 
-	for _, sections := range store.AllSections() {
-		sections.SortBy("weight")
+	for _, lang := range site.ctx.GetAllLanguages() {
+		sections := store.Sections(lang)
+		if len(sections) > 0 {
+			content.SortSections(sections, "weight")
 
-		for _, section := range sections {
-			section.Pages.SortBy(section.FrontMatter.GetString("sort_by"))
-		}
-	}
-
-	for lang, pages := range store.AllPages() {
-		pages.SortBy("date desc")
-
-		taxonomies := site.contentProcessor.ParseTaxonomies(pages, lang)
-		for _, taxonomy := range taxonomies {
-			for _, term := range taxonomy.Terms {
-				store.insertTaxonomyTerm(term)
+			for _, section := range sections {
+				content.SortPages(section.Pages, section.FrontMatter.GetString("sort_by"))
 			}
-			store.insertTaxonomy(taxonomy)
+		}
+
+		pages := store.Pages(lang)
+		if len(pages) > 0 {
+			// 使用首页配置的顺序
+			root := store.GetSection("/", lang)
+			if root == nil {
+				content.SortPages(pages, "date desc")
+			} else {
+				content.SortPages(pages, root.FrontMatter.GetString("sort_by"))
+			}
+
+			taxonomies := site.contentProcessor.ParseTaxonomies(pages, lang)
+			for _, taxonomy := range taxonomies {
+				for _, term := range taxonomy.Terms {
+					store.insertTaxonomyTerm(term)
+				}
+				store.insertTaxonomy(taxonomy)
+			}
 		}
 	}
 	return store, nil
