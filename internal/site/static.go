@@ -32,7 +32,8 @@ func (site *Site) BuildStatic(ctx context.Context, writer core.Writer) error {
 
 	now := time.Now()
 
-	staticFS, err := site.ctx.GetFS("static", true)
+	// 主题为空时才使用内置主题的css
+	staticFS, err := site.ctx.GetFS("static", site.ctx.GetTheme() == "")
 	if err != nil {
 		return err
 	}
