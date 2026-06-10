@@ -27,6 +27,31 @@ func isSelfClosing(tag string) bool {
 	return false
 }
 
+func shortcodeName(token html.Token) string {
+	for _, attr := range token.Attr {
+		if attr.Key == "_name" && attr.Val != "" {
+			return attr.Val
+		}
+	}
+	for _, attr := range token.Attr {
+		if attr.Key != "_name" && attr.Val == "" {
+			return attr.Key
+		}
+	}
+	return ""
+}
+
+func shortcodeParams(token html.Token, name string) map[string]any {
+	params := make(map[string]any)
+	for _, attr := range token.Attr {
+		if attr.Key == "_name" || (attr.Key == name && attr.Val == "") {
+			continue
+		}
+		params[attr.Key] = attr.Val
+	}
+	return params
+}
+
 func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToken string, page *content.Page, counter map[string]int) bool {
 	for {
 		tokenType := z.Next()
@@ -39,12 +64,7 @@ func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToke
 		case html.StartTagToken, html.SelfClosingTagToken:
 			name := token.Data
 			if token.Data == "shortcode" {
-				for _, attr := range token.Attr {
-					if attr.Key == "_name" {
-						name = attr.Val
-						break
-					}
-				}
+				name = shortcodeName(token)
 				if name == "" {
 					h.ctx.Logger.Warnf("%s: shortcode no name", page.File.Path)
 					break
@@ -52,10 +72,7 @@ func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToke
 			}
 			tpl, ok := h.tpls[name]
 			if ok {
-				params := make(map[string]any)
-				for _, attr := range token.Attr {
-					params[attr.Key] = attr.Val
-				}
+				params := shortcodeParams(token, name)
 
 				vars := map[string]any{
 					"page":     page,

@@ -22,7 +22,7 @@ type (
 	Taxonomies []*Taxonomy
 )
 
-func (ts Taxonomies) SortBy(key string) {
+func SortTaxonomies(ts Taxonomies, key string) {
 	sort.SliceStable(ts, utils.Sort(key, func(k string, i int, j int) int {
 		switch k {
 		case "-":
@@ -70,7 +70,7 @@ func (d *Processor) ParseTaxonomies(pages Pages, lang string) Taxonomies {
 
 		taxonomies = append(taxonomies, taxonomy)
 	}
-	taxonomies.SortBy("weight desc")
+	SortTaxonomies(taxonomies, "weight")
 	return taxonomies
 }
 

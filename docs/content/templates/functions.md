@@ -27,10 +27,10 @@ weight: 10
 
 ## 页面列表方法
 
-### SortBy
+### OrderBy
 
 ```html
-{% for page in pages.SortBy("date desc, title asc") %}
+{% for page in pages.OrderBy("date desc, title asc") %}
 ```
 
 排序字段：`date`、`modified`、`title`、`weight` 及任意 FrontMatter 字段。

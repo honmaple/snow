@@ -34,8 +34,8 @@ func (h *EncryptHook) HandlePage(page *content.Page) *content.Page {
 	if description == "" {
 		description = "这是一篇加密的文章，你需要输入正确的密码."
 	}
-	page.Summary = fmt.Sprintf(`<shortcode _name="encrypt" password="%s" description="%s">%s</shortcode>`, password, description, page.Summary)
-	page.Content = fmt.Sprintf(`<shortcode _name="encrypt" password="%s" description="%s">%s</shortcode>`, password, description, page.Content)
+	page.Summary = fmt.Sprintf(`<shortcode encrypt password="%s" description="%s">%s</shortcode>`, password, description, page.Summary)
+	page.Content = fmt.Sprintf(`<shortcode encrypt password="%s" description="%s">%s</shortcode>`, password, description, page.Content)
 	return page
 }
 

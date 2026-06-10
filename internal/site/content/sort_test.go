@@ -324,7 +324,7 @@ func TestSortTaxonomiesByFields(t *testing.T) {
 				{Name: "categories", Weight: 10},
 			}
 
-			taxonomies.SortBy(tt.key)
+			SortTaxonomies(taxonomies, tt.key)
 
 			assert.Equal(t, tt.want, taxonomyNames(taxonomies))
 		})
