@@ -34,6 +34,12 @@ var (
 				Usage:   "autoload when file change",
 			},
 			&cli.StringFlag{
+				Name:    "root-dir",
+				Aliases: []string{"r"},
+				Value:   ".",
+				Usage:   "directory to use as root of project",
+			},
+			&cli.StringFlag{
 				Name:    "mode",
 				Aliases: []string{"m"},
 				Value:   "",
@@ -50,9 +56,11 @@ var (
 )
 
 func serverAction(clx *cli.Context) error {
-	conf, err := commonAction(clx)
-	if err != nil {
-		return err
-	}
-	return server.Serve(conf, clx.String("listen"), clx.Bool("autoload"), clx.Bool("include-drafts"))
+	return runInRootDir(clx.String("root-dir"), func() error {
+		conf, err := commonAction(clx)
+		if err != nil {
+			return err
+		}
+		return server.Serve(conf, clx.String("listen"), clx.Bool("autoload"), clx.Bool("include-drafts"))
+	})
 }

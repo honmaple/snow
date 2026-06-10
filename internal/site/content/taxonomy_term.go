@@ -232,6 +232,7 @@ func (d *Processor) RenderTaxonomyTerm(term *TaxonomyTerm, tplset template.Templ
 				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate").Int(),
 				term.Path,
 				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate_path").String(),
+				lctx.GetURL,
 			) {
 			if err := d.RenderTemplate(por.Path, tpl, map[string]any{
 				"term":          term,

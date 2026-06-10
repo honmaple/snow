@@ -68,12 +68,15 @@ paginate_path: "page/{number}{extension}"
 | 属性 | 说明 |
 |------|------|
 | `paginator.Path` | 当前分页链接 |
+| `paginator.Permalink` | 当前分页绝对链接 |
 | `paginator.PageNum` | 当前页码 |
 | `paginator.Total` | 总页数 |
 | `paginator.HasPrev()` | 有上一页 |
-| `paginator.Prev.URL` | 上一页链接 |
+| `paginator.Prev.Path` | 上一页链接 |
+| `paginator.Prev.Permalink` | 上一页绝对链接 |
 | `paginator.HasNext()` | 有下一页 |
-| `paginator.Next.URL` | 下一页链接 |
+| `paginator.Next.Path` | 下一页链接 |
+| `paginator.Next.Permalink` | 下一页绝对链接 |
 | `paginator.All` | 所有分页 |
 | `paginator.List` | 当前分页页面列表 |
 
@@ -81,12 +84,12 @@ paginate_path: "page/{number}{extension}"
 
 ```html
 {% if paginator.HasPrev() %}
-<a href="{{ paginator.Prev.URL }}">上一页</a>
+<a href="{{ paginator.Prev.Permalink }}">上一页</a>
 {% endif %}
 
 <span>{{ paginator.PageNum }} / {{ paginator.Total }}</span>
 
 {% if paginator.HasNext() %}
-<a href="{{ paginator.Next.URL }}">下一页</a>
+<a href="{{ paginator.Next.Permalink }}">下一页</a>
 {% endif %}
 ```

@@ -9,13 +9,14 @@ import (
 )
 
 type Paginator[T any] struct {
-	Next    *Paginator[T]
-	Prev    *Paginator[T]
-	Total   int
-	PageNum int
-	List    []T
-	Path    string
-	All     []*Paginator[T]
+	Next      *Paginator[T]
+	Prev      *Paginator[T]
+	Total     int
+	PageNum   int
+	List      []T
+	Path      string
+	Permalink string
+	All       []*Paginator[T]
 }
 
 func (p *Paginator[T]) Page(number int) *Paginator[T] {
@@ -42,7 +43,7 @@ func (p *Paginator[T]) HasNext() bool {
 	return p.Next != nil
 }
 
-func Paginate[T any](list []T, number int, path string, paginatePath string) []*Paginator[T] {
+func Paginate[T any](list []T, number int, path string, paginatePath string, urlFor ...func(string) string) []*Paginator[T] {
 	if strings.HasSuffix(path, "/") {
 		path = path + "index.html"
 	}
@@ -98,6 +99,9 @@ func Paginate[T any](list []T, number int, path string, paginatePath string) []*
 				"{number}":          strconv.Itoa(num + 1),
 				"{number:optional}": strconv.Itoa(num + 1),
 			})
+		}
+		if len(urlFor) > 0 && urlFor[0] != nil {
+			por.Permalink = urlFor[0](por.Path)
 		}
 
 		end := (num + 1) * number

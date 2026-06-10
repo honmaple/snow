@@ -126,15 +126,8 @@ pages:
 | `page.FrontMatter.{xxx}` | 自定义字段值     |
 | `page.Aliases`           | 重定向别名       |
 | `page.Formats`           | 其他输出格式     |
-| `page.Prev`              | 上一篇文章       |
-| `page.Next`              | 下一篇文章       |
-| `page.HasPrev()`         | 是否有上一篇文章  |
-| `page.HasNext()`         | 是否有下一篇文章  |
-| `page.IsBundle`          | 是否为 Bundle   |
 | `page.Draft`             | 是否为草稿       |
 | `page.Hidden`            | 是否隐藏         |
-| `page.IsPage`            | 是否为 Page     |
-| `page.IsHidden`          | IsHidden() 方法 |
 
 ## 草稿 (Draft)
 

@@ -9,7 +9,7 @@ Snow 根据 Page FrontMatter 字段自动生成分类页面。类似 Hugo 的 Ta
 
 只需在 `taxonomies` 下列出字段名，Snow 会扫描所有 Page，按该字段值分组，自动生成分类列表页和 Term 详情页。
 
-Term 支持层级结构：=categories= 中值为 =Programming/Go= 时，自动生成父 term =Programming= 和子 term =Go=。
+Term 支持层级结构：`categories` 中值为 `Programming/Go` 时，自动生成父 term `Programming` 和子 term `Go`。
 
 ## 配置
 
@@ -124,7 +124,7 @@ authors: honmaple
 | `term.Slug` | Term slug |
 | `term.Path` | 相对 URL |
 | `term.Permalink` | 绝对 URL |
-| `term.List` | Term 下页面列表 |
+| `term.Pages` | Term 下页面列表 |
 | `term.Children` | 子 Term |
 | `term.Parent` | 父 Term |
 | `term.Formats` | 其他输出格式 |
@@ -154,7 +154,7 @@ taxonomies:
 ```html
 {% for group in pages.GroupBy("date:2006-01").OrderBy("name desc") %}
   <h2>{{ group.Name }}</h2>
-  {% for page in group.List %}
+  {% for page in group.Pages %}
     <li>{{ page.Title }}</li>
   {% endfor %}
 {% endfor %}

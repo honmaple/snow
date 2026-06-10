@@ -271,6 +271,7 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 				section.FrontMatter.GetInt("paginate"),
 				section.Path,
 				section.FrontMatter.GetString("paginate_path"),
+				d.ctx.For(section.Lang).GetURL,
 			) {
 			if err := d.RenderTemplate(por.Path, tpl, map[string]any{
 				"paginator":     por,

@@ -68,46 +68,65 @@ var (
 )
 
 func buildAction(clx *cli.Context) error {
-	conf, err := commonAction(clx)
-	if err != nil {
-		return err
-	}
-	if out := clx.String("output-dir"); out != "" {
-		conf.Set("output_dir", out)
-	}
-
-	ctx, err := core.NewContext(conf)
-	if err != nil {
-		return err
-	}
-
-	if out := ctx.GetOutputDir(); out != "" && clx.Bool("clean") {
-		ctx.Logger.Infoln("Removing the contents of", out)
-
-		files, err := os.ReadDir(out)
+	return runInRootDir(clx.String("root-dir"), func() error {
+		conf, err := commonAction(clx)
 		if err != nil {
 			return err
 		}
-		for _, file := range files {
-			if strings.HasPrefix(file.Name(), ".") {
-				continue
-			}
-			if err := os.RemoveAll(filepath.Join(out, file.Name())); err != nil {
+		if out := clx.String("output-dir"); out != "" {
+			conf.Set("output_dir", out)
+		}
+
+		ctx, err := core.NewContext(conf)
+		if err != nil {
+			return err
+		}
+
+		if out := ctx.GetOutputDir(); out != "" && clx.Bool("clean") {
+			ctx.Logger.Infoln("Removing the contents of", out)
+
+			files, err := os.ReadDir(out)
+			if err != nil {
 				return err
 			}
+			for _, file := range files {
+				if strings.HasPrefix(file.Name(), ".") {
+					continue
+				}
+				if err := os.RemoveAll(filepath.Join(out, file.Name())); err != nil {
+					return err
+				}
+			}
 		}
+
+		s, err := site.New(ctx, site.IncludeDrafts(clx.Bool("include-drafts")))
+		if err != nil {
+			return err
+		}
+
+		var w core.Writer
+		if clx.Bool("dry-run") {
+			w = writer.NewNullWriter()
+		} else {
+			w = writer.NewDiskWriter(conf.GetString("output_dir"))
+		}
+		return s.Build(context.TODO(), w)
+	})
+}
+
+func runInRootDir(root string, fn func() error) error {
+	if root == "" || root == "." {
+		return fn()
 	}
 
-	s, err := site.New(ctx, site.IncludeDrafts(clx.Bool("include-drafts")))
+	wd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-
-	var w core.Writer
-	if clx.Bool("dry-run") {
-		w = writer.NewNullWriter()
-	} else {
-		w = writer.NewDiskWriter(conf.GetString("output_dir"))
+	if err := os.Chdir(root); err != nil {
+		return err
 	}
-	return s.Build(context.TODO(), w)
+	defer os.Chdir(wd)
+
+	return fn()
 }

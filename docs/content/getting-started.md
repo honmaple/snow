@@ -95,6 +95,10 @@ snow server -l 127.0.0.1:8088
 snow server --autoload
 snow server -R
 
+# 指定根目录
+snow server --root-dir .
+snow server -r .
+
 # 调试模式
 snow server --debug
 snow server -D

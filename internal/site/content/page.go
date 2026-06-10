@@ -181,8 +181,8 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 	return results
 }
 
-func (pages Pages) PaginateBy(number int, path string, paginatePath string) []*Paginator[*Page] {
-	return Paginate(pages, number, path, paginatePath)
+func (pages Pages) PaginateBy(number int, path string, paginatePath string, urlFor ...func(string) string) []*Paginator[*Page] {
+	return Paginate(pages, number, path, paginatePath, urlFor...)
 }
 
 func FilterExpr(filter string) func(*Page) bool {

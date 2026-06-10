@@ -129,7 +129,6 @@ paginate_filter_by: "'emacs' in tags and not draft"
 | `section.RawContent` | `_index.md` 原始内容 |
 | `section.Pages` | 栏目下页面列表 |
 | `section.Children` | 子栏目列表 |
-| `section.Parent` | 父栏目（通过 `section.Pages` 中的指向推导） |
 | `section.Formats` | 其他输出格式 |
 | `paginator` | 分页对象（启用分页时） |
 
@@ -138,11 +137,14 @@ paginate_filter_by: "'emacs' in tags and not draft"
 | 属性 | 说明 |
 |------|------|
 | `paginator.Path` | 当前分页链接 |
+| `paginator.Permalink` | 当前分页绝对链接 |
 | `paginator.PageNum` | 当前页码 |
 | `paginator.Total` | 总页数 |
 | `paginator.HasPrev()` | 是否有上一页 |
-| `paginator.Prev.URL` | 上一页链接 |
+| `paginator.Prev.Path` | 上一页链接 |
+| `paginator.Prev.Permalink` | 上一页绝对链接 |
 | `paginator.HasNext()` | 是否有下一页 |
-| `paginator.Next.URL` | 下一页链接 |
+| `paginator.Next.Path` | 下一页链接 |
+| `paginator.Next.Permalink` | 下一页绝对链接 |
 | `paginator.All` | 所有分页对象 |
 | `paginator.List` | 当前分页下的页面列表 |
