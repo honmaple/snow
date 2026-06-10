@@ -1,10 +1,56 @@
 package filter
 
 import (
+	"testing"
+
 	"github.com/expr-lang/expr"
 	"github.com/flosch/pongo2/v7"
-	"testing"
+	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/site/content"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func newFilterTestContext(expr string) *core.Context {
+	conf := core.NewConfig()
+	if expr != "" {
+		conf.Set("hooks.filter.option.page_filter", expr)
+	}
+	return &core.Context{
+		LocaleContext: &core.LocaleContext{Config: conf},
+	}
+}
+
+func TestNewReturnsErrorForInvalidPageFilter(t *testing.T) {
+	ctx := newFilterTestContext("title ==")
+
+	_, err := New(ctx)
+	require.Error(t, err)
+}
+
+func TestHandlePageUsesCompiledPageFilter(t *testing.T) {
+	ctx := newFilterTestContext(`title == "keep"`)
+
+	hook, err := New(ctx)
+	require.NoError(t, err)
+
+	h := hook.(*FilterHook)
+	assert.NotNil(t, h.tpl)
+
+	keep := &content.Page{
+		Node: &content.Node{
+			FrontMatter: content.NewFrontMatter(map[string]any{"title": "keep"}),
+		},
+	}
+	drop := &content.Page{
+		Node: &content.Node{
+			FrontMatter: content.NewFrontMatter(map[string]any{"title": "drop"}),
+		},
+	}
+
+	assert.Same(t, keep, h.HandlePage(keep))
+	assert.Nil(t, h.HandlePage(drop))
+}
 
 // BenchmarkFilterWithExpr
 // BenchmarkFilterWithExpr-10		  245794		  4891 ns/op

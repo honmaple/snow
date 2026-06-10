@@ -1,5 +1,6 @@
 ---
 title: "shortcode"
+weight: 10
 ---
 
 ## Shortcode

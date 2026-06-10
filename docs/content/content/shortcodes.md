@@ -1,5 +1,6 @@
 ---
 title: "短代码 (Shortcode)"
+weight: 50
 ---
 
 Shortcode 用于在内容中快速插入可复用的 HTML 组件，如视频嵌入、代码片段等。需要在配置中启用 `hooks.shortcode`。

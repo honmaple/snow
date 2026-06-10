@@ -1,6 +1,8 @@
 package rewrite
 
 import (
+	"fmt"
+
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/site/hook"
@@ -44,6 +46,19 @@ func New(ctx *core.Context) (hook.Hook, error) {
 
 	if err := hook.Unmarshal(ctx.Config.Get("hooks.rewrite.option"), &opts); err != nil {
 		return nil, err
+	}
+	for i, opt := range opts {
+		if opt.Src == "" {
+			return nil, fmt.Errorf("hooks.rewrite.option[%d].src is required", i)
+		}
+		if opt.Dst == "" {
+			return nil, fmt.Errorf("hooks.rewrite.option[%d].dst is required", i)
+		}
+		switch opt.Type {
+		case "", "list":
+		default:
+			return nil, fmt.Errorf("hooks.rewrite.option[%d].type %q is invalid", i, opt.Type)
+		}
 	}
 	return &RewriteHook{ctx: ctx, opts: opts}, nil
 }

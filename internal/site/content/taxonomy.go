@@ -31,7 +31,7 @@ func (ts Taxonomies) SortBy(key string) {
 			return strings.Compare(ts[i].Name, ts[j].Name)
 		case "weight":
 			// 默认weight越小越在前
-			return 0 - utils.Compare(ts[i].Weight, ts[j].Weight)
+			return utils.Compare(ts[i].Weight, ts[j].Weight)
 		default:
 			return 0
 		}

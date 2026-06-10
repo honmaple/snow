@@ -13,22 +13,17 @@ type (
 	FilterHook struct {
 		hook.HookImpl
 		ctx *core.Context
+		tpl *pongo2.Template
 	}
 )
 
 func (h *FilterHook) HandlePage(page *content.Page) *content.Page {
-	expr := h.ctx.Config.GetString("hooks.filter.option.page_filter")
-	if expr == "" {
-		return page
-	}
-	tpl, err := pongo2.FromString("{{" + expr + "}}")
-	if err != nil {
-		h.ctx.Logger.Warnf("filter expr %s err: %s", expr, err.Error())
+	if h.tpl == nil {
 		return page
 	}
 	args := page.FrontMatter.AllSettings()
 
-	result, err := tpl.Execute(args)
+	result, err := h.tpl.Execute(args)
 	if err == nil && result == "True" {
 		return page
 	}
@@ -36,8 +31,17 @@ func (h *FilterHook) HandlePage(page *content.Page) *content.Page {
 }
 
 func New(ctx *core.Context) (hook.Hook, error) {
+	var tpl *pongo2.Template
+	if expr := ctx.Config.GetString("hooks.filter.option.page_filter"); expr != "" {
+		t, err := pongo2.FromString("{{" + expr + "}}")
+		if err != nil {
+			return nil, err
+		}
+		tpl = t
+	}
 	return &FilterHook{
 		ctx: ctx,
+		tpl: tpl,
 	}, nil
 }
 

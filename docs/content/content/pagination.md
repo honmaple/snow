@@ -1,5 +1,6 @@
 ---
 title: "分页"
+weight: 40
 ---
 
 Snow 支持 Section 和 Taxonomy Term 级别的分页。
@@ -18,7 +19,7 @@ sections:
 
 | 配置项 | 说明 |
 |--------|------|
-| `paginate` | 每页条目数，`0` 不分页 （默认 `10`） |
+| `paginate` | 每页条目数，`0` 不分页（默认 `0`） |
 | `paginate_path` | 分页路径模板（默认 `{name}{number:optional}{extension}`） |
 | `paginate_filter_by` | 分页前过滤 |
 

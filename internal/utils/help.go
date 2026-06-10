@@ -15,12 +15,16 @@ func Sort(key string, f func(string, int, int) int) func(int, int) bool {
 	ks := strings.Split(key, ",")
 	return func(i, j int) bool {
 		for _, k := range ks {
-			if strings.HasSuffix(strings.ToUpper(key), " DESC") {
+			k = strings.TrimSpace(k)
+			if strings.HasSuffix(strings.ToUpper(k), " DESC") {
 				k = k[:len(k)-5]
 				if result := f(k, i, j); result != 0 {
 					return result > 0
 				}
 				continue
+			}
+			if strings.HasSuffix(strings.ToUpper(k), " ASC") {
+				k = k[:len(k)-4]
 			}
 			if result := f(k, i, j); result != 0 {
 				return result < 0

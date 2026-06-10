@@ -1,5 +1,6 @@
 ---
 title: "配置"
+weight: 30
 ---
 
 Snow 使用 YAML 格式配置，默认为站点根目录下的 `config.yaml`，可通过 `--config` 参数指定其他文件。
@@ -41,6 +42,17 @@ ignored_static:
 #─────────────────────────────────────
 theme: "snow"
 theme_dir: "themes"
+
+#─────────────────────────────────────
+# 插件
+#─────────────────────────────────────
+hooks:
+  assets:
+    enabled: true
+  encrypt:
+    enabled: true
+  shortcode:
+    enabled: true
 ```
 
 ## 站点信息
@@ -72,6 +84,8 @@ theme_dir: "themes"
 | `ignored_content` | []string | — | 忽略内容 glob |
 | `ignored_static` | []string | — | 忽略静态文件 glob |
 
+`ignored_content` 与 `ignored_static` 按相对路径匹配。以 `_` 或 `.` 开头的内容文件默认忽略，`_index.{md,org,html}` 除外。
+
 ## 多环境 (Modes)
 
 ```yaml
@@ -95,6 +109,7 @@ markups:
     style: "monokai"
     show_toc: true
     show_line_numbers: true
+    prevent_pre_code: true
 ```
 
 | 配置项 | 类型 | 默认值 | 说明 |
@@ -102,6 +117,7 @@ markups:
 | `style` | string | `monokai` | chroma 语法高亮样式 |
 | `show_toc` | bool | `true` | 显示文章目录 |
 | `show_line_numbers` | bool | `true` | 显示行号 |
+| `prevent_pre_code` | bool | `true` | 高亮代码块时避免额外包裹 pre/code |
 
 常见样式：`monokai`、`github`、`dracula`、`solarized-dark`。
 
@@ -124,7 +140,7 @@ sections:
   _default:
     path: "{path:slug}/"
     sort_by: "date desc"
-    paginate: 10
+    paginate: 0
     paginate_path: "{name}{number:optional}{extension}"
   posts:
     sort_by: "date desc"
@@ -140,7 +156,7 @@ sections:
 |------------|--------|------|
 | `path` | `{path:slug}/` | 输出路径，为空禁用渲染 |
 | `sort_by` | `date desc` | 页面排序 |
-| `paginate` | `10` | 分页数，`0` 不分页 |
+| `paginate` | `0` | 分页数，`0` 不分页 |
 | `paginate_path` | `{name}{number:optional}{extension}` | 分页路径 |
 | `template` | — | 无默认，按 `section.html` 查找 |
 
@@ -186,6 +202,23 @@ taxonomies:
 ```
 
 只需在 `taxonomies` 下列出名称即可启用。配置查找：`taxonomies.{name}.{key}` → `taxonomies._default.{key}`。
+
+## Hook 配置
+
+默认启用 `assets`、`encrypt`、`shortcode`。其他内置 Hook 只设置默认权重，不会自动挂载：
+
+| Hook | 默认启用 | 默认权重 |
+|------|----------|----------|
+| `snakecase` | false | `10` |
+| `assets` | true | `20` |
+| `pelican` | false | `30` |
+| `rewrite` | false | `30` |
+| `filter` | false | `40` |
+| `encrypt` | true | `50` |
+| `shortcode` | true | `60` |
+| `minify` | false | `70` |
+
+`weight` 越小越先执行；权重相同时按 Hook 名称排序。如果显式配置 `hooks.<name>.enabled: true`，但对应 Hook 未注册，构建会返回错误。
 
 ## 多语言
 

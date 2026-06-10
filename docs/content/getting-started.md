@@ -1,5 +1,6 @@
 ---
 title: "快速开始"
+weight: 10
 ---
 
 ## 安装
@@ -25,11 +26,11 @@ snow init [目录名]
 
 ```
 $ snow init myblog
-Welcome to snow 0.1.6.
+Welcome to snow 0.1.7.
 > Where do you want to create your new web site? [.] myblog
 > What will be the title of this web site? [snow]
 > Who will be the author of this web site? honmaple
-> What is your URL prefix? (no trailing slash) [http://127.0.0.1:8000]
+> What is your URL prefix? (no trailing slash) [http://example.com]
 > Do you want to create first page? [Y/n]
 ```
 
@@ -40,10 +41,7 @@ myblog/
 ├── config.yaml
 ├── content/
 │   └── posts/
-│       └── first-page.md
-├── static/
-├── templates/
-└── themes/
+│       └── hello-snow.md
 ```
 
 ## 构建站点
@@ -115,7 +113,7 @@ snow server --include-drafts
 
 ```bash
 snow hooks
-# 输出: assets(enabled), encrypt(enabled), filter, minify, pelican(enabled), rewrite(enabled), shortcode(enabled)
+# 输出: snakecase, assets(enabled), pelican, rewrite, filter, encrypt(enabled), shortcode(enabled), minify
 ```
 
 ## 下一步

@@ -1,5 +1,6 @@
 ---
 title: "栏目 (Section)"
+weight: 20
 ---
 
 Section 是组织 Pages 的树状层级结构。包含 `_index.{md,org,html}` 文件的目录即为 Section。
@@ -58,7 +59,7 @@ sections:
   _default:
     path: "{path:slug}/"
     sort_by: "date desc"
-    paginate: 10
+    paginate: 0
     paginate_path: "{name}{number:optional}{extension}"
   posts:
     sort_by: "date desc"

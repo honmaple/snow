@@ -16,6 +16,12 @@ import (
 	"github.com/spf13/cast"
 )
 
+var allowedFilters = map[string]bool{
+	"libscss": true,
+	"cssmin":  true,
+	"jsmin":   true,
+}
+
 type (
 	AssetsHook struct {
 		hook.HookImpl
@@ -97,6 +103,21 @@ func (h *AssetsHook) HandleTemplateSet(set template.TemplateSet) (template.Templ
 	return set, nil
 }
 
+func normalizeFilters(filters []string) ([]string, error) {
+	results := make([]string, 0, len(filters))
+	for _, filter := range filters {
+		filter = strings.TrimSpace(filter)
+		if filter == "" {
+			continue
+		}
+		if !allowedFilters[filter] {
+			return nil, fmt.Errorf("unknown assets filter %q", filter)
+		}
+		results = append(results, filter)
+	}
+	return results, nil
+}
+
 func New(ctx *core.Context) (hook.Hook, error) {
 	assetsFS, err := ctx.GetFS("assets", false)
 	if err != nil {
@@ -115,20 +136,28 @@ func New(ctx *core.Context) (hook.Hook, error) {
 			Output:      conf.GetString("output"),
 			ShowVersion: conf.GetBool("version"),
 		}
+		if len(asset.Files) == 0 {
+			return nil, fmt.Errorf("hooks.assets.option.%s.files is required", name)
+		}
+		if asset.Output == "" {
+			return nil, fmt.Errorf("hooks.assets.option.%s.output is required", name)
+		}
 		if m := conf.Get("filters"); m != nil {
 			switch reflect.TypeOf(m).Kind() {
 			case reflect.Slice:
 				// - libsass
 				// - cssmin
-				asset.Filters = make([]string, 0)
-				for _, item := range m.([]any) {
-					asset.Filters = append(asset.Filters, cast.ToString(item))
-				}
+				asset.Filters = cast.ToStringSlice(m)
 			case reflect.String:
 				// libcass,css
 				asset.Filters = strings.Split(m.(string), ",")
 			}
 		}
+		filters, err := normalizeFilters(asset.Filters)
+		if err != nil {
+			return nil, fmt.Errorf("hooks.assets.option.%s.filters: %w", name, err)
+		}
+		asset.Filters = filters
 		preAssetMap[name] = asset
 	}
 

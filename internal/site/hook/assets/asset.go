@@ -30,7 +30,7 @@ func getFirstKey[K comparable, V any](m map[K]V) (key K, ok bool) {
 func (n *Asset) filter(name string, buf []byte) (result []byte, err error) {
 	switch name {
 	// case "libscss":
-	//	result, err = n.libscss(assetsFS, file, buf, opt)
+	//	result = buf
 	case "cssmin":
 		result, err = n.cssmin(buf)
 	case "jsmin":

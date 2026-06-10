@@ -17,6 +17,9 @@ type (
 	}
 	ContentHook interface {
 		HandlePage(*content.Page) *content.Page
+		// Collection hooks are reserved for future use. The current site build
+		// flow calls the single-item hooks below, but does not call collection
+		// hooks while loading or rendering content.
 		HandlePages(content.Pages) content.Pages
 
 		HandleSection(*content.Section) *content.Section

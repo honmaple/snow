@@ -1,5 +1,6 @@
 ---
 title: "minify"
+weight: 60
 ---
 
 ## Minify

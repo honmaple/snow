@@ -21,6 +21,7 @@ import (
 	_ "github.com/honmaple/snow/internal/site/hook/pelican"
 	_ "github.com/honmaple/snow/internal/site/hook/rewrite"
 	_ "github.com/honmaple/snow/internal/site/hook/shortcode"
+	_ "github.com/honmaple/snow/internal/site/hook/snakecase"
 )
 
 const (

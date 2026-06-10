@@ -14,6 +14,7 @@ import (
 
 type Registry struct {
 	hooks []Hook
+	names []string
 }
 
 func (r *Registry) AfterBuild(ctx context.Context, writer core.Writer) error {
@@ -134,11 +135,11 @@ func New(ctx *core.Context) (*Registry, error) {
 	})
 
 	hooks := make([]Hook, 0)
+	enabled := make([]string, 0, len(names))
 	for _, name := range names {
 		factory, ok := factories[name]
 		if !ok {
-			ctx.Logger.Warnf("The hook %s not found", name)
-			continue
+			return nil, fmt.Errorf("hook %q is enabled but not registered", name)
 		}
 
 		h, err := factory(ctx)
@@ -146,8 +147,12 @@ func New(ctx *core.Context) (*Registry, error) {
 			return nil, err
 		}
 		hooks = append(hooks, h)
+		enabled = append(enabled, fmt.Sprintf("%s(%d)", name, ctx.Config.GetInt("hooks."+name+".weight")))
 	}
-	return &Registry{hooks: hooks}, nil
+	if len(enabled) > 0 {
+		ctx.Logger.Debugf("Enabled hooks: %s", strings.Join(enabled, ", "))
+	}
+	return &Registry{hooks: hooks, names: names}, nil
 }
 
 func Unmarshal(data any, value any) error {

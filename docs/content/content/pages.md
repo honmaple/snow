@@ -1,5 +1,6 @@
 ---
 title: "页面 (Page)"
+weight: 10
 ---
 
 Page 是 Snow 中最基本的内容单元。
@@ -18,7 +19,7 @@ content/
         └── image.png      # 附属资源
 ```
 
-**Page Bundle**：包含 `index.{md,org}` 的目录视为一个页面整体，目录内其他文件作为附属资源。
+**Page Bundle**：包含 `index.{md,org,html}` 的目录视为一个页面整体，目录内其他文件作为附属资源。
 
 ## FrontMatter
 

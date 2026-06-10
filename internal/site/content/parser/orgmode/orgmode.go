@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"regexp"
 	"strings"
@@ -23,6 +24,8 @@ var (
 	ORGMODE_PROPERTIES = regexp.MustCompile(`^(?i::PROPERTIES:)$`)
 	ORGMODE_META       = regexp.MustCompile(`^:([^:]+):(\s+(.*)|$)`)
 )
+
+const scannerMaxTokenSize = 1024 * 1024
 
 type Option struct {
 	parser.MarkupOption
@@ -73,19 +76,35 @@ func (m *orgParser) Parse(r io.Reader) (*parser.Result, error) {
 	}
 
 	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 1024), scannerMaxTokenSize)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if isFormat && ORGMODE_PROPERTIES.MatchString(line) {
+			closed := false
+			var drawerErr error
 			for scanner.Scan() {
 				l := scanner.Text()
-				if strings.TrimSpace(l) == "" {
+				if strings.EqualFold(strings.TrimSpace(l), ":END:") {
+					closed = true
 					break
 				}
 				match := ORGMODE_META.FindStringSubmatch(l)
-				if match == nil || match[1] == "END" {
-					break
+				if match == nil {
+					if drawerErr == nil {
+						drawerErr = fmt.Errorf("org parser invalid properties line: %s", l)
+					}
+					continue
 				}
 				result.SetFrontMatter(match[1], match[2])
+			}
+			if err := scanner.Err(); err != nil {
+				return nil, fmt.Errorf("org parser scan: %w", err)
+			}
+			if !closed {
+				return nil, errors.New("org properties drawer is not closed")
+			}
+			if drawerErr != nil {
+				return nil, drawerErr
 			}
 			isFormat = false
 			continue
@@ -113,6 +132,9 @@ func (m *orgParser) Parse(r io.Reader) (*parser.Result, error) {
 		}
 		content.WriteString(line)
 		content.WriteString("\n")
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("org parser scan: %w", err)
 	}
 
 	toc, res, err := m.parse(content.Bytes())

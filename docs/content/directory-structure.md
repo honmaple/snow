@@ -1,5 +1,6 @@
 ---
 title: "目录结构"
+weight: 20
 ---
 
 Snow 站点的标准文件布局：
@@ -50,7 +51,7 @@ mysite/
 |-----------|--------|
 | `*.md` / `*.org` / `*.html` | Page |
 | `_index.{md,org,html}` | Section 标记 |
-| `index.{md,org}` | Page Bundle 标记 |
+| `index.{md,org,html}` | Page Bundle 标记 |
 | `_*` / `.*` 开头 | 默认忽略 |
 
 ### Page
@@ -63,7 +64,7 @@ mysite/
 
 ### Page Bundle
 
-包含 `index.{md,org}` 的目录视为一个页面整体，目录内其他文件为附属资源。
+包含 `index.{md,org,html}` 的目录视为一个页面整体，目录内其他文件为附属资源。
 
 ### 忽略规则
 
@@ -81,9 +82,9 @@ ignored_content:
 ```
 themes/{name}/
 ├── theme.yaml            # 主题配置（可选）
-├── template/             # 模板（目录名固定）
+├── templates/            # 模板（目录名固定）
 │   ├── index.html
-│   ├── post.html
+│   ├── page.html
 │   ├── section.html
 │   ├── partials/
 │   └── shortcodes/
@@ -96,4 +97,4 @@ themes/{name}/
     └── zh.yaml
 ```
 
-`template`、`static`、`i18n` 目录名不可修改。同级同名文件优先使用站点版本。
+`templates`、`static`、`i18n` 目录名不可修改。同级同名文件优先使用站点版本。

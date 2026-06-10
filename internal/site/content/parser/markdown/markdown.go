@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"regexp"
 	"strings"
@@ -25,6 +26,8 @@ var (
 	MARKDOWN_MORE = regexp.MustCompile(`^\s*(?i:<!--more-->)\s*$`)
 	MARKDOWN_META = regexp.MustCompile(`^([^:]+):(\s+(.*)|$)`)
 )
+
+const scannerMaxTokenSize = 1024 * 1024
 
 type (
 	Option struct {
@@ -66,20 +69,31 @@ func (m *mdParser) Parse(r io.Reader) (*parser.Result, error) {
 	}
 
 	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 1024), scannerMaxTokenSize)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if isFormat && MARKDOWN_LINE.MatchString(line) {
 			var b bytes.Buffer
+			closed := false
+			fence := strings.TrimSpace(line)
 			for scanner.Scan() {
 				l := scanner.Text()
-				if MARKDOWN_LINE.MatchString(l) {
+				if strings.TrimSpace(l) == fence {
+					closed = true
 					break
 				}
 				b.WriteString(l)
 				b.WriteString("\n")
 			}
+			if err := scanner.Err(); err != nil {
+				return nil, fmt.Errorf("markdown parser scan: %w", err)
+			}
+			if !closed {
+				return nil, fmt.Errorf("markdown front matter is not closed: %s", fence)
+			}
+
 			cf := viper.New()
-			if line == "---" {
+			if fence == "---" {
 				cf.SetConfigType("yaml")
 			} else {
 				cf.SetConfigType("toml")
@@ -107,6 +121,9 @@ func (m *mdParser) Parse(r io.Reader) (*parser.Result, error) {
 		}
 		content.WriteString(line)
 		content.WriteString("\n")
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("markdown parser scan: %w", err)
 	}
 
 	toc, res, err := m.parse(content.Bytes())

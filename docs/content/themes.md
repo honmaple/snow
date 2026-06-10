@@ -1,5 +1,6 @@
 ---
 title: "主题"
+weight: 60
 ---
 
 Snow 通过主题系统管理站点外观。主题包含模板、静态资源和配置文件。
@@ -23,11 +24,10 @@ themes/mytheme/
 ├── theme.yaml            # 主题配置（可选）
 ├── templates/            # 模板（固定名）
 │   ├── index.html        # 首页
-│   ├── post.html         # 文章页
 │   ├── page.html         # 单页
 │   ├── section.html      # 栏目页
-│   ├── taxonomy.html     # 分类列表
-│   ├── taxonomy.terms.html  # 分类详情
+│   ├── taxonomy_list.html   # 分类列表
+│   ├── taxonomy_single.html # 分类详情
 │   ├── partials/         # 局部模板
 │   │   ├── header.html
 │   │   ├── footer.html
@@ -77,12 +77,12 @@ params:
 ```
 mysite/
 ├── templates/
-│   └── post.html         # 覆盖主题的 post.html
+│   └── page.html         # 覆盖主题的 page.html
 └── themes/
     └── mytheme/
         └── templates/
             ├── index.html
-            └── post.html   # 被覆盖
+            └── page.html   # 被覆盖
 ```
 
 ## 静态资源优先级
@@ -101,7 +101,7 @@ simple/
 ├── theme.yaml
 ├── templates/
 │   ├── index.html
-│   └── post.html
+│   └── page.html
 └── static/
     └── css/
         └── style.css
@@ -133,7 +133,7 @@ simple/
 </html>
 ```
 
-### post.html
+### page.html
 
 ```html
 <!DOCTYPE html>

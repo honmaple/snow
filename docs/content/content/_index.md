@@ -1,5 +1,7 @@
 ---
 title: "Content"
+weight: 40
+sort_by: "weight"
 ---
 
 Snow 的内容系统围绕三个核心概念构建：
@@ -20,7 +22,7 @@ Snow 支持三种内容格式，每种使用不同的解析引擎：
 | Org-mode | `.org` | org-golang |
 | HTML | `.html` | 内置解析器 |
 
-所有格式均支持 YAML 格式的 FrontMatter（页头元数据）。
+Markdown 支持 YAML (`---`) 与 TOML (`+++`) FrontMatter；Org-mode 支持 `:PROPERTIES:` drawer 和文件开头的 `#+KEY:` 元数据；HTML 会从 `<title>`、`<meta name="..." content="...">`、`<link href="...">`、`<script src="...">` 提取元数据。
 
 ## FrontMatter
 
@@ -40,6 +42,10 @@ draft: false
 ```
 
 更多 FrontMatter 字段详见 [页面 (Page)](/content/pages)。
+
+## 解析限制
+
+Markdown 与 Org-mode 解析器支持最长约 1MB 的单行内容。Markdown FrontMatter 必须使用同类型 fence 闭合；Org-mode 的 `:PROPERTIES:` drawer 必须以 `:END:` 闭合，否则构建会报错。
 
 ## 内容导航
 

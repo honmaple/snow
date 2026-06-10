@@ -229,13 +229,14 @@ var (
 		"hooks.shortcode.enabled": true,
 
 		// hook的执行顺序，先encrypt再shortcode
-		"hooks.assets.weight":    0,
-		"hooks.pelican.weight":   10,
-		"hooks.rewrite.weight":   10,
-		"hooks.filter.weight":    20,
-		"hooks.encrypt.weight":   30,
-		"hooks.shortcode.weight": 40,
-		"hooks.minify.weight":    50,
+		"hooks.snakecase.weight": 10,
+		"hooks.assets.weight":    20,
+		"hooks.pelican.weight":   30,
+		"hooks.rewrite.weight":   30,
+		"hooks.filter.weight":    40,
+		"hooks.encrypt.weight":   50,
+		"hooks.shortcode.weight": 60,
+		"hooks.minify.weight":    70,
 	}
 )
 

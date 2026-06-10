@@ -1,5 +1,6 @@
 ---
 title: "分类系统 (Taxonomy)"
+weight: 30
 ---
 
 Snow 根据 Page FrontMatter 字段自动生成分类页面。类似 Hugo 的 Taxonomy 或 Zola 的 Taxonomies。
@@ -93,16 +94,14 @@ authors: honmaple
 ### 分类列表页
 
 1. `taxonomies.{name}.template` 配置值
-2. `{name}/taxonomy.html`
+2. `{name}/list.html`
 3. `taxonomy_list.html`
-4. `taxonomy.html`
 
 ### Term 页面
 
 1. `taxonomies.{name}.term.template` 配置值
-2. `{name}/taxonomy.terms.html`
+2. `{name}/single.html`
 3. `taxonomy_single.html`
-4. `taxonomy.terms.html`
 
 ## 模板变量
 

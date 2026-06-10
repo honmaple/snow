@@ -4,67 +4,60 @@ sort_by: "weight"
 template: "index.html"
 
 params.hero:
-  name: "红枫云盘"
-  label: "多协议云盘文件管理"
-  description: "A fast, elegant documentation theme for Zola, built with Tailwind CSS and designed for technical teams that care about clarity."
+  name: "Snow"
+  label: "静态站点生成器"
+  description: "一个简洁、快速、可扩展的静态站点生成器，支持 Markdown、Org-mode、HTML、多语言、Taxonomy、分页、模板和 Hook 插件流程。"
   actions:
     - text: "Get started"
       link: "/getting-started/"
       theme: "primary"
-    - text: "Download"
+    - text: "GitHub"
       link: "https://github.com/honmaple/snow"
   preview:
-      image: "/aaa.png"
-      image_alt: "Preview screenshot"
-      brand: "Snow Docs"
-      title: "Ship beautiful docs with Zola"
-      description: "Fast pages, clear structure, responsive navigation, and local Tailwind builds."
-      code_label: "config.toml"
+      brand: "Snow"
+      title: "Build static sites from plain content"
+      description: "Single binary, Pongo2 templates, content parsing, assets, shortcodes and local preview in one workflow."
+      code_label: "config.yaml"
       code_lines: 
-        - "title = \"Snow Docs\""
-        - "build_search_index = true"
-        - "template = \"landing.html\""
+        - "title: \"My Blog\""
+        - "content_dir: \"content\""
+        - "hooks:"
+        - "  shortcode:"
+        - "    enabled: true"
       sidebar:
-        - label: "Advanced"
+        - label: "Getting Started"
           active: false
-        - label: "Guide"
+        - label: "Content"
           active: false
-        - label: "Advanced"
+        - label: "Templates"
           active: false
-        - label: "Nested Pages"
+        - label: "Hooks"
           active: true
-        - label: "Markdown Usage"
+        - label: "Configuration"
           active: false
       stats:
-        - label: "Local CSS"
-          value: "Tailwind 4"
-        - label: "Docs shell"
-          value: "Responsive"
+        - label: "Formats"
+          value: "MD / Org / HTML"
+        - label: "Runtime"
+          value: "Single binary"
 
 params.features:
-  - title: 开源
-    description: 软件的完整源代码托管在Github，你可以自由查看并使用，无需担心软件被植入后门
-    link: https://github.com/honmaple/maple-file
-  - title: 跨平台
-    description: 支持Web、Android、MacOS和Windows
-  - title: 多协议
-    description: 支持本地存储、S3、Webdav、FTP、SFTP、SMB、又拍云、Alist、Mirror、115、夸克网盘
-  - title: 文件操作和预览
-    description: 支持文件复制、移动、重命名、上传、下载，以及视频、音频、图片和文本文件的预览
-  - title: 文件加密和压缩
-    description: 保护隐私，通过AES加密技术避免你的文件被泄漏或被审查
-  - title: 文件同步和备份
-    description: 支持各存储之间的备份和同步
-  - title: 回收站
-    description: 文件误删除也能重新恢复
-  - title: 多语言
-    description: 支持中文、English
-  - title: 多主题
-    description: 支持多种颜色主题切换
+  - title: 单二进制
+    description: 使用 Go 编写，构建后就是一个 CLI 程序，适合本地预览、CI 构建和简单部署。
+  - title: 多内容格式
+    description: 支持 Markdown、Org-mode 和 HTML，内置 FrontMatter、摘要、目录和语法高亮处理。
+  - title: Pongo2 模板
+    description: 使用 Django/Jinja 风格模板语法，并提供页面、栏目、分类、i18n、数据加载等模板函数。
+  - title: 内容组织
+    description: 内置 Page、Section、Taxonomy、分页、多语言和自定义输出格式，覆盖博客和文档站常见结构。
+  - title: Hook 插件
+    description: 通过 assets、shortcode、encrypt、filter、rewrite、minify、snakecase 等 Hook 扩展构建流程。
+  - title: 开发预览
+    description: 提供本地开发服务器、文件监听和 WebSocket 热重载，便于边写内容边查看结果。
 
 params.intros:
-  - title: "Built for documentation that gets used."
-    description: "The homepage pulls positioning and feature content from Markdown front matter while the rest of the theme keeps the docs experience predictable."
+  - title: "为内容站点和技术文档准备的轻量工具。"
+    description: "Snow 把内容解析、模板渲染、静态资源处理和插件扩展放在同一条清晰的构建链路里，保持配置简单，也保留足够的定制空间。"
 ---
 
 Snow 是一个简洁的静态站点生成器，使用 Go 语言编写。

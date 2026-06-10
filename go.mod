@@ -14,6 +14,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/gosimple/slug v1.13.1
 	github.com/honmaple/org-golang v0.0.0-20231114033037-6fde0a6c226d
+	github.com/iancoleman/strcase v0.3.0
 	github.com/pelletier/go-toml/v2 v2.0.8
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/afero v1.8.2

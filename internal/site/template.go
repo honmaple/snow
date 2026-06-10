@@ -14,7 +14,7 @@ type ContentTemplate struct {
 func (t *ContentTemplate) Execute(vars map[string]any) (string, error) {
 	commonVars := map[string]any{
 		"pages":                 t.Pages(),
-		"hidden_pages":          t.Pages(),
+		"hidden_pages":          t.HiddenPages(),
 		"sections":              t.Sections(),
 		"taxonomies":            t.Taxonomies(),
 		"get_page":              t.GetPage,

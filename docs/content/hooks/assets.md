@@ -1,5 +1,6 @@
 ---
 title: "assets"
+weight: 20
 ---
 ## Assets
 
@@ -28,11 +29,13 @@ hooks:
 
 | 选项 | 说明 |
 |------|------|
-| `files` | 源文件 |
-| `filters` | 过滤器（`cssmin`、`jsmin`） |
-| `output` | 输出路径 |
+| `files` | 源文件，必填，支持 glob |
+| `filters` | 过滤器，可选值：`cssmin`、`jsmin`、`libscss` |
+| `output` | 输出路径，必填 |
 
 `.scss`/`.sass` 文件自动编译为 CSS。
+
+配置校验会在插件初始化时执行：缺少 `files`、缺少 `output` 或使用未知 `filters` 都会使构建失败。
 
 模板：
 

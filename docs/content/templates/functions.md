@@ -1,5 +1,6 @@
 ---
 title: "模板函数"
+weight: 10
 ---
 
 ## 内容获取函数
@@ -18,6 +19,11 @@ title: "模板函数"
 | `get_taxonomy_url(name, [lang])` | 获取分类绝对链接 |
 | `get_taxonomy_term(taxonomy, name, [lang])` | 获取分类项 |
 | `get_taxonomy_term_url(taxonomy, name, [lang])` | 获取分类项绝对链接 |
+| `dict(k, v, ...)` | 构造 map |
+| `slice(v, ...)` | 构造列表 |
+| `startsWith(s, prefix)` | 判断字符串前缀 |
+| `load_data(path, format)` | 从 `data/` 或 URL 加载数据 |
+| `newScratch()` | 创建临时模板存储 |
 
 ## 页面列表方法
 
@@ -55,6 +61,14 @@ title: "模板函数"
 {{ pages.Last() }}
 ```
 
+### Reverse / FilterBy / OrderBy
+
+```html
+{% for page in pages.Reverse() %}
+{% for page in pages.FilterBy("'go' in tags") %}
+{% for page in pages.OrderBy("weight asc, date desc") %}
+```
+
 ### Related
 
 获取相关（前/后）文章：
@@ -86,6 +100,13 @@ title: "模板函数"
 | `upper` | 转大写 | `{{ text \| upper }}` |
 | `split:sep` | 分割 | `{{ "a,b" \| split:"," }}` |
 | `encrypt:"pw"` | 加密 (需 hooks.encrypt) | `{{ page.Content \| encrypt:"123" }}` |
+| `markdown` | Markdown 转 HTML | `{{ text \| markdown }}` |
+| `org` | Org-mode 转 HTML | `{{ text \| org }}` |
+| `parser:"yaml"` | 解析 YAML/TOML/JSON 字符串 | `{{ text \| parser:"yaml" }}` |
+| `jsonify` | 转 JSON 字符串 | `{{ page.FrontMatter \| jsonify }}` |
+| `absURL` | 转绝对 URL | `{{ "posts/" \| absURL }}` |
+| `relURL` | 转相对 URL | `{{ "/posts/" \| relURL }}` |
+| `slient` | 丢弃输出，仅保留函数副作用 | `{{ scratch.Set("k", 1) \| slient }}` |
 
 Date 格式参考：
 
@@ -107,6 +128,32 @@ Date 格式参考：
 {{ config.GetString("params.my_key") }}
 ```
 
+`config` 在模板中是当前语言的配置快照。普通值可用点号访问，需要 viper 方法时可使用 `config.GetString(...)`。
+
+## Scratch
+
+```html
+{{ scratch.Set("count", 1) | slient }}
+{{ scratch.Add("count", 2) | slient }}
+{{ scratch.Get("count") }}
+
+{% set local = newScratch() %}
+{{ local.Set("items", slice("a")) | slient }}
+{{ local.Add("items", "b") | slient }}
+{{ local.JSON("items") }}
+```
+
+支持方法：`Set`、`Get`、`GetOrSet`、`Add`、`JSON`。
+
+## 数据加载
+
+```html
+{% set data = load_data("links.yaml", "yaml") %}
+{% set remote = load_data("https://example.com/data.json", "json") %}
+```
+
+本地路径从站点或主题的 `data/` 目录读取；`format` 支持 `yaml`、`json`，其他格式按字符串返回。读取失败时返回 `nil` 并记录 warn 日志。
+
 ## Assets 块
 
 ```html
@@ -119,7 +166,7 @@ Date 格式参考：
 {% endassets %}
 ```
 
-需在配置中启用 `hooks.assets`。
+需在配置中启用 `hooks.assets`。`filters` 可使用 `cssmin`、`jsmin`、`libscss`；未知过滤器会在插件初始化时报错。
 
 ## Shortcode
 

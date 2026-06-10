@@ -39,7 +39,7 @@ func SortSections(sections Sections, key string) {
 			return strings.Compare(sections[i].Title, sections[j].Title)
 		case "weight":
 			// 默认weight越小越在前
-			return 0 - utils.Compare(sections[i].FrontMatter.Get(k), sections[j].FrontMatter.Get(k))
+			return utils.Compare(sections[i].FrontMatter.Get(k), sections[j].FrontMatter.Get(k))
 		default:
 			return utils.Compare(sections[i].FrontMatter.Get(k), sections[j].FrontMatter.Get(k))
 		}
