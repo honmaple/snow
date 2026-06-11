@@ -17,9 +17,8 @@ import (
 )
 
 var allowedFilters = map[string]bool{
-	"libscss": true,
-	"cssmin":  true,
-	"jsmin":   true,
+	"cssmin": true,
+	"jsmin":  true,
 }
 
 type (
@@ -132,9 +131,10 @@ func New(ctx *core.Context) (hook.Hook, error) {
 		}
 
 		asset := &Asset{
-			Files:       conf.GetStringSlice("files"),
-			Output:      conf.GetString("output"),
-			ShowVersion: conf.GetBool("version"),
+			Files:        conf.GetStringSlice("files"),
+			SassCompiler: conf.GetString("sass_compiler"),
+			Output:       conf.GetString("output"),
+			ShowVersion:  conf.GetBool("show_version"),
 		}
 		if len(asset.Files) == 0 {
 			return nil, fmt.Errorf("hooks.assets.option.%s.files is required", name)
@@ -157,7 +157,12 @@ func New(ctx *core.Context) (hook.Hook, error) {
 		if err != nil {
 			return nil, fmt.Errorf("hooks.assets.option.%s.filters: %w", name, err)
 		}
+		compiler, err := normalizeSassCompiler(asset.SassCompiler)
+		if err != nil {
+			return nil, fmt.Errorf("hooks.assets.option.%s.sass_compiler: %w", name, err)
+		}
 		asset.Filters = filters
+		asset.SassCompiler = compiler
 		preAssetMap[name] = asset
 	}
 

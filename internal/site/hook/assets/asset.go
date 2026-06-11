@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	stdpath "path"
 
-	"github.com/bep/golibsass/libsass"
 	"github.com/honmaple/snow/internal/core"
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
@@ -14,23 +13,15 @@ import (
 )
 
 type Asset struct {
-	Files       []string
-	Filters     []string
-	Output      string
-	ShowVersion bool
-}
-
-func getFirstKey[K comparable, V any](m map[K]V) (key K, ok bool) {
-	for k := range m {
-		return k, true
-	}
-	return key, false
+	Files        []string
+	Filters      []string
+	SassCompiler string
+	Output       string
+	ShowVersion  bool
 }
 
 func (n *Asset) filter(name string, buf []byte) (result []byte, err error) {
 	switch name {
-	// case "libscss":
-	//	result = buf
 	case "cssmin":
 		result, err = n.cssmin(buf)
 	case "jsmin":
@@ -53,44 +44,6 @@ func (n *Asset) jsmin(buf []byte) ([]byte, error) {
 	return m.Bytes("js", buf)
 }
 
-func (n *Asset) libscss(assetsFS fs.FS, file string, buf []byte, opt map[string]any) ([]byte, error) {
-	dir := stdpath.Dir(file)
-
-	opts := libsass.Options{}
-	opts.ImportResolver = func(url string, prev string) (newURL string, body string, resolved bool) {
-		if stdpath.Ext(url) == "" {
-			urls := []string{
-				url + ".scss",
-				url + ".sass",
-				"_" + url + ".scss",
-				"_" + url + ".sass",
-			}
-			for _, u := range urls {
-				if _, err := fs.Stat(assetsFS, stdpath.Join(dir, u)); err == nil {
-					url = u
-					break
-				}
-			}
-		}
-		b, err := fs.ReadFile(assetsFS, stdpath.Join(dir, url))
-		if err != nil {
-			return url, "", false
-		}
-		return url, string(b), true
-	}
-
-	transpiler, err := libsass.New(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := transpiler.Execute(string(buf))
-	if err != nil {
-		return nil, err
-	}
-	return []byte(result.CSS), nil
-}
-
 func (n *Asset) Execute(ctx context.Context, assetsFS fs.FS, writer core.Writer) error {
 	var (
 		b bytes.Buffer
@@ -109,7 +62,7 @@ func (n *Asset) Execute(ctx context.Context, assetsFS fs.FS, writer core.Writer)
 			}
 			switch stdpath.Ext(matchedFile) {
 			case ".scss", ".sass":
-				result, err := n.libscss(assetsFS, matchedFile, buf, nil)
+				result, err := n.compileSass(assetsFS, matchedFile, buf)
 				if err != nil {
 					return err
 				}

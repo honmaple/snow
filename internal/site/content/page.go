@@ -311,10 +311,17 @@ func (d *Processor) ParsePageAssets(fullpath string, page *Page) (Assets, error)
 			return nil
 		}
 
+		relPath, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		relPath = filepath.ToSlash(relPath)
+
 		asset := &Asset{
 			File: path,
 		}
 		outputPath := d.resolvePagePath(page, customPath)
+		outputPath = assetOutputPath(outputPath, relPath)
 
 		asset.Path = lctx.GetRelURL(outputPath)
 		asset.Permalink = lctx.GetURL(asset.Path)
@@ -406,11 +413,11 @@ func (d *Processor) RenderPage(page *Page, tplset template.TemplateSet, writer c
 			}
 		}
 	}
-	// for _, asset := range page.Assets {
-	//	if err := r.renderAsset(asset); err != nil {
-	//		return err
-	//	}
-	// }
+	for _, asset := range page.Assets {
+		if err := d.RenderAsset(asset, writer); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

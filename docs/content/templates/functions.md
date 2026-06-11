@@ -161,12 +161,12 @@ Date 格式参考：
 <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
 {% endassets %}
 
-{% assets files="scss/style.scss" filters="cssmin" output="css/style.min.css" %}
+{% assets files="scss/style.scss" sass_compiler="dartsass" filters="cssmin" output="css/style.min.css" %}
 <link rel="stylesheet" href="{{ asset_url }}">
 {% endassets %}
 ```
 
-需在配置中启用 `hooks.assets`。`filters` 可使用 `cssmin`、`jsmin`、`libscss`；未知过滤器会在插件初始化时报错。
+需在配置中启用 `hooks.assets`。`sass_compiler` 可使用 `libscss`、`dartsass`，只影响 `.scss` / `.sass` 文件；`filters` 可使用 `cssmin`、`jsmin`，用于合并后的处理。`dartsass` 需要本机可执行文件 `sass` 在 `PATH` 中可用，并支持 `sass --embedded`。
 
 ## Shortcode
 

@@ -204,11 +204,23 @@ func (d *Processor) ParseSectionAssets(fullpath string, section *Section) Assets
 
 	assets := make(Assets, 0)
 	for _, file := range section.FrontMatter.GetStringSlice("assets") {
+		assetFile := file
+		assetPath := filepath.ToSlash(file)
+		if !filepath.IsAbs(assetFile) {
+			assetFile = filepath.Join(filepath.Dir(fullpath), filepath.FromSlash(file))
+		} else {
+			assetPath = filepath.Base(file)
+		}
+
 		asset := &Asset{
-			File: file,
+			File: assetFile,
 		}
 		customPath := section.FrontMatter.GetString("asset_path")
+		if customPath == "" {
+			customPath = section.FrontMatter.GetString("path")
+		}
 		outputPath := d.resolveSectionPath(section, customPath)
+		outputPath = assetOutputPath(outputPath, assetPath)
 		asset.Path = lctx.GetRelURL(outputPath)
 		asset.Permalink = lctx.GetURL(asset.Path)
 
@@ -295,10 +307,10 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 			}
 		}
 	}
-	// for _, asset := range section.Assets {
-	//	if err := r.renderAsset(asset); err != nil {
-	//		return err
-	//	}
-	// }
+	for _, asset := range section.Assets {
+		if err := d.RenderAsset(asset, writer); err != nil {
+			return err
+		}
+	}
 	return nil
 }

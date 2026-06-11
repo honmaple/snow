@@ -16,7 +16,7 @@ type assetNode struct {
 }
 
 func (n *assetNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) error {
-	var asset *Asset
+	asset := &Asset{}
 
 	if n.name != "" {
 		a, ok := n.hook.preAssetMap[n.name]
@@ -35,12 +35,24 @@ func (n *assetNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Template
 				asset.Files = strings.Split(val.String(), ",")
 			case "filters":
 				asset.Filters = strings.Split(val.String(), ",")
+			case "sass_compiler":
+				asset.SassCompiler = val.String()
 			case "output":
 				asset.Output = val.String()
 			case "version":
 				asset.ShowVersion = val.Bool()
 			}
 		}
+		filters, err := normalizeFilters(asset.Filters)
+		if err != nil {
+			return err
+		}
+		compiler, err := normalizeSassCompiler(asset.SassCompiler)
+		if err != nil {
+			return err
+		}
+		asset.Filters = filters
+		asset.SassCompiler = compiler
 	}
 
 	hash, err := n.hook.collectAsset(asset)
