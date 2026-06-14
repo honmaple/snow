@@ -166,7 +166,7 @@ Date 格式参考：
 {% endassets %}
 ```
 
-需在配置中启用 `hooks.assets`。`sass_compiler` 可使用 `libscss`、`dartsass`，只影响 `.scss` / `.sass` 文件；`filters` 可使用 `cssmin`、`jsmin`，用于合并后的处理。`dartsass` 需要本机可执行文件 `sass` 在 `PATH` 中可用，并支持 `sass --embedded`。
+需在配置中启用 `hooks.assets`。`sass_compiler` 可使用 `libscss`、`dartsass`，只影响 `.scss` / `.sass` 文件；模板内联 `filters` 支持字符串形式的 `cssmin`、`jsmin`，用于合并后的处理。带参数的 `image` filter 建议写在 `hooks.assets.option` 配置中。`dartsass` 需要本机可执行文件 `sass` 在 `PATH` 中可用，并支持 `sass --embedded`。
 
 ## Shortcode
 

@@ -5,21 +5,13 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"reflect"
-	"strings"
 	"sync"
 
 	"context"
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/hook"
 	"github.com/honmaple/snow/internal/site/template"
-	"github.com/spf13/cast"
 )
-
-var allowedFilters = map[string]bool{
-	"cssmin": true,
-	"jsmin":  true,
-}
 
 type (
 	AssetsHook struct {
@@ -102,21 +94,6 @@ func (h *AssetsHook) HandleTemplateSet(set template.TemplateSet) (template.Templ
 	return set, nil
 }
 
-func normalizeFilters(filters []string) ([]string, error) {
-	results := make([]string, 0, len(filters))
-	for _, filter := range filters {
-		filter = strings.TrimSpace(filter)
-		if filter == "" {
-			continue
-		}
-		if !allowedFilters[filter] {
-			return nil, fmt.Errorf("unknown assets filter %q", filter)
-		}
-		results = append(results, filter)
-	}
-	return results, nil
-}
-
 func New(ctx *core.Context) (hook.Hook, error) {
 	assetsFS, err := ctx.GetFS("assets", false)
 	if err != nil {
@@ -131,10 +108,9 @@ func New(ctx *core.Context) (hook.Hook, error) {
 		}
 
 		asset := &Asset{
-			Files:        conf.GetStringSlice("files"),
-			SassCompiler: conf.GetString("sass_compiler"),
-			Output:       conf.GetString("output"),
-			ShowVersion:  conf.GetBool("show_version"),
+			Files:       conf.GetStringSlice("files"),
+			Output:      conf.GetString("output"),
+			ShowVersion: conf.GetBool("show_version"),
 		}
 		if len(asset.Files) == 0 {
 			return nil, fmt.Errorf("hooks.assets.option.%s.files is required", name)
@@ -142,22 +118,11 @@ func New(ctx *core.Context) (hook.Hook, error) {
 		if asset.Output == "" {
 			return nil, fmt.Errorf("hooks.assets.option.%s.output is required", name)
 		}
-		if m := conf.Get("filters"); m != nil {
-			switch reflect.TypeOf(m).Kind() {
-			case reflect.Slice:
-				// - libsass
-				// - cssmin
-				asset.Filters = cast.ToStringSlice(m)
-			case reflect.String:
-				// libcass,css
-				asset.Filters = strings.Split(m.(string), ",")
-			}
-		}
-		filters, err := normalizeFilters(asset.Filters)
+		filters, err := normalizeFilters(withImageFormatOption(conf.Get("filters"), asset.Output))
 		if err != nil {
 			return nil, fmt.Errorf("hooks.assets.option.%s.filters: %w", name, err)
 		}
-		compiler, err := normalizeSassCompiler(asset.SassCompiler)
+		compiler, err := normalizeSassCompiler(conf.GetString("sass_compiler"))
 		if err != nil {
 			return nil, fmt.Errorf("hooks.assets.option.%s.sass_compiler: %w", name, err)
 		}

@@ -25,6 +25,8 @@ func (n *assetNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Template
 		}
 		asset = a
 	} else {
+		var rawFilters string
+		var sassCompiler string
 		for key, value := range n.pairs {
 			val, err := value.Evaluate(ctx)
 			if err != nil {
@@ -34,25 +36,25 @@ func (n *assetNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Template
 			case "files":
 				asset.Files = strings.Split(val.String(), ",")
 			case "filters":
-				asset.Filters = strings.Split(val.String(), ",")
+				rawFilters = val.String()
 			case "sass_compiler":
-				asset.SassCompiler = val.String()
+				sassCompiler = val.String()
 			case "output":
 				asset.Output = val.String()
 			case "version":
 				asset.ShowVersion = val.Bool()
 			}
 		}
-		filters, err := normalizeFilters(asset.Filters)
+		compiler, err := normalizeSassCompiler(sassCompiler)
 		if err != nil {
 			return err
 		}
-		compiler, err := normalizeSassCompiler(asset.SassCompiler)
+		asset.SassCompiler = compiler
+		filters, err := normalizeFilters(withImageFormatOption(rawFilters, asset.Output))
 		if err != nil {
 			return err
 		}
 		asset.Filters = filters
-		asset.SassCompiler = compiler
 	}
 
 	hash, err := n.hook.collectAsset(asset)
@@ -99,7 +101,7 @@ func (h *AssetsHook) assetsTagParser(doc *pongo2.Parser, start *pongo2.Token, ar
 		return node, nil
 	}
 
-	// {% assets files="css/style.scss" filters="libsass,cssmin" output="css/style.min.css" %}
+	// {% assets files="css/style.scss" filters="cssmin" output="css/style.min.css" %}
 	//   <link rel="stylesheet" href="{{ config.base_url }}/{{ asset_url }}">
 	// {% endassets %}
 	for arguments.Remaining() > 0 {

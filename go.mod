@@ -8,6 +8,7 @@ require (
 	github.com/bep/godartsass/v2 v2.5.0
 	github.com/bep/golibsass v1.1.1
 	github.com/bmatcuk/doublestar/v4 v4.10.0
+	github.com/disintegration/imaging v1.6.2
 	github.com/expr-lang/expr v1.17.8
 	github.com/flosch/pongo2/v7 v7.0.0-alpha.1
 	github.com/fsnotify/fsnotify v1.10.1
@@ -45,6 +46,7 @@ require (
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/tdewolff/parse/v2 v2.6.4 // indirect
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
+	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
 	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	google.golang.org/protobuf v1.35.2 // indirect

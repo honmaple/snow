@@ -12,13 +12,14 @@ type (
 		File        *File
 		FrontMatter *FrontMatter
 
-		Toc        []*Heading
-		Lang       string
-		Slug       string
-		Title      string
-		Summary    string
-		Content    string
-		RawContent string
+		Toc         []*Heading
+		Lang        string
+		Slug        string
+		Title       string
+		Summary     string
+		Content     string
+		RawContent  string
+		Description string
 	}
 	Heading = parser.Heading
 )
@@ -65,6 +66,7 @@ func (d *Processor) parseNode(fullpath string) (*Node, error) {
 		Lang:        lang,
 		Slug:        fm.GetString("slug"),
 		Title:       fm.GetString("title"),
+		Description: fm.GetString("description"),
 		Content:     result.Content,
 		Summary:     result.Summary,
 		Toc:         result.Toc,

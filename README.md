@@ -124,7 +124,7 @@ assets(enabled), encrypt(enabled), shortcode(enabled), filter, minify, pelican, 
 
 ## 文档
 
-完整文档参照 [docs/](docs/) 目录，或在线访问 [https://snow.honmaple.com](https://snow.honmaple.me)。
+完整文档参照 [docs/](docs/) 目录，或在线访问 [https://docs.honmaple.com/snow/](https://docs.honmaple.com/snow)。
 
 ## License
 
