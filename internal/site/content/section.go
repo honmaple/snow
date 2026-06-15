@@ -30,6 +30,10 @@ type (
 	Sections []*Section
 )
 
+func (sec *Section) IsHome() bool {
+	return sec.File.Dir == ""
+}
+
 func SortSections(sections Sections, key string) {
 	sort.SliceStable(sections, utils.Sort(key, func(k string, i int, j int) int {
 		switch k {
@@ -176,14 +180,14 @@ func (d *Processor) ParseSection(fullpath string) (*Section, error) {
 		Children:    make(Sections, 0),
 	}
 	if section.Title == "" {
-		if section.File.Dir == "" {
+		if section.IsHome() {
 			section.Title = "index"
 		} else {
 			section.Title = stdpath.Base(section.File.Dir)
 		}
 	}
 	if section.Slug == "" {
-		if section.File.Dir == "" {
+		if section.IsHome() {
 			section.Slug = "index"
 		} else {
 			section.Slug = lctx.GetSlug(stdpath.Base(section.File.Dir))
@@ -260,7 +264,7 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 		"section.html",
 	}
 	// 首页content/_index.md
-	if section.File.Dir == "" {
+	if section.IsHome() {
 		lookups = []string{
 			customTemplate,
 			"index.html",

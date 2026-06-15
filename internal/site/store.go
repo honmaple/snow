@@ -234,7 +234,7 @@ func (d *ContentStore) insertSection(section *content.Section) {
 		set = newSet[*content.Section]()
 		d.sections[section.Lang] = set
 	}
-	if section.File.Dir == "" {
+	if section.IsHome() {
 		set.Add("/", section)
 	} else {
 		set.Add(section.File.Dir, section)
