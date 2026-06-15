@@ -190,43 +190,37 @@ func (d *Processor) ParseSection(fullpath string) (*Section, error) {
 		}
 	}
 
-	section.Assets = d.ParseSectionAssets(fullpath, section)
-	section.Formats = d.ParseSectionFormats(section)
-
-	customPath := d.resolveSectionPath(section, section.FrontMatter.GetString("path"))
-	section.Path = lctx.GetRelURL(customPath)
+	section.Path = lctx.GetRelURL(d.resolveSectionPath(section, section.FrontMatter.GetString("path")))
 	section.Permalink = lctx.GetURL(section.Path)
+
+	assets, err := d.ParseSectionAssets(fullpath, section)
+	if err != nil {
+		return nil, err
+	}
+	section.Assets = assets
+	section.Formats = d.ParseSectionFormats(section)
 	return section, nil
 }
 
-func (d *Processor) ParseSectionAssets(fullpath string, section *Section) Assets {
+func (d *Processor) ParseSectionAssets(fullpath string, section *Section) (Assets, error) {
 	lctx := d.ctx.For(section.Lang)
 
 	assets := make(Assets, 0)
 	for _, file := range section.FrontMatter.GetStringSlice("assets") {
-		assetFile := file
 		assetPath := filepath.ToSlash(file)
-		if !filepath.IsAbs(assetFile) {
-			assetFile = filepath.Join(filepath.Dir(fullpath), filepath.FromSlash(file))
-		} else {
-			assetPath = filepath.Base(file)
+		if err := d.validateAssetPath(file, assetPath); err != nil {
+			return nil, err
 		}
 
 		asset := &Asset{
-			File: assetFile,
+			File: filepath.Join(filepath.Dir(fullpath), filepath.FromSlash(file)),
 		}
-		customPath := section.FrontMatter.GetString("asset_path")
-		if customPath == "" {
-			customPath = section.FrontMatter.GetString("path")
-		}
-		outputPath := d.resolveSectionPath(section, customPath)
-		outputPath = assetOutputPath(outputPath, assetPath)
-		asset.Path = lctx.GetRelURL(outputPath)
+		asset.Path = lctx.GetRelURL(d.resolveAssetPath(section.Path, assetPath))
 		asset.Permalink = lctx.GetURL(asset.Path)
 
 		assets = append(assets, asset)
 	}
-	return assets
+	return assets, nil
 }
 
 func (d *Processor) ParseSectionFormats(section *Section) Formats {

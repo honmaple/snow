@@ -46,11 +46,11 @@ template: "custom-section.html"
 | `paginate_filter_by` | string | 分页前过滤 |
 | `render` | bool | 是否渲染，`false` 跳过 |
 | `assets` | []string | 附属资源文件 |
-| `asset_path` | string | 附属资源输出路径 |
 | `formats.{name}.path` | string | 格式输出路径 |
 | `formats.{name}.template` | string | 格式输出模板 |
 
 注意：`title` 留空时自动取目录名，根 Section 默认为 `index`。
+`assets` 中的文件路径必须是相对当前 Section 目录的干净路径，不能使用绝对路径、`./` 或 `../`。附属资源会根据栏目最终的 `section.Path` 输出；如果 `section.Path` 是 `/blog.html`，则 `cover.png` 输出到 `/cover.png`，`media/cover.png` 输出到 `/media/cover.png`。
 
 ## 配置
 

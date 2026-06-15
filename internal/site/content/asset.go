@@ -2,8 +2,10 @@ package content
 
 import (
 	"context"
+	"fmt"
 	"os"
 	stdpath "path"
+	"path/filepath"
 	"strings"
 
 	"github.com/honmaple/snow/internal/core"
@@ -18,12 +20,29 @@ type (
 	Assets []*Asset
 )
 
-func assetOutputPath(basePath string, assetPath string) string {
-	if !strings.HasSuffix(basePath, "/") {
-		ext := stdpath.Ext(basePath)
-		if ext != "" {
-			basePath = strings.TrimSuffix(basePath, ext)
+func (d *Processor) validateAssetPath(file string, assetPath string) error {
+	if filepath.IsAbs(file) {
+		return &core.Error{
+			Op:   "parse content asset",
+			Err:  fmt.Errorf("absolute asset path is not allowed"),
+			Path: file,
 		}
+	}
+	cleanPath := filepath.Clean(file)
+	if filepath.ToSlash(cleanPath) != assetPath ||
+		strings.HasPrefix(cleanPath, "..") {
+		return &core.Error{
+			Op:   "parse content asset",
+			Err:  fmt.Errorf("asset path must be a clean relative path"),
+			Path: file,
+		}
+	}
+	return nil
+}
+
+func (d *Processor) resolveAssetPath(basePath string, assetPath string) string {
+	if !strings.HasSuffix(basePath, "/") {
+		basePath = stdpath.Dir(basePath)
 	}
 	return stdpath.Join(basePath, assetPath)
 }

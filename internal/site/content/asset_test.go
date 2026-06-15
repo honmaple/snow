@@ -71,23 +71,20 @@ func TestRenderPageBundleAssetsCopiesFiles(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(bundleDir, "images", "cover.txt"), []byte("cover"), 0644))
 
 	processor := newAssetTestProcessor(t, root, &parser.Result{
-		FrontMatter: map[string]any{
-			"asset_path": "assets/{path}",
-		},
 		Content: "<p>Hello</p>",
 	})
 	page, err := processor.ParsePage(filepath.Join(bundleDir, "index.md"), true)
 	require.NoError(t, err)
 
 	assert.Len(t, page.Assets, 1)
-	assert.Equal(t, "/assets/posts/hello/images/cover.txt", page.Assets[0].Path)
+	assert.Equal(t, "/posts/hello/index/images/cover.txt", page.Assets[0].Path)
 
 	w := writer.NewMemoryWriter()
 	require.NoError(t, processor.RenderPage(page, assetTestTemplateSet{}, w))
-	assert.Equal(t, "cover", readMemoryFile(t, w, "/assets/posts/hello/images/cover.txt"))
+	assert.Equal(t, "cover", readMemoryFile(t, w, "/posts/hello/index/images/cover.txt"))
 }
 
-func TestPageBundleAssetsUseDirectoryForHTMLAssetPath(t *testing.T) {
+func TestPageBundleAssetsUseDirectoryForHTMLPath(t *testing.T) {
 	root := t.TempDir()
 	bundleDir := filepath.Join(root, "content", "posts", "hello")
 	require.NoError(t, os.MkdirAll(filepath.Join(bundleDir, "images"), 0755))
@@ -96,7 +93,7 @@ func TestPageBundleAssetsUseDirectoryForHTMLAssetPath(t *testing.T) {
 
 	processor := newAssetTestProcessor(t, root, &parser.Result{
 		FrontMatter: map[string]any{
-			"asset_path": "assets/{path}.html",
+			"path": "{path}.html",
 		},
 		Content: "<p>Hello</p>",
 	})
@@ -104,11 +101,59 @@ func TestPageBundleAssetsUseDirectoryForHTMLAssetPath(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, page.Assets, 1)
-	assert.Equal(t, "/assets/posts/hello/images/cover.txt", page.Assets[0].Path)
+	assert.Equal(t, "/posts/images/cover.txt", page.Assets[0].Path)
 
 	w := writer.NewMemoryWriter()
 	require.NoError(t, processor.RenderPage(page, assetTestTemplateSet{}, w))
-	assert.Equal(t, "cover", readMemoryFile(t, w, "/assets/posts/hello/images/cover.txt"))
+	assert.Equal(t, "cover", readMemoryFile(t, w, "/posts/images/cover.txt"))
+}
+
+func TestPageBundleAssetsUseFrontMatterAssetsWhenConfigured(t *testing.T) {
+	root := t.TempDir()
+	bundleDir := filepath.Join(root, "content", "posts", "hello")
+	require.NoError(t, os.MkdirAll(filepath.Join(bundleDir, "images"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(bundleDir, "index.md"), []byte("# Hello"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(bundleDir, "cover.txt"), []byte("cover"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(bundleDir, "images", "banner.txt"), []byte("banner"), 0644))
+
+	processor := newAssetTestProcessor(t, root, &parser.Result{
+		FrontMatter: map[string]any{
+			"assets": []string{"images/banner.txt"},
+		},
+		Content: "<p>Hello</p>",
+	})
+	page, err := processor.ParsePage(filepath.Join(bundleDir, "index.md"), true)
+	require.NoError(t, err)
+
+	require.Len(t, page.Assets, 1)
+	assert.Equal(t, filepath.Join(bundleDir, "images", "banner.txt"), page.Assets[0].File)
+	assert.Equal(t, "/posts/hello/index/images/banner.txt", page.Assets[0].Path)
+
+	w := writer.NewMemoryWriter()
+	require.NoError(t, processor.RenderPage(page, assetTestTemplateSet{}, w))
+	assert.Equal(t, "banner", readMemoryFile(t, w, "/posts/hello/index/images/banner.txt"))
+	_, err = w.Open("/posts/hello/index/cover.txt")
+	assert.Error(t, err)
+}
+
+func TestPageBundleAssetsRejectUncleanRelativePath(t *testing.T) {
+	root := t.TempDir()
+	bundleDir := filepath.Join(root, "content", "posts", "hello")
+	require.NoError(t, os.MkdirAll(bundleDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(bundleDir, "index.md"), []byte("# Hello"), 0644))
+
+	processor := newAssetTestProcessor(t, root, &parser.Result{
+		FrontMatter: map[string]any{
+			"assets": []string{"../cover.txt"},
+		},
+		Content: "<p>Hello</p>",
+	})
+	page, err := processor.ParsePage(filepath.Join(bundleDir, "index.md"), true)
+
+	require.Error(t, err)
+	assert.Nil(t, page)
+	assert.Contains(t, err.Error(), "asset path must be a clean relative path")
+	assert.Contains(t, err.Error(), "../cover.txt")
 }
 
 func TestRenderSectionAssetsCopiesFilesRelativeToSection(t *testing.T) {
@@ -121,8 +166,7 @@ func TestRenderSectionAssetsCopiesFilesRelativeToSection(t *testing.T) {
 
 	processor := newAssetTestProcessor(t, root, &parser.Result{
 		FrontMatter: map[string]any{
-			"assets":     []string{"cover.txt", "images/banner.txt"},
-			"asset_path": "{path}/media",
+			"assets": []string{"cover.txt", "images/banner.txt"},
 		},
 		Content: "<p>Blog</p>",
 	})
@@ -131,14 +175,14 @@ func TestRenderSectionAssetsCopiesFilesRelativeToSection(t *testing.T) {
 
 	require.Len(t, section.Assets, 2)
 	assert.Equal(t, filepath.Join(sectionDir, "cover.txt"), section.Assets[0].File)
-	assert.Equal(t, "/blog/media/cover.txt", section.Assets[0].Path)
+	assert.Equal(t, "/blog/cover.txt", section.Assets[0].Path)
 	assert.Equal(t, filepath.Join(sectionDir, "images", "banner.txt"), section.Assets[1].File)
-	assert.Equal(t, "/blog/media/images/banner.txt", section.Assets[1].Path)
+	assert.Equal(t, "/blog/images/banner.txt", section.Assets[1].Path)
 
 	w := writer.NewMemoryWriter()
 	require.NoError(t, processor.RenderSection(section, assetTestTemplateSet{}, w))
-	assert.Equal(t, "cover", readMemoryFile(t, w, "/blog/media/cover.txt"))
-	assert.Equal(t, "banner", readMemoryFile(t, w, "/blog/media/images/banner.txt"))
+	assert.Equal(t, "cover", readMemoryFile(t, w, "/blog/cover.txt"))
+	assert.Equal(t, "banner", readMemoryFile(t, w, "/blog/images/banner.txt"))
 }
 
 func TestSectionAssetsUseDirectoryForHTMLPath(t *testing.T) {
@@ -159,9 +203,61 @@ func TestSectionAssetsUseDirectoryForHTMLPath(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, section.Assets, 1)
-	assert.Equal(t, "/blog/cover.txt", section.Assets[0].Path)
+	assert.Equal(t, "/cover.txt", section.Assets[0].Path)
 
 	w := writer.NewMemoryWriter()
 	require.NoError(t, processor.RenderSection(section, assetTestTemplateSet{}, w))
-	assert.Equal(t, "cover", readMemoryFile(t, w, "/blog/cover.txt"))
+	assert.Equal(t, "cover", readMemoryFile(t, w, "/cover.txt"))
+}
+
+func TestSectionAssetsRejectAbsolutePath(t *testing.T) {
+	root := t.TempDir()
+	sectionDir := filepath.Join(root, "content", "blog")
+	require.NoError(t, os.MkdirAll(sectionDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(sectionDir, "_index.md"), []byte("# Blog"), 0644))
+
+	absoluteAsset := filepath.Join(root, "cover.txt")
+	processor := newAssetTestProcessor(t, root, &parser.Result{
+		FrontMatter: map[string]any{
+			"assets": []string{absoluteAsset},
+		},
+		Content: "<p>Blog</p>",
+	})
+	section, err := processor.ParseSection(filepath.Join(sectionDir, "_index.md"))
+
+	require.Error(t, err)
+	assert.Nil(t, section)
+	assert.Contains(t, err.Error(), "absolute asset path is not allowed")
+	assert.Contains(t, err.Error(), absoluteAsset)
+}
+
+func TestSectionAssetsRejectUncleanRelativePath(t *testing.T) {
+	tests := []string{
+		"./cover.txt",
+		"../cover.txt",
+		"images/./cover.txt",
+		"images/../cover.txt",
+	}
+
+	for _, tt := range tests {
+		t.Run(tt, func(t *testing.T) {
+			root := t.TempDir()
+			sectionDir := filepath.Join(root, "content", "blog")
+			require.NoError(t, os.MkdirAll(sectionDir, 0755))
+			require.NoError(t, os.WriteFile(filepath.Join(sectionDir, "_index.md"), []byte("# Blog"), 0644))
+
+			processor := newAssetTestProcessor(t, root, &parser.Result{
+				FrontMatter: map[string]any{
+					"assets": []string{tt},
+				},
+				Content: "<p>Blog</p>",
+			})
+			section, err := processor.ParseSection(filepath.Join(sectionDir, "_index.md"))
+
+			require.Error(t, err)
+			assert.Nil(t, section)
+			assert.Contains(t, err.Error(), "asset path must be a clean relative path")
+			assert.Contains(t, err.Error(), tt)
+		})
+	}
 }

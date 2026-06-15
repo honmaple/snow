@@ -1,7 +1,6 @@
 package content
 
 import (
-	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -271,6 +270,9 @@ func (d *Processor) ParsePage(fullpath string, isBundle bool) (*Page, error) {
 		page.Modified = page.Date
 	}
 
+	page.Path = lctx.GetRelURL(d.resolvePagePath(page, page.FrontMatter.GetString("path")))
+	page.Permalink = lctx.GetURL(page.Path)
+
 	// 添加附属资源
 	if isBundle {
 		assets, err := d.ParsePageAssets(fullpath, page)
@@ -280,15 +282,6 @@ func (d *Processor) ParsePage(fullpath string, isBundle bool) (*Page, error) {
 		page.Assets = assets
 	}
 
-	sectionPath := page.File.Dir
-	if isBundle {
-		sectionPath = stdpath.Dir(sectionPath)
-	}
-
-	customPath := d.resolvePagePath(page, page.FrontMatter.GetString("path"))
-
-	page.Path = lctx.GetRelURL(customPath)
-	page.Permalink = lctx.GetURL(page.Path)
 	page.Formats = d.ParsePageFormats(page)
 	return page, nil
 }
@@ -296,13 +289,27 @@ func (d *Processor) ParsePage(fullpath string, isBundle bool) (*Page, error) {
 func (d *Processor) ParsePageAssets(fullpath string, page *Page) (Assets, error) {
 	lctx := d.ctx.For(page.Lang)
 
-	customPath := page.FrontMatter.GetString("asset_path")
-	if customPath == "" || customPath == "none" {
-		return nil, nil
-	}
 	assets := make(Assets, 0)
-
 	root := filepath.Dir(fullpath)
+
+	if files := page.FrontMatter.GetStringSlice("assets"); len(files) > 0 {
+		for _, file := range files {
+			assetPath := filepath.ToSlash(file)
+			if err := d.validateAssetPath(file, assetPath); err != nil {
+				return nil, err
+			}
+
+			asset := &Asset{
+				File: filepath.Join(root, filepath.FromSlash(file)),
+			}
+			asset.Path = lctx.GetRelURL(d.resolveAssetPath(page.Path, assetPath))
+			asset.Permalink = lctx.GetURL(asset.Path)
+
+			assets = append(assets, asset)
+		}
+		return assets, nil
+	}
+
 	if err := filepath.WalkDir(root, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -320,10 +327,7 @@ func (d *Processor) ParsePageAssets(fullpath string, page *Page) (Assets, error)
 		asset := &Asset{
 			File: path,
 		}
-		outputPath := d.resolvePagePath(page, customPath)
-		outputPath = assetOutputPath(outputPath, relPath)
-
-		asset.Path = lctx.GetRelURL(outputPath)
+		asset.Path = lctx.GetRelURL(d.resolveAssetPath(page.Path, relPath))
 		asset.Permalink = lctx.GetURL(asset.Path)
 
 		assets = append(assets, asset)
@@ -416,51 +420,6 @@ func (d *Processor) RenderPage(page *Page, tplset template.TemplateSet, writer c
 	for _, asset := range page.Assets {
 		if err := d.RenderAsset(asset, writer); err != nil {
 			return err
-		}
-	}
-	return nil
-}
-
-func (d *Processor) RenderTemplate(path string, tpl template.Template, vars map[string]any, writer core.Writer) error {
-	if path == "" {
-		return nil
-	}
-	// 支持uglyurls和非uglyurls形式
-	if strings.HasSuffix(path, "/") {
-		path = path + "index.html"
-	}
-
-	lang := d.ctx.GetDefaultLanguage()
-	if l, ok := vars["current_lang"]; ok {
-		lang = l.(string)
-	}
-	lctx := d.ctx.For(lang)
-
-	commonVars := map[string]any{
-		"current_url":      lctx.GetURL(path),
-		"current_path":     path,
-		"current_lang":     lang,
-		"current_template": tpl.Name(),
-	}
-	for k, v := range commonVars {
-		if _, ok := vars[k]; !ok {
-			vars[k] = v
-		}
-	}
-
-	result, err := tpl.Execute(vars)
-	if err != nil {
-		return &core.Error{
-			Op:   "execute tpl",
-			Err:  err,
-			Path: tpl.Name(),
-		}
-	}
-	if err := writer.WriteFile(context.TODO(), path, strings.NewReader(result)); err != nil {
-		return &core.Error{
-			Op:   "write tpl",
-			Err:  err,
-			Path: path,
 		}
 	}
 	return nil

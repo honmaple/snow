@@ -1,6 +1,7 @@
 package content
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content/parser"
+	"github.com/honmaple/snow/internal/site/template"
 )
 
 var (
@@ -65,6 +67,51 @@ func (d *Processor) findIndexFiles(fullpath string, prefix string) []string {
 		}
 	}
 	return results
+}
+
+func (d *Processor) RenderTemplate(path string, tpl template.Template, vars map[string]any, writer core.Writer) error {
+	if path == "" {
+		return nil
+	}
+	// 支持uglyurls和非uglyurls形式
+	if strings.HasSuffix(path, "/") {
+		path = path + "index.html"
+	}
+
+	lang := d.ctx.GetDefaultLanguage()
+	if l, ok := vars["current_lang"]; ok {
+		lang = l.(string)
+	}
+	lctx := d.ctx.For(lang)
+
+	commonVars := map[string]any{
+		"current_url":      lctx.GetURL(path),
+		"current_path":     path,
+		"current_lang":     lang,
+		"current_template": tpl.Name(),
+	}
+	for k, v := range commonVars {
+		if _, ok := vars[k]; !ok {
+			vars[k] = v
+		}
+	}
+
+	result, err := tpl.Execute(vars)
+	if err != nil {
+		return &core.Error{
+			Op:   "execute tpl",
+			Err:  err,
+			Path: tpl.Name(),
+		}
+	}
+	if err := writer.WriteFile(context.TODO(), path, strings.NewReader(result)); err != nil {
+		return &core.Error{
+			Op:   "write tpl",
+			Err:  err,
+			Path: path,
+		}
+	}
+	return nil
 }
 
 func WithParser(p parser.Parser) ProcessorOption {
