@@ -293,14 +293,13 @@ func (d *Processor) ParsePageAssets(fullpath string, page *Page) (Assets, error)
 	root := filepath.Dir(fullpath)
 
 	if files := page.FrontMatter.GetStringSlice("assets"); len(files) > 0 {
-		for _, file := range files {
-			assetPath := filepath.ToSlash(file)
-			if err := d.validateAssetPath(file, assetPath); err != nil {
-				return nil, err
-			}
-
+		assetPaths, err := d.parseAssetPaths(root, files)
+		if err != nil {
+			return nil, err
+		}
+		for _, assetPath := range assetPaths {
 			asset := &Asset{
-				File: filepath.Join(root, filepath.FromSlash(file)),
+				File: filepath.Join(root, filepath.FromSlash(assetPath)),
 			}
 			asset.Path = lctx.GetRelURL(d.resolveAssetPath(page.Path, assetPath))
 			asset.Permalink = lctx.GetURL(asset.Path)

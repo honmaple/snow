@@ -3,11 +3,13 @@ package content
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	stdpath "path"
 	"path/filepath"
 	"strings"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/honmaple/snow/internal/core"
 )
 
@@ -38,6 +40,42 @@ func (d *Processor) validateAssetPath(file string, assetPath string) error {
 		}
 	}
 	return nil
+}
+
+func (d *Processor) parseAssetPaths(root string, files []string) ([]string, error) {
+	rootFS := os.DirFS(root)
+
+	assetPaths := make([]string, 0)
+	for _, file := range files {
+		assetPath := filepath.ToSlash(file)
+		if err := d.validateAssetPath(file, assetPath); err != nil {
+			return nil, err
+		}
+
+		matches, err := doublestar.Glob(rootFS, assetPath)
+		if err != nil {
+			return nil, &core.Error{
+				Op:   "parse content asset",
+				Err:  err,
+				Path: file,
+			}
+		}
+		for _, match := range matches {
+			info, err := fs.Stat(rootFS, match)
+			if err != nil {
+				return nil, &core.Error{
+					Op:   "parse content asset",
+					Err:  err,
+					Path: match,
+				}
+			}
+			if info.IsDir() {
+				continue
+			}
+			assetPaths = append(assetPaths, match)
+		}
+	}
+	return assetPaths, nil
 }
 
 func (d *Processor) resolveAssetPath(basePath string, assetPath string) string {

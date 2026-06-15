@@ -136,6 +136,33 @@ func TestPageBundleAssetsUseFrontMatterAssetsWhenConfigured(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestPageBundleAssetsSupportGlob(t *testing.T) {
+	root := t.TempDir()
+	bundleDir := filepath.Join(root, "content", "posts", "hello")
+	require.NoError(t, os.MkdirAll(filepath.Join(bundleDir, "images"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(bundleDir, "images", "nested"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(bundleDir, "index.md"), []byte("# Hello"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(bundleDir, "cover.txt"), []byte("cover"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(bundleDir, "images", "banner.txt"), []byte("banner"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(bundleDir, "images", "nested", "thumb.txt"), []byte("thumb"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(bundleDir, "images", "ignored.png"), []byte("ignored"), 0644))
+
+	processor := newAssetTestProcessor(t, root, &parser.Result{
+		FrontMatter: map[string]any{
+			"assets": []string{"images/**/*.txt"},
+		},
+		Content: "<p>Hello</p>",
+	})
+	page, err := processor.ParsePage(filepath.Join(bundleDir, "index.md"), true)
+	require.NoError(t, err)
+
+	require.Len(t, page.Assets, 2)
+	assert.Equal(t, filepath.Join(bundleDir, "images", "banner.txt"), page.Assets[0].File)
+	assert.Equal(t, "/posts/hello/index/images/banner.txt", page.Assets[0].Path)
+	assert.Equal(t, filepath.Join(bundleDir, "images", "nested", "thumb.txt"), page.Assets[1].File)
+	assert.Equal(t, "/posts/hello/index/images/nested/thumb.txt", page.Assets[1].Path)
+}
+
 func TestPageBundleAssetsRejectUncleanRelativePath(t *testing.T) {
 	root := t.TempDir()
 	bundleDir := filepath.Join(root, "content", "posts", "hello")
@@ -183,6 +210,35 @@ func TestRenderSectionAssetsCopiesFilesRelativeToSection(t *testing.T) {
 	require.NoError(t, processor.RenderSection(section, assetTestTemplateSet{}, w))
 	assert.Equal(t, "cover", readMemoryFile(t, w, "/blog/cover.txt"))
 	assert.Equal(t, "banner", readMemoryFile(t, w, "/blog/images/banner.txt"))
+}
+
+func TestSectionAssetsSupportGlob(t *testing.T) {
+	root := t.TempDir()
+	sectionDir := filepath.Join(root, "content", "blog")
+	require.NoError(t, os.MkdirAll(filepath.Join(sectionDir, "images"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(sectionDir, "images", "nested"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(sectionDir, "_index.md"), []byte("# Blog"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(sectionDir, "cover.txt"), []byte("cover"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(sectionDir, "images", "banner.txt"), []byte("banner"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(sectionDir, "images", "nested", "thumb.txt"), []byte("thumb"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(sectionDir, "images", "ignored.png"), []byte("ignored"), 0644))
+
+	processor := newAssetTestProcessor(t, root, &parser.Result{
+		FrontMatter: map[string]any{
+			"assets": []string{"images/**"},
+		},
+		Content: "<p>Blog</p>",
+	})
+	section, err := processor.ParseSection(filepath.Join(sectionDir, "_index.md"))
+	require.NoError(t, err)
+
+	require.Len(t, section.Assets, 3)
+	assert.Equal(t, filepath.Join(sectionDir, "images", "banner.txt"), section.Assets[0].File)
+	assert.Equal(t, "/blog/images/banner.txt", section.Assets[0].Path)
+	assert.Equal(t, filepath.Join(sectionDir, "images", "ignored.png"), section.Assets[1].File)
+	assert.Equal(t, "/blog/images/ignored.png", section.Assets[1].Path)
+	assert.Equal(t, filepath.Join(sectionDir, "images", "nested", "thumb.txt"), section.Assets[2].File)
+	assert.Equal(t, "/blog/images/nested/thumb.txt", section.Assets[2].Path)
 }
 
 func TestSectionAssetsUseDirectoryForHTMLPath(t *testing.T) {

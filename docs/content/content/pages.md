@@ -21,7 +21,7 @@ content/
 
 **Page Bundle**：包含 `index.{md,org,html}` 的目录视为一个页面整体，目录内其他文件作为附属资源。
 附属资源会根据页面最终的 `page.Path` 输出；如果 `page.Path` 是 `/posts/hello.html`，则 `image.png` 输出到 `/posts/image.png`，`myassets/image.png` 输出到 `/posts/myassets/image.png`。
-如果 FrontMatter 中配置了 `assets` 字符串列表，则只收集列表中指定的附件；未配置或为空时收集 Page Bundle 内的全部附件。
+如果 FrontMatter 中配置了 `assets` 字符串列表，则只收集列表中指定的附件；未配置或为空时收集 Page Bundle 内的全部附件。`assets` 支持 glob 匹配，例如 `images/**/*.png`。
 
 ## FrontMatter
 

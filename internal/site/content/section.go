@@ -210,14 +210,14 @@ func (d *Processor) ParseSectionAssets(fullpath string, section *Section) (Asset
 	lctx := d.ctx.For(section.Lang)
 
 	assets := make(Assets, 0)
-	for _, file := range section.FrontMatter.GetStringSlice("assets") {
-		assetPath := filepath.ToSlash(file)
-		if err := d.validateAssetPath(file, assetPath); err != nil {
-			return nil, err
-		}
-
+	root := filepath.Dir(fullpath)
+	assetPaths, err := d.parseAssetPaths(root, section.FrontMatter.GetStringSlice("assets"))
+	if err != nil {
+		return nil, err
+	}
+	for _, assetPath := range assetPaths {
 		asset := &Asset{
-			File: filepath.Join(filepath.Dir(fullpath), filepath.FromSlash(file)),
+			File: filepath.Join(root, filepath.FromSlash(assetPath)),
 		}
 		asset.Path = lctx.GetRelURL(d.resolveAssetPath(section.Path, assetPath))
 		asset.Permalink = lctx.GetURL(asset.Path)
