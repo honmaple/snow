@@ -112,6 +112,12 @@ type testNested struct {
 	ValueName string
 }
 
+type testTreeNode struct {
+	Name     string
+	Parent   *testTreeNode
+	Children []*testTreeNode
+}
+
 func (n testNested) RenderName(suffix string) string {
 	return n.ValueName + suffix
 }
@@ -163,6 +169,24 @@ func TestTemplateExecuteWrapsSlicesAndStringKeyedMaps(t *testing.T) {
 	}
 
 	want := "slice|slice!|map|extra"
+	if result != want {
+		t.Fatalf("result = %q, want %q", result, want)
+	}
+}
+
+func TestTemplateExecuteHandlesCyclicPointers(t *testing.T) {
+	root := &testTreeNode{Name: "root"}
+	child := &testTreeNode{Name: "child", Parent: root}
+	root.Children = []*testTreeNode{child}
+
+	result, err := renderSnakeTemplate(t, `{{ root.name }}|{{ root.children.0.name }}|{{ root.children.0.parent.name }}`, map[string]any{
+		"root": root,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := "root|child|root"
 	if result != want {
 		t.Fatalf("result = %q, want %q", result, want)
 	}

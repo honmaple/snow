@@ -31,11 +31,19 @@ type (
 		Path      string
 		Permalink string
 
+		Section *Section
 		Assets  Assets
 		Formats Formats
 	}
 	Pages []*Page
 )
+
+func (page *Page) Ancestors() Sections {
+	if page == nil || page.Section == nil {
+		return nil
+	}
+	return append(Sections{page.Section}, page.Section.Ancestors()...)
+}
 
 func SortPages(pages Pages, key string) {
 	if key == "" {

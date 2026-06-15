@@ -68,6 +68,7 @@ func (d *Processor) parseNode(fullpath string) (*Node, error) {
 		Title:       fm.GetString("title"),
 		Description: fm.GetString("description"),
 		Content:     result.Content,
+		RawContent:  result.RawContent,
 		Summary:     result.Summary,
 		Toc:         result.Toc,
 	}

@@ -15,6 +15,11 @@ type Template struct {
 	template.Template
 }
 
+type visit struct {
+	typ reflect.Type
+	ptr uintptr
+}
+
 func (tpl *Template) toSnakeCase(str string) string {
 	return strcase.ToSnake(str)
 }
@@ -134,10 +139,17 @@ func (tpl *Template) wrapFunc(fn reflect.Value) any {
 	}
 }
 
-func (tpl *Template) toSnakeMap(obj any) map[string]any {
+func (tpl *Template) toSnakeMap(obj any, seen map[visit]any) map[string]any {
 	snakeMap := make(map[string]any)
 	val := reflect.ValueOf(obj)
 	typ := reflect.TypeOf(obj)
+	if val.Kind() == reflect.Ptr && !val.IsNil() && val.Elem().Kind() == reflect.Struct {
+		key := visit{typ: typ, ptr: val.Pointer()}
+		if cached, ok := seen[key]; ok {
+			return cached.(map[string]any)
+		}
+		seen[key] = snakeMap
+	}
 
 	for i := 0; i < val.NumMethod(); i++ {
 		methodType := typ.Method(i)
@@ -163,13 +175,17 @@ func (tpl *Template) toSnakeMap(obj any) map[string]any {
 			}
 			snakeFieldName := tpl.toSnakeCase(t.Field(i).Name)
 			// 递归转换字段的值
-			snakeMap[snakeFieldName] = tpl.wrapValue(field.Interface())
+			snakeMap[snakeFieldName] = tpl.wrapValueSeen(field.Interface(), seen)
 		}
 	}
 	return snakeMap
 }
 
 func (tpl *Template) wrapValue(v any) any {
+	return tpl.wrapValueSeen(v, make(map[visit]any))
+}
+
+func (tpl *Template) wrapValueSeen(v any, seen map[visit]any) any {
 	if v == nil {
 		return nil
 	}
@@ -192,23 +208,23 @@ func (tpl *Template) wrapValue(v any) any {
 			return v
 		}
 		if val.Elem().Kind() == reflect.Struct {
-			return tpl.toSnakeMap(v)
+			return tpl.toSnakeMap(v, seen)
 		}
 		kind = val.Elem().Kind()
 	}
 
 	if kind == reflect.Struct {
-		return tpl.toSnakeMap(v)
+		return tpl.toSnakeMap(v, seen)
 	}
 
 	if kind == reflect.Map {
 		if pCtx, ok := v.(pongo2.Context); ok {
-			return tpl.wrapContext(pCtx)
+			return tpl.wrapContextSeen(pCtx, seen)
 		}
 		if gMap, ok := v.(map[string]any); ok {
 			newMap := make(map[string]any)
 			for mk, mv := range gMap {
-				newMap[mk] = tpl.wrapValue(mv)
+				newMap[mk] = tpl.wrapValueSeen(mv, seen)
 			}
 			return newMap
 		}
@@ -216,7 +232,7 @@ func (tpl *Template) wrapValue(v any) any {
 			newMap := make(map[string]any)
 			iter := val.MapRange()
 			for iter.Next() {
-				newMap[iter.Key().String()] = tpl.wrapValue(iter.Value().Interface())
+				newMap[iter.Key().String()] = tpl.wrapValueSeen(iter.Value().Interface(), seen)
 			}
 			return newMap
 		}
@@ -226,7 +242,7 @@ func (tpl *Template) wrapValue(v any) any {
 		length := val.Len()
 		newSlice := make([]any, length)
 		for i := 0; i < length; i++ {
-			newSlice[i] = tpl.wrapValue(val.Index(i).Interface())
+			newSlice[i] = tpl.wrapValueSeen(val.Index(i).Interface(), seen)
 		}
 		return newSlice
 	}
@@ -234,12 +250,16 @@ func (tpl *Template) wrapValue(v any) any {
 }
 
 func (tpl *Template) wrapContext(ctx map[string]any) map[string]any {
+	return tpl.wrapContextSeen(ctx, make(map[visit]any))
+}
+
+func (tpl *Template) wrapContextSeen(ctx map[string]any, seen map[visit]any) map[string]any {
 	if ctx == nil {
 		return nil
 	}
 	newCtx := make(map[string]any)
 	for k, v := range ctx {
-		newCtx[k] = tpl.wrapValue(v)
+		newCtx[k] = tpl.wrapValueSeen(v, seen)
 	}
 	return newCtx
 }
