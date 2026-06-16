@@ -2,6 +2,7 @@ package content
 
 import (
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,7 +20,7 @@ type assetTestParser struct {
 	result *parser.Result
 }
 
-func (p *assetTestParser) Parse(string) (*parser.Result, error) {
+func (p *assetTestParser) Parse(fs.FS, string) (*parser.Result, error) {
 	return p.result, nil
 }
 
@@ -73,7 +74,7 @@ func TestRenderPageBundleAssetsCopiesFiles(t *testing.T) {
 	processor := newAssetTestProcessor(t, root, &parser.Result{
 		Content: "<p>Hello</p>",
 	})
-	page, err := processor.ParsePage(filepath.Join(bundleDir, "index.md"), true)
+	page, err := processor.ParsePage(os.DirFS(filepath.Join(root, "content")), "posts/hello/index.md", true)
 	require.NoError(t, err)
 
 	assert.Len(t, page.Assets, 1)
@@ -97,7 +98,7 @@ func TestPageBundleAssetsUseDirectoryForHTMLPath(t *testing.T) {
 		},
 		Content: "<p>Hello</p>",
 	})
-	page, err := processor.ParsePage(filepath.Join(bundleDir, "index.md"), true)
+	page, err := processor.ParsePage(os.DirFS(filepath.Join(root, "content")), "posts/hello/index.md", true)
 	require.NoError(t, err)
 
 	require.Len(t, page.Assets, 1)
@@ -122,11 +123,11 @@ func TestPageBundleAssetsUseFrontMatterAssetsWhenConfigured(t *testing.T) {
 		},
 		Content: "<p>Hello</p>",
 	})
-	page, err := processor.ParsePage(filepath.Join(bundleDir, "index.md"), true)
+	page, err := processor.ParsePage(os.DirFS(filepath.Join(root, "content")), "posts/hello/index.md", true)
 	require.NoError(t, err)
 
 	require.Len(t, page.Assets, 1)
-	assert.Equal(t, filepath.Join(bundleDir, "images", "banner.txt"), page.Assets[0].File)
+	assert.Equal(t, "posts/hello/images/banner.txt", page.Assets[0].File)
 	assert.Equal(t, "/posts/hello/index/images/banner.txt", page.Assets[0].Path)
 
 	w := writer.NewMemoryWriter()
@@ -153,13 +154,13 @@ func TestPageBundleAssetsSupportGlob(t *testing.T) {
 		},
 		Content: "<p>Hello</p>",
 	})
-	page, err := processor.ParsePage(filepath.Join(bundleDir, "index.md"), true)
+	page, err := processor.ParsePage(os.DirFS(filepath.Join(root, "content")), "posts/hello/index.md", true)
 	require.NoError(t, err)
 
 	require.Len(t, page.Assets, 2)
-	assert.Equal(t, filepath.Join(bundleDir, "images", "banner.txt"), page.Assets[0].File)
+	assert.Equal(t, "posts/hello/images/banner.txt", page.Assets[0].File)
 	assert.Equal(t, "/posts/hello/index/images/banner.txt", page.Assets[0].Path)
-	assert.Equal(t, filepath.Join(bundleDir, "images", "nested", "thumb.txt"), page.Assets[1].File)
+	assert.Equal(t, "posts/hello/images/nested/thumb.txt", page.Assets[1].File)
 	assert.Equal(t, "/posts/hello/index/images/nested/thumb.txt", page.Assets[1].Path)
 }
 
@@ -175,7 +176,7 @@ func TestPageBundleAssetsRejectUncleanRelativePath(t *testing.T) {
 		},
 		Content: "<p>Hello</p>",
 	})
-	page, err := processor.ParsePage(filepath.Join(bundleDir, "index.md"), true)
+	page, err := processor.ParsePage(os.DirFS(filepath.Join(root, "content")), "posts/hello/index.md", true)
 
 	require.Error(t, err)
 	assert.Nil(t, page)
@@ -197,13 +198,13 @@ func TestRenderSectionAssetsCopiesFilesRelativeToSection(t *testing.T) {
 		},
 		Content: "<p>Blog</p>",
 	})
-	section, err := processor.ParseSection(filepath.Join(sectionDir, "_index.md"))
+	section, err := processor.ParseSection(os.DirFS(filepath.Join(root, "content")), "blog/_index.md")
 	require.NoError(t, err)
 
 	require.Len(t, section.Assets, 2)
-	assert.Equal(t, filepath.Join(sectionDir, "cover.txt"), section.Assets[0].File)
+	assert.Equal(t, "blog/cover.txt", section.Assets[0].File)
 	assert.Equal(t, "/blog/cover.txt", section.Assets[0].Path)
-	assert.Equal(t, filepath.Join(sectionDir, "images", "banner.txt"), section.Assets[1].File)
+	assert.Equal(t, "blog/images/banner.txt", section.Assets[1].File)
 	assert.Equal(t, "/blog/images/banner.txt", section.Assets[1].Path)
 
 	w := writer.NewMemoryWriter()
@@ -229,15 +230,15 @@ func TestSectionAssetsSupportGlob(t *testing.T) {
 		},
 		Content: "<p>Blog</p>",
 	})
-	section, err := processor.ParseSection(filepath.Join(sectionDir, "_index.md"))
+	section, err := processor.ParseSection(os.DirFS(filepath.Join(root, "content")), "blog/_index.md")
 	require.NoError(t, err)
 
 	require.Len(t, section.Assets, 3)
-	assert.Equal(t, filepath.Join(sectionDir, "images", "banner.txt"), section.Assets[0].File)
+	assert.Equal(t, "blog/images/banner.txt", section.Assets[0].File)
 	assert.Equal(t, "/blog/images/banner.txt", section.Assets[0].Path)
-	assert.Equal(t, filepath.Join(sectionDir, "images", "ignored.png"), section.Assets[1].File)
+	assert.Equal(t, "blog/images/ignored.png", section.Assets[1].File)
 	assert.Equal(t, "/blog/images/ignored.png", section.Assets[1].Path)
-	assert.Equal(t, filepath.Join(sectionDir, "images", "nested", "thumb.txt"), section.Assets[2].File)
+	assert.Equal(t, "blog/images/nested/thumb.txt", section.Assets[2].File)
 	assert.Equal(t, "/blog/images/nested/thumb.txt", section.Assets[2].Path)
 }
 
@@ -255,7 +256,7 @@ func TestSectionAssetsUseDirectoryForHTMLPath(t *testing.T) {
 		},
 		Content: "<p>Blog</p>",
 	})
-	section, err := processor.ParseSection(filepath.Join(sectionDir, "_index.md"))
+	section, err := processor.ParseSection(os.DirFS(filepath.Join(root, "content")), "blog/_index.md")
 	require.NoError(t, err)
 
 	require.Len(t, section.Assets, 1)
@@ -279,7 +280,7 @@ func TestSectionAssetsRejectAbsolutePath(t *testing.T) {
 		},
 		Content: "<p>Blog</p>",
 	})
-	section, err := processor.ParseSection(filepath.Join(sectionDir, "_index.md"))
+	section, err := processor.ParseSection(os.DirFS(filepath.Join(root, "content")), "blog/_index.md")
 
 	require.Error(t, err)
 	assert.Nil(t, section)
@@ -308,7 +309,7 @@ func TestSectionAssetsRejectUncleanRelativePath(t *testing.T) {
 				},
 				Content: "<p>Blog</p>",
 			})
-			section, err := processor.ParseSection(filepath.Join(sectionDir, "_index.md"))
+			section, err := processor.ParseSection(os.DirFS(filepath.Join(root, "content")), "blog/_index.md")
 
 			require.Error(t, err)
 			assert.Nil(t, section)

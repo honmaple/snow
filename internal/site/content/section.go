@@ -2,8 +2,8 @@ package content
 
 import (
 	"fmt"
+	"io/fs"
 	stdpath "path"
-	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -119,21 +119,21 @@ func (d *Processor) resolveSectionPath(section *Section, customPath string) stri
 	return d.resolvePath(customPath, vars)
 }
 
-func (d *Processor) IsSection(fullpath string) ([]string, bool) {
-	sectionFiles := d.findIndexFiles(fullpath, "_index")
+func (d *Processor) IsSection(fsys fs.FS, fullpath string) ([]string, bool) {
+	sectionFiles := d.findIndexFiles(fsys, fullpath, "_index")
 	if len(sectionFiles) > 0 {
 		return sectionFiles, true
 	}
 	return nil, false
 }
 
-func (d *Processor) ParseHomeSections(fullpath string) (Sections, error) {
+func (d *Processor) ParseHomeSections(fsys fs.FS, fullpath string) (Sections, error) {
 	langs := make(map[string]bool)
 
 	sections := make(Sections, 0)
-	sectionFiles, _ := d.IsSection(fullpath)
+	sectionFiles, _ := d.IsSection(fsys, fullpath)
 	for _, file := range sectionFiles {
-		section, err := d.ParseSection(filepath.Join(fullpath, file))
+		section, err := d.ParseSection(fsys, stdpath.Join(fullpath, file))
 		if err != nil {
 			return nil, err
 		}
@@ -146,9 +146,9 @@ func (d *Processor) ParseHomeSections(fullpath string) (Sections, error) {
 		if langs[lang] {
 			continue
 		}
-		indexFile := filepath.Join(fullpath, "_index.md")
+		indexFile := stdpath.Join(fullpath, "_index.md")
 		if lang != d.ctx.GetDefaultLanguage() {
-			indexFile = filepath.Join(fullpath, "_index."+lang+".md")
+			indexFile = stdpath.Join(fullpath, "_index."+lang+".md")
 		}
 		file, err := d.parseFile(indexFile)
 		if err != nil {
@@ -177,8 +177,8 @@ func (d *Processor) ParseHomeSections(fullpath string) (Sections, error) {
 	return sections, nil
 }
 
-func (d *Processor) ParseSection(fullpath string) (*Section, error) {
-	node, err := d.parseNode(fullpath)
+func (d *Processor) ParseSection(fsys fs.FS, fullpath string) (*Section, error) {
+	node, err := d.parseNode(fsys, fullpath)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func (d *Processor) ParseSection(fullpath string) (*Section, error) {
 	section.Path = lctx.GetRelURL(d.resolveSectionPath(section, section.FrontMatter.GetString("path")))
 	section.Permalink = lctx.GetURL(section.Path)
 
-	assets, err := d.ParseSectionAssets(fullpath, section)
+	assets, err := d.ParseSectionAssets(fsys, fullpath, section)
 	if err != nil {
 		return nil, err
 	}
@@ -218,18 +218,20 @@ func (d *Processor) ParseSection(fullpath string) (*Section, error) {
 	return section, nil
 }
 
-func (d *Processor) ParseSectionAssets(fullpath string, section *Section) (Assets, error) {
+func (d *Processor) ParseSectionAssets(fsys fs.FS, fullpath string, section *Section) (Assets, error) {
 	lctx := d.ctx.For(section.Lang)
 
+	root := stdpath.Dir(fullpath)
+
 	assets := make(Assets, 0)
-	root := filepath.Dir(fullpath)
-	assetPaths, err := d.parseAssetPaths(root, section.FrontMatter.GetStringSlice("assets"))
+	assetPaths, err := d.parseAssetPaths(fsys, root, section.FrontMatter.GetStringSlice("assets"))
 	if err != nil {
 		return nil, err
 	}
 	for _, assetPath := range assetPaths {
 		asset := &Asset{
-			File: filepath.Join(root, filepath.FromSlash(assetPath)),
+			FS:   fsys,
+			File: stdpath.Join(root, assetPath),
 		}
 		asset.Path = lctx.GetRelURL(d.resolveAssetPath(section.Path, assetPath))
 		asset.Permalink = lctx.GetURL(asset.Path)

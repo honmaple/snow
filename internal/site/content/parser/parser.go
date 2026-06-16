@@ -3,15 +3,15 @@ package parser
 import (
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
+	"io/fs"
+	stdpath "path"
 
 	"github.com/honmaple/snow/internal/core"
 )
 
 type (
 	Parser interface {
-		Parse(string) (*Result, error)
+		Parse(fs.FS, string) (*Result, error)
 		SupportedExtensions() []string
 	}
 	MarkupOption struct {
@@ -30,12 +30,12 @@ type parserImpl struct {
 	exts []string
 }
 
-func (d *parserImpl) Parse(file string) (*Result, error) {
-	p, ok := d.ps[filepath.Ext(file)]
+func (d *parserImpl) Parse(fsys fs.FS, file string) (*Result, error) {
+	p, ok := d.ps[stdpath.Ext(file)]
 	if !ok {
 		return nil, fmt.Errorf("no parser for %s", file)
 	}
-	f, err := os.Open(file)
+	f, err := fsys.Open(file)
 	if err != nil {
 		return nil, err
 	}

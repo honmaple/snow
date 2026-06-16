@@ -1,6 +1,7 @@
 package content
 
 import (
+	"io/fs"
 	stdpath "path"
 	"strings"
 
@@ -24,14 +25,14 @@ type (
 	Heading = parser.Heading
 )
 
-func (d *Processor) parseNode(fullpath string) (*Node, error) {
+func (d *Processor) parseNode(fsys fs.FS, fullpath string) (*Node, error) {
 	file, err := d.parseFile(fullpath)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: 增加缓存
-	result, err := d.parser.Parse(fullpath)
+	result, err := d.parser.Parse(fsys, fullpath)
 	if err != nil {
 		return nil, err
 	}

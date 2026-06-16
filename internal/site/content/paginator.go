@@ -1,7 +1,7 @@
 package content
 
 import (
-	"path/filepath"
+	stdpath "path"
 	"strconv"
 	"strings"
 
@@ -54,11 +54,11 @@ func Paginate[T any](list []T, number int, path string, paginatePath string, url
 		}
 		name, exts := "", ".html"
 		if !strings.HasSuffix(path, "/") {
-			file := filepath.Base(path)
-			exts = filepath.Ext(file)
+			file := stdpath.Base(path)
+			exts = stdpath.Ext(file)
 			name = file[:len(file)-len(exts)]
 		}
-		output = filepath.Join(filepath.Dir(path), utils.StringReplace(paginatePath, map[string]string{
+		output = stdpath.Join(stdpath.Dir(path), utils.StringReplace(paginatePath, map[string]string{
 			"{name}":      name,
 			"{extension}": exts,
 		}))

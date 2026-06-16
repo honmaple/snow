@@ -10,6 +10,7 @@ import (
 )
 
 func (site *Site) IsIgnoredStatic(path string, isDir bool) bool {
+	// path 是 static FS 内部路径，不包含 static_dir 前缀。
 	matchPath := path
 	if isDir {
 		matchPath = matchPath + "/"

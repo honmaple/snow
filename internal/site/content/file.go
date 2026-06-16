@@ -4,8 +4,6 @@ import (
 	stdpath "path"
 	"path/filepath"
 	"strings"
-
-	"github.com/honmaple/snow/internal/core"
 )
 
 type File struct {
@@ -29,15 +27,10 @@ func (file *File) GetSectionPath() string {
 }
 
 func (d *Processor) parseFile(fullpath string) (*File, error) {
-	relPath, err := filepath.Rel(d.ctx.GetContentDir(), fullpath)
-	if err != nil {
-		return nil, &core.Error{
-			Op:   "parse file",
-			Err:  err,
-			Path: "relpath",
-		}
+	relPath := filepath.ToSlash(fullpath)
+	if relPath == "." {
+		relPath = ""
 	}
-	relPath = filepath.ToSlash(relPath)
 
 	ext := stdpath.Ext(relPath)
 	nameWithExt := stdpath.Base(relPath)

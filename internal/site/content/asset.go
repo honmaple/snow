@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"os"
 	stdpath "path"
-	"path/filepath"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -15,6 +13,7 @@ import (
 
 type (
 	Asset struct {
+		FS        fs.FS
 		File      string
 		Path      string
 		Permalink string
@@ -22,33 +21,38 @@ type (
 	Assets []*Asset
 )
 
-func (d *Processor) validateAssetPath(file string, assetPath string) error {
-	if filepath.IsAbs(file) {
+func (d *Processor) validateAssetPath(assetPath string) error {
+	if stdpath.IsAbs(assetPath) {
 		return &core.Error{
 			Op:   "parse content asset",
 			Err:  fmt.Errorf("absolute asset path is not allowed"),
-			Path: file,
+			Path: assetPath,
 		}
 	}
-	cleanPath := filepath.Clean(file)
-	if filepath.ToSlash(cleanPath) != assetPath ||
-		strings.HasPrefix(cleanPath, "..") {
+	cleanPath := stdpath.Clean(assetPath)
+	if cleanPath != assetPath || strings.HasPrefix(cleanPath, "..") {
 		return &core.Error{
 			Op:   "parse content asset",
 			Err:  fmt.Errorf("asset path must be a clean relative path"),
-			Path: file,
+			Path: assetPath,
 		}
 	}
 	return nil
 }
 
-func (d *Processor) parseAssetPaths(root string, files []string) ([]string, error) {
-	rootFS := os.DirFS(root)
+func (d *Processor) parseAssetPaths(fsys fs.FS, root string, files []string) ([]string, error) {
+	rootFS, err := fs.Sub(fsys, root)
+	if err != nil {
+		return nil, &core.Error{
+			Op:   "parse content asset",
+			Err:  err,
+			Path: root,
+		}
+	}
 
 	assetPaths := make([]string, 0)
-	for _, file := range files {
-		assetPath := filepath.ToSlash(file)
-		if err := d.validateAssetPath(file, assetPath); err != nil {
+	for _, assetPath := range files {
+		if err := d.validateAssetPath(assetPath); err != nil {
 			return nil, err
 		}
 
@@ -57,7 +61,7 @@ func (d *Processor) parseAssetPaths(root string, files []string) ([]string, erro
 			return nil, &core.Error{
 				Op:   "parse content asset",
 				Err:  err,
-				Path: file,
+				Path: assetPath,
 			}
 		}
 		for _, match := range matches {
@@ -86,11 +90,11 @@ func (d *Processor) resolveAssetPath(basePath string, assetPath string) string {
 }
 
 func (d *Processor) RenderAsset(asset *Asset, writer core.Writer) error {
-	if asset == nil || asset.File == "" || asset.Path == "" {
+	if asset == nil || asset.FS == nil || asset.File == "" || asset.Path == "" {
 		return nil
 	}
 
-	src, err := os.Open(asset.File)
+	src, err := asset.FS.Open(asset.File)
 	if err != nil {
 		return &core.Error{
 			Op:   "open asset",

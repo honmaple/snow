@@ -102,4 +102,3 @@ snow server -D
 - [主题](/themes) — 主题创建与使用
 - [插件](/hooks) — 插件系统
 
-[GitHub](https://github.com/honmaple/snow)

@@ -118,7 +118,11 @@ func (s *Server) watchFiles() {
 }
 
 func (s *Server) reloadContent(file string, info fs.FileInfo) error {
-	if s.site.IsIgnoredContent(file, info.IsDir()) {
+	contentPath, err := filepath.Rel(s.ctx.GetContentDir(), file)
+	if err != nil {
+		return err
+	}
+	if s.site.IsIgnoredContent(filepath.ToSlash(contentPath), info.IsDir()) {
 		return nil
 	}
 
@@ -138,7 +142,7 @@ func (s *Server) reloadStatic(baseDir string, file string, info fs.FileInfo) err
 	if err != nil {
 		return err
 	}
-	if s.site.IsIgnoredStatic(srcPath, info.IsDir()) {
+	if s.site.IsIgnoredStatic(filepath.ToSlash(srcPath), info.IsDir()) {
 		return nil
 	}
 

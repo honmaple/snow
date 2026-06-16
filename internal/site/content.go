@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"path/filepath"
+	"os"
+	stdpath "path"
 	"strings"
 	"time"
 
@@ -16,11 +17,11 @@ import (
 
 func (site *Site) IsIgnoredContent(path string, isDir bool) bool {
 	// 忽略以.或者_开头的文件或目录，不要忽略_index.md
-	if basename := filepath.Base(path); !strings.HasPrefix(basename, "_index.") && (strings.HasPrefix(basename, "_") || strings.HasPrefix(basename, ".")) {
+	if basename := stdpath.Base(path); !strings.HasPrefix(basename, "_index.") && (strings.HasPrefix(basename, "_") || strings.HasPrefix(basename, ".")) {
 		return true
 	}
 
-	matchPath := strings.TrimPrefix(path, site.ctx.GetContentDir()+"/")
+	matchPath := path
 	if isDir {
 		matchPath = matchPath + "/"
 	}
@@ -44,9 +45,10 @@ func (site *Site) loadContent() (*ContentStore, error) {
 	}
 
 	store := NewContentStore()
+	contentFS := os.DirFS(contentDir)
 
 	insertPageByFile := func(file string, isBundle bool) error {
-		page, err := site.contentProcessor.ParsePage(file, isBundle)
+		page, err := site.contentProcessor.ParsePage(contentFS, file, isBundle)
 		if err != nil {
 			return err
 		}
@@ -77,7 +79,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 	}
 
 	insertSectionByFile := func(file string) error {
-		section, err := site.contentProcessor.ParseSection(file)
+		section, err := site.contentProcessor.ParseSection(contentFS, file)
 		if err != nil {
 			return err
 		}
@@ -98,8 +100,8 @@ func (site *Site) loadContent() (*ContentStore, error) {
 		if err != nil {
 			return err
 		}
-		if path == contentDir {
-			sections, err := site.contentProcessor.ParseHomeSections(path)
+		if path == "." {
+			sections, err := site.contentProcessor.ParseHomeSections(contentFS, ".")
 			if err != nil {
 				return err
 			}
@@ -116,20 +118,20 @@ func (site *Site) loadContent() (*ContentStore, error) {
 			return nil
 		}
 		if info.IsDir() {
-			indexFiles, ok := site.contentProcessor.IsPageBundle(path)
+			indexFiles, ok := site.contentProcessor.IsPageBundle(contentFS, path)
 			if ok {
-				for _, file := range indexFiles {
+				for _, indexFile := range indexFiles {
 					tasks.Invoke(node{
-						File:     filepath.Join(path, file),
+						File:     stdpath.Join(path, indexFile),
 						IsBundle: true,
 					})
 				}
 				return fs.SkipDir
 			}
-			sectionFiles, ok := site.contentProcessor.IsSection(path)
+			sectionFiles, ok := site.contentProcessor.IsSection(contentFS, path)
 			if len(sectionFiles) > 0 {
-				for _, file := range sectionFiles {
-					if err := insertSectionByFile(filepath.Join(path, file)); err != nil {
+				for _, sectionFile := range sectionFiles {
+					if err := insertSectionByFile(stdpath.Join(path, sectionFile)); err != nil {
 						return err
 					}
 				}
@@ -138,7 +140,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 			return nil
 		}
 		// 忽略_index.md文件
-		if basename := filepath.Base(path); strings.HasPrefix(basename, "_") {
+		if basename := stdpath.Base(path); strings.HasPrefix(basename, "_") {
 			return nil
 		}
 
@@ -153,7 +155,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 		return nil
 	}
 
-	if err := filepath.WalkDir(contentDir, walkDir); err != nil {
+	if err := fs.WalkDir(contentFS, ".", walkDir); err != nil {
 		return nil, err
 	}
 	tasks.StopAndWait()

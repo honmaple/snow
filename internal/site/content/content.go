@@ -2,8 +2,8 @@ package content
 
 import (
 	"context"
-	"os"
-	"path/filepath"
+	"io/fs"
+	stdpath "path"
 	"regexp"
 	"strings"
 
@@ -38,7 +38,7 @@ func (d *Processor) resolvePath(path string, vars map[string]string) string {
 	return doubleSlashRe.ReplaceAllString(r.Replace(path), "/")
 }
 
-func (d *Processor) findIndexFiles(fullpath string, prefix string) []string {
+func (d *Processor) findIndexFiles(fsys fs.FS, fullpath string, prefix string) []string {
 	// 如果有多个扩展: index.md, index.org只返回第一个
 	allowedFiles := make(map[string]bool)
 	for _, ext := range d.parser.SupportedExtensions() {
@@ -48,7 +48,7 @@ func (d *Processor) findIndexFiles(fullpath string, prefix string) []string {
 		}
 	}
 
-	files, err := os.ReadDir(fullpath)
+	files, err := fs.ReadDir(fsys, fullpath)
 	if err != nil {
 		return nil
 	}
@@ -60,7 +60,7 @@ func (d *Processor) findIndexFiles(fullpath string, prefix string) []string {
 			continue
 		}
 		name := file.Name()
-		nameWithoutExt := strings.TrimSuffix(name, filepath.Ext(name))
+		nameWithoutExt := strings.TrimSuffix(name, stdpath.Ext(name))
 		if allowedFiles[name] && !resultMap[nameWithoutExt] {
 			results = append(results, name)
 			resultMap[nameWithoutExt] = true
