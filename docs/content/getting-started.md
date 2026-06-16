@@ -4,12 +4,18 @@ weight: 10
 ---
 
 ## 安装
-
+使用 **Homebrew**
 ```bash
-# 从源码安装
-go install github.com/honmaple/snow@latest
+brew install honmaple/tap/snow
+```
 
-# 或手动编译
+从源码安装
+```bash
+go install github.com/honmaple/snow@latest
+```
+
+手动编译
+```
 git clone https://github.com/honmaple/snow --depth=1
 cd snow
 go mod tidy
@@ -22,8 +28,7 @@ go build .
 snow init [目录名]
 ```
 
-交互式提示：
-
+示例：
 ```
 $ snow init myblog
 Welcome to snow 0.1.7.
@@ -35,7 +40,6 @@ Welcome to snow 0.1.7.
 ```
 
 初始化后生成：
-
 ```
 myblog/
 ├── config.yaml
@@ -44,84 +48,36 @@ myblog/
 │       └── hello-snow.md
 ```
 
+## 预览站点
+
+```bash
+cd myblog
+snow server --autoload
+```
+
+如果不想切换目录，也可以指定站点根目录：
+
+```bash
+snow server --root-dir myblog --autoload
+```
+
 ## 构建站点
 
 ```bash
-# 基础构建
 snow build
-
-# 清理输出目录
-snow build --clean
-snow build -C
-
-# 调试模式
-snow build --debug
-snow build -D
-
-# 指定配置文件
-snow build --config other.yaml
-snow build -c other.yaml
-
-# 指定根目录
-snow build --root-dir .
-snow build -r .
-
-# 指定输出目录
-snow build --output-dir dist
-snow build -o dist
-
-# 预演（不实际写入文件）
-snow build --dry-run
-
-# 指定模式
-snow build --mode publish
-snow build -m publish
-
-# 包含草稿
-snow build --include-drafts
 ```
 
-## 开发服务器
+常见生产构建：
 
 ```bash
-# 启动
-snow server
-
-# 指定监听地址
-snow server --listen 127.0.0.1:8088
-snow server -l 127.0.0.1:8088
-
-# 热重载（监听文件变化）
-snow server --autoload
-snow server -R
-
-# 指定根目录
-snow server --root-dir .
-snow server -r .
-
-# 调试模式
-snow server --debug
-snow server -D
-
-# 指定模式
-snow server --mode publish
-snow server -m publish
-
-# 包含草稿
-snow server --include-drafts
+snow build --mode publish --clean 
 ```
 
-> `server` 与 `build` 共享 `--config`、`--debug`、`--mode`、`--include-drafts` 参数。默认监听地址为配置中的 `base_url`。
-
-## 查看插件
-
-```bash
-snow hooks
-# 输出: snakecase, assets(enabled), pelican, rewrite, filter, encrypt(enabled), shortcode(enabled), minify
-```
+更多命令和参数见 [命令行使用](/cli-usage)。
 
 ## 下一步
 
+- [命令行使用](/cli-usage) — 完整 CLI 参数
 - [目录结构](/directory-structure) — 站点文件组织
 - [配置](/configuration) — 完整配置参考
 - [内容管理](/content) — 页面、栏目、分类

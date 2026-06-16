@@ -19,9 +19,7 @@ content/
         └── image.png      # 附属资源
 ```
 
-**Page Bundle**：包含 `index.{md,org,html}` 的目录视为一个页面整体，目录内其他文件作为附属资源。
-附属资源会根据页面最终的 `page.Path` 输出；如果 `page.Path` 是 `/posts/hello.html`，则 `image.png` 输出到 `/posts/image.png`，`myassets/image.png` 输出到 `/posts/myassets/image.png`。
-如果 FrontMatter 中配置了 `assets` 字符串列表，则只收集列表中指定的附件；未配置或为空时收集 Page Bundle 内的全部附件。`assets` 支持 glob 匹配，例如 `images/**/*.png`。
+**Page Bundle**：包含 `index.{md,org,html}` 的目录视为一个页面整体。目录内其他文件可以作为附属资源，详见 [附件资源](/content/assets)。
 
 ## FrontMatter
 
@@ -102,8 +100,6 @@ pages:
 | `{slug}`          | 页面 slug           | `hello-world` |
 | `{title}`         | 页面标题             | `Hello World` |
 
-> 注意：代码中不存在 `{filename}` 变量。
-
 ## 模板查找
 
 渲染 Page 时模板按顺序查找：
@@ -113,23 +109,47 @@ pages:
 
 ## 模板变量
 
-| 属性                      | 说明            |
-|--------------------------|----------------|
-| `page.Title`             | 页面标题         |
-| `page.Slug`              | URL slug       |
-| `page.Lang`              | 语言代码         |
-| `page.Date`              | 创建时间         |
-| `page.Modified`          | 修改时间         |
-| `page.Path`              | 相对 URL        |
-| `page.Permalink`         | 绝对 URL        |
-| `page.Summary`           | 摘要            |
-| `page.Content`           | 渲染后 HTML     |
-| `page.RawContent`        | 原始内容         |
-| `page.FrontMatter.{xxx}` | 自定义字段值     |
-| `page.Aliases`           | 重定向别名       |
-| `page.Formats`           | 其他输出格式     |
-| `page.Draft`             | 是否为草稿       |
-| `page.Hidden`            | 是否隐藏         |
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `page.File` | `File` | 源文件信息 |
+| `page.File.Path` | string | 相对内容根的文件路径 |
+| `page.File.Dir` | string | 文件所在目录 |
+| `page.File.Name` | string | 文件名 |
+| `page.File.BaseName` | string | 不含扩展名的文件名 |
+| `page.File.LanguageName` | string | 文件名后缀识别出的语言名 |
+| `page.File.Ext` | string | 文件扩展名 |
+| `page.FrontMatter` | FrontMatter | FrontMatter 数据 |
+| `page.FrontMatter.{xxx}` | any | 自定义 FrontMatter 字段值 |
+| `page.Toc` | []Heading | 内容目录 |
+| `page.Lang` | string | 语言代码 |
+| `page.Slug` | string | URL slug |
+| `page.Title` | string | 页面标题 |
+| `page.Description` | string | 页面描述 |
+| `page.Summary` | string | 摘要 |
+| `page.Content` | string | 渲染后 HTML |
+| `page.RawContent` | string | 原始内容 |
+| `page.Draft` | bool | 是否为草稿 |
+| `page.Hidden` | bool | 是否隐藏 |
+| `page.IsBundle` | bool | 是否为 Page Bundle |
+| `page.WordCount` | int64 | 词数统计 |
+| `page.ReadingTime` | int64 | 预计阅读时间（分钟） |
+| `page.Date` | time.Time | 创建时间 |
+| `page.Modified` | time.Time | 修改时间 |
+| `page.Path` | string | 相对 URL |
+| `page.Permalink` | string | 绝对 URL |
+| `page.Section` | Section | 所属栏目 |
+| `page.Assets` | Assets | Page Bundle 附件资源 |
+| `page.Formats` | Formats | 其他输出格式 |
+| `page.Ancestors()` | Sections | 从所属栏目开始向上的栏目列表，不包含页面自身 |
+
+常用关联对象字段：
+
+| 属性 | 说明 |
+|------|------|
+| `page.Section.Title` | 所属栏目标题 |
+| `page.Assets[n].Path` | 附件输出相对 URL |
+| `page.Assets[n].Permalink` | 附件输出绝对 URL |
+| `page.Formats.Find("rss")` | 查找指定名称的输出格式 |
 
 ## 草稿 (Draft)
 

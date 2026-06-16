@@ -49,8 +49,7 @@ template: "custom-section.html"
 | `formats.{name}.path` | string | 格式输出路径 |
 | `formats.{name}.template` | string | 格式输出模板 |
 
-注意：`title` 留空时自动取目录名，根 Section 默认为 `index`。
-`assets` 中的文件路径必须是相对当前 Section 目录的干净路径，不能使用绝对路径、`./` 或 `../`，并支持 glob 匹配，例如 `images/**/*.png`。附属资源会根据栏目最终的 `section.Path` 输出；如果 `section.Path` 是 `/blog.html`，则 `cover.png` 输出到 `/cover.png`，`media/cover.png` 输出到 `/media/cover.png`。
+注意：`title` 留空时自动取目录名，根 Section 默认为 `index`。`assets` 字段用于声明栏目附属资源，详见 [附件资源](/content/assets)。
 
 ## 配置
 
@@ -118,33 +117,47 @@ paginate_filter_by: "'emacs' in tags and not draft"
 
 ## 模板变量
 
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `section.File` | `File` | 源文件信息 |
+| `section.File.Path` | string | 相对内容根的 `_index` 文件路径 |
+| `section.File.Dir` | string | Section 所在目录 |
+| `section.File.Name` | string | 文件名 |
+| `section.File.BaseName` | string | 不含扩展名的文件名 |
+| `section.File.LanguageName` | string | 文件名后缀识别出的语言名 |
+| `section.File.Ext` | string | 文件扩展名 |
+| `section.FrontMatter` | FrontMatter | FrontMatter 数据 |
+| `section.FrontMatter.{xxx}` | any | 自定义 FrontMatter 字段值 |
+| `section.Toc` | []Heading | 内容目录 |
+| `section.Lang` | string | 语言代码 |
+| `section.Slug` | string | 栏目 slug |
+| `section.Title` | string | 栏目标题 |
+| `section.Description` | string | 栏目描述 |
+| `section.Summary` | string | 摘要 |
+| `section.Content` | string | `_index.md` 正文渲染内容 |
+| `section.RawContent` | string | `_index.md` 原始内容 |
+| `section.WordCount` | int64 | 词数统计 |
+| `section.ReadingTime` | int64 | 预计阅读时间（分钟） |
+| `section.Path` | string | 相对 URL |
+| `section.Permalink` | string | 绝对 URL |
+| `section.Pages` | Pages | 栏目下普通页面列表 |
+| `section.HiddenPages` | Pages | 栏目下隐藏页面列表 |
+| `section.Assets` | Assets | Section 附件资源 |
+| `section.Formats` | Formats | 其他输出格式 |
+| `section.Parent` | Section | 父栏目 |
+| `section.Children` | Sections | 子栏目列表 |
+| `section.IsHome()` | bool | 是否为首页 Section |
+| `section.Ancestors()` | Sections | 从父栏目开始向上的栏目列表，不包含自身 |
+| `section.RecursivePages()` | Pages | 当前栏目和子栏目下的普通页面 |
+| `section.RecursiveHiddenPages()` | Pages | 当前栏目和子栏目下的隐藏页面 |
+| `paginator` | Paginator | 分页对象（启用分页时） |
+
+常用关联对象字段：
+
 | 属性 | 说明 |
 |------|------|
-| `section.Title` | 栏目标题 |
-| `section.Slug` | 栏目 slug |
-| `section.Lang` | 语言代码 |
-| `section.Path` | 相对 URL |
-| `section.Permalink` | 绝对 URL |
-| `section.Content` | `_index.md` 正文渲染内容 |
-| `section.RawContent` | `_index.md` 原始内容 |
-| `section.Pages` | 栏目下页面列表 |
-| `section.Children` | 子栏目列表 |
-| `section.Formats` | 其他输出格式 |
-| `paginator` | 分页对象（启用分页时） |
-
-## 分页变量
-
-| 属性 | 说明 |
-|------|------|
-| `paginator.Path` | 当前分页链接 |
-| `paginator.Permalink` | 当前分页绝对链接 |
-| `paginator.PageNum` | 当前页码 |
-| `paginator.Total` | 总页数 |
-| `paginator.HasPrev()` | 是否有上一页 |
-| `paginator.Prev.Path` | 上一页链接 |
-| `paginator.Prev.Permalink` | 上一页绝对链接 |
-| `paginator.HasNext()` | 是否有下一页 |
-| `paginator.Next.Path` | 下一页链接 |
-| `paginator.Next.Permalink` | 下一页绝对链接 |
-| `paginator.All` | 所有分页对象 |
-| `paginator.List` | 当前分页下的页面列表 |
+| `section.Parent.Title` | 父栏目标题 |
+| `section.Children[n].Title` | 子栏目标题 |
+| `section.Assets[n].Path` | 附件输出相对 URL |
+| `section.Assets[n].Permalink` | 附件输出绝对 URL |
+| `section.Formats.Find("rss")` | 查找指定名称的输出格式 |

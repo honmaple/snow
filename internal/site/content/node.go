@@ -1,8 +1,10 @@
 package content
 
 import (
+	"golang.org/x/net/html"
 	stdpath "path"
 	"strings"
+	"unicode"
 
 	"github.com/honmaple/snow/internal/site/content/parser"
 )
@@ -20,9 +22,68 @@ type (
 		Content     string
 		RawContent  string
 		Description string
+		WordCount   int64
+		ReadingTime int64
 	}
 	Heading = parser.Heading
 )
+
+func (d *Processor) countReadingTime(wordCount int64) int64 {
+	if wordCount <= 0 {
+		return 0
+	}
+	const wordsPerMinute int64 = 200
+	return (wordCount + wordsPerMinute - 1) / wordsPerMinute
+}
+
+func (d *Processor) countReadingWords(text string) int64 {
+	var count int64
+	inWord := false
+	for _, r := range text {
+		if unicode.In(r, unicode.Han, unicode.Hangul, unicode.Hiragana, unicode.Katakana) {
+			if inWord {
+				inWord = false
+			}
+			count++
+			continue
+		}
+		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+			if !inWord {
+				count++
+				inWord = true
+			}
+			continue
+		}
+		inWord = false
+	}
+	return count
+}
+
+func (d *Processor) countReadingStats(content string) (int64, int64) {
+	doc, err := html.Parse(strings.NewReader(content))
+	if err != nil {
+		wordCount := d.countReadingWords(content)
+		return wordCount, d.countReadingTime(wordCount)
+	}
+
+	var walk func(*html.Node) int64
+	walk = func(node *html.Node) int64 {
+		if node.Type == html.ElementNode && (node.Data == "script" || node.Data == "style") {
+			return 0
+		}
+		if node.Type == html.TextNode {
+			return d.countReadingWords(node.Data)
+		}
+
+		var count int64
+		for child := node.FirstChild; child != nil; child = child.NextSibling {
+			count += walk(child)
+		}
+		return count
+	}
+	wordCount := walk(doc)
+	return wordCount, d.countReadingTime(wordCount)
+}
 
 func (d *Processor) parseNode(fullpath string) (*Node, error) {
 	file, err := d.parseFile(fullpath)
@@ -72,6 +133,8 @@ func (d *Processor) parseNode(fullpath string) (*Node, error) {
 		Summary:     result.Summary,
 		Toc:         result.Toc,
 	}
+	node.WordCount, node.ReadingTime = d.countReadingStats(node.Content)
+
 	lctx := d.ctx.For(lang)
 	if node.Summary == "" && node.Content != "" {
 		node.Summary = lctx.GetSummary(node.Content)

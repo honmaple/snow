@@ -18,10 +18,9 @@ type (
 	Page struct {
 		*Node
 
-		Draft     bool
-		Hidden    bool
-		IsBundle  bool
-		WordCount int64
+		Draft    bool
+		Hidden   bool
+		IsBundle bool
 
 		Date     time.Time
 		Modified time.Time

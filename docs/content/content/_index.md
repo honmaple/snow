@@ -51,6 +51,7 @@ Markdown 与 Org-mode 解析器支持最长约 1MB 的单行内容。Markdown Fr
 
 - [页面 (Page)](/content/pages) — 页面元数据、路径变量、模板变量
 - [栏目 (Section)](/content/sections) — 栏目配置、分页、子栏目
+- [附件资源 (Assets)](/content/assets) — Page Bundle 和 Section 附件复制规则
 - [分类系统 (Taxonomy)](/content/taxonomies) — 标签、分类、作者等
 - [短代码 (Shortcode)](/content/shortcodes) — 在内容中插入可复用组件
 - [多语言](/content/multilingual) — 国际化配置与使用

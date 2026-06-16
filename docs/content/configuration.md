@@ -5,56 +5,6 @@ weight: 30
 
 Snow 使用 YAML 格式配置，默认为站点根目录下的 `config.yaml`，可通过 `--config` 参数指定其他文件。
 
-## 完整示例
-
-```yaml
-#─────────────────────────────────────
-# 站点信息
-#─────────────────────────────────────
-base_url: "http://127.0.0.1:8000"
-title: "My Blog"
-description: "一个用 Snow 构建的博客"
-author: "honmaple"
-language: "en"
-
-#─────────────────────────────────────
-# 目录
-#─────────────────────────────────────
-content_dir: "content"
-static_dir: "static"
-output_dir: "output"
-
-#─────────────────────────────────────
-# 内容处理
-#─────────────────────────────────────
-slugify: true
-content_truncate_len: 49
-content_truncate_ellipsis: "..."
-
-# 忽略的内容/静态文件（目录以 / 结尾）
-ignored_content:
-  - "drafts/"
-ignored_static:
-  - "extra/"
-
-#─────────────────────────────────────
-# 主题
-#─────────────────────────────────────
-theme: "snow"
-theme_dir: "themes"
-
-#─────────────────────────────────────
-# 插件
-#─────────────────────────────────────
-hooks:
-  assets:
-    enabled: true
-  encrypt:
-    enabled: true
-  shortcode:
-    enabled: true
-```
-
 ## 站点信息
 
 | 配置项 | 类型 | 默认值 | 说明 |

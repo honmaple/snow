@@ -1,5 +1,5 @@
 ---
-title: "分页"
+title: "分页 (Pagination)"
 weight: 40
 ---
 

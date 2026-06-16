@@ -1,5 +1,5 @@
 ---
-title: "多语言"
+title: "多语言 (Multilingual)"
 weight: 60
 ---
 

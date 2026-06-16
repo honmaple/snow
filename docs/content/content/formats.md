@@ -1,5 +1,5 @@
 ---
-title: "输出格式"
+title: "输出格式 (Format)"
 weight: 70
 ---
 

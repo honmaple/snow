@@ -4,7 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/honmaple/snow/internal/site/content/parser"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func testPage(title string, frontMatter map[string]any) *Page {
@@ -22,6 +24,27 @@ func pageTitles(pages Pages) []string {
 		titles[i] = page.Title
 	}
 	return titles
+}
+
+func TestParseNodeSetsWordCountAndReadingTime(t *testing.T) {
+	processor := newAssetTestProcessor(t, t.TempDir(), &parser.Result{
+		Content: `<p>Hello <strong>world</strong> 你好</p><script>ignored words</script><style>.ignored { color: red; }</style>`,
+	})
+
+	page, err := processor.ParsePage("hello.md", false)
+	require.NoError(t, err)
+	assert.Equal(t, int64(4), page.WordCount)
+	assert.Equal(t, int64(1), page.ReadingTime)
+
+	section, err := processor.ParseSection("blog/_index.md")
+	require.NoError(t, err)
+	assert.Equal(t, int64(4), section.WordCount)
+	assert.Equal(t, int64(1), section.ReadingTime)
+
+	assert.Equal(t, int64(0), processor.countReadingTime(0))
+	assert.Equal(t, int64(1), processor.countReadingTime(1))
+	assert.Equal(t, int64(1), processor.countReadingTime(200))
+	assert.Equal(t, int64(2), processor.countReadingTime(201))
 }
 
 func TestSortPagesWeightAscByDefault(t *testing.T) {

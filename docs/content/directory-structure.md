@@ -77,24 +77,3 @@ ignored_content:
   - "private/*"
 ```
 
-## 主题目录结构
-
-```
-themes/{name}/
-├── theme.yaml            # 主题配置（可选）
-├── templates/            # 模板（目录名固定）
-│   ├── index.html
-│   ├── page.html
-│   ├── section.html
-│   ├── partials/
-│   └── shortcodes/
-├── static/               # 静态资源（目录名固定）
-│   ├── css/
-│   ├── js/
-│   └── images/
-└── i18n/                 # 翻译文件（目录名固定）
-    ├── en.yaml
-    └── zh.yaml
-```
-
-`templates`、`static`、`i18n` 目录名不可修改。同级同名文件优先使用站点版本。

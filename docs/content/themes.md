@@ -28,11 +28,6 @@ themes/mytheme/
 │   ├── section.html      # 栏目页
 │   ├── taxonomy_list.html   # 分类列表
 │   ├── taxonomy_single.html # 分类详情
-│   ├── partials/         # 局部模板
-│   │   ├── header.html
-│   │   ├── footer.html
-│   │   ├── rss.xml
-│   │   └── atom.xml
 │   └── shortcodes/       # 短代码模板
 │       └── youtube.html
 ├── static/               # 静态资源（固定名）

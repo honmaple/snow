@@ -1,12 +1,12 @@
 ---
-title: "Snow Docs"
+title: "Snow"
+description: "一个简洁、快速、可扩展的静态站点生成器，支持 Markdown、Org-mode、HTML、多语言、Taxonomy、分页、模板和 Hook 插件流程。"
 sort_by: "weight"
 template: "index.html"
 
 params.hero:
   name: "Snow"
   label: "静态站点生成器"
-  description: "一个简洁、快速、可扩展的静态站点生成器，支持 Markdown、Org-mode、HTML、多语言、Taxonomy、分页、模板和 Hook 插件流程。"
   actions:
     - text: "Get started"
       link: "/getting-started/"
