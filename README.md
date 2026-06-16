@@ -1,20 +1,20 @@
 # Snow
 
-静态站点生成器
+A static site generator.
 
-## 核心特性
+## Features
 
-- **多格式** — Markdown、Org-mode、HTML
-- **多语言** — 按目录、文件后缀或 FrontMatter 区分语言，内置 i18n
-- **分类系统** — 自动生成标签/分类/作者等分类页面，支持时间归档
-- **输出格式** — RSS、Atom、JSON 等自定义格式
-- **模板** — 使用 Pongo2 模版，Django/Jinja2 风格语法
-- **主题系统** — 可复用主题，站点目录优先覆盖
-- **实时预览** — 内置开发服务器 + WebSocket livereload
+- **Multiple content formats** — Markdown, Org-mode, and HTML
+- **Multilingual sites** — Detect languages by directory, file suffix, or Front Matter, with built-in i18n support
+- **Taxonomies** — Automatically generate tag, category, author, and archive pages
+- **Output formats** — Custom formats such as RSS, Atom, and JSON
+- **Templates** — Pongo2 templates with Django/Jinja2-style syntax
+- **Themes** — Reusable themes with site-level overrides
+- **Live preview** — Built-in development server with WebSocket livereload
 
-## 快速开始
+## Quick Start
 
-- 安装
+- Install
   ```bash
   $ go install github.com/honmaple/snow@latest
   ```
@@ -23,13 +23,13 @@
   $ brew install honmaple/tap/snow
   ```
 
-- 创建站点
+- Create a site
   ```bash
   $ snow init myblog
   $ cd myblog
   ```
 
-- 新建文章
+- Create a post
   ```bash
   $ mkdir -p content/posts
   $ cat > content/posts/hello.md << 'EOF'
@@ -40,11 +40,11 @@
   ---
   ## Hello World
   
-  这是我的第一篇文章！
+  This is my first post!
   EOF
   ```
 
-- 启动开发服务器
+- Start the development server
   ```bash
   $ snow server -D
   INFO Copying static...
@@ -56,12 +56,12 @@
   INFO Listen http://127.0.0.1:8000 ...
   ```
 
-## 内容管理
+## Content
 
 ```yaml
 # FrontMatter
 ---
-title: "文章标题"
+title: "Post Title"
 date: 2024-01-15
 tags: [go, web]
 categories: [Programming/Go]
@@ -69,18 +69,18 @@ draft: false
 ---
 ```
 
-支持 Markdown、Org-mode、HTML 三种格式。以 `_index.*` 命名的文件将目录标记为 Section（栏目）。Taxonomy 系统自动从 FrontMatter 字段生成分类页面。
+Snow supports Markdown, Org-mode, and HTML. Files named `_index.*` mark a directory as a section. The taxonomy system automatically generates taxonomy pages from Front Matter fields.
 
-## 配置
+## Configuration
 
-`config.yaml`（YAML 格式）：
+`config.yaml` uses YAML:
 
 ```yaml
 base_url: "http://127.0.0.1:8000"
 title: "My Blog"
 language: "en"
 
-theme: "snow"            # 主题名，对应 themes/ 下目录
+theme: "snow"            # Theme name, matching a directory under themes/
 content_dir: "content"
 output_dir: "output"
 
@@ -94,23 +94,23 @@ taxonomies:
   categories:
 
 params:
-  menus:                 # 导航栏链接
+  menus:                 # Navigation links
     - name: "About"
       url: "/pages/about/"
 ```
 
-## 插件系统 (Hooks)
+## Hooks
 
-插件通过 Hooks 机制在内容处理流程中注入逻辑。默认启用 3 个，共 7 个内置插件。
+Hooks let plugins inject behavior into the content processing pipeline. Snow includes seven built-in hooks, with three enabled by default.
 
 ```bash
 $ snow hooks
 assets(enabled), encrypt(enabled), shortcode(enabled), filter, minify, pelican, rewrite
 ```
 
-## 模板
+## Templates
 
-基于 [Pongo2](https://github.com/flosch/pongo2)，语法兼容 Django/Jinja2：
+Snow uses [Pongo2](https://github.com/flosch/pongo2), with Django/Jinja2-compatible syntax:
 
 ```html
 <h1>{{ page.Title }}</h1>
@@ -122,9 +122,9 @@ assets(enabled), encrypt(enabled), shortcode(enabled), filter, minify, pelican, 
 {% endfor %}
 ```
 
-## 文档
+## Documentation
 
-完整文档参照 [docs/](docs/) 目录，或在线访问 [https://docs.honmaple.com/snow/](https://docs.honmaple.com/snow)。
+See the [docs/](docs/) directory for complete documentation, or visit [https://docs.honmaple.com/snow/](https://docs.honmaple.com/snow).
 
 ## License
 
