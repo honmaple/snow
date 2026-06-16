@@ -45,7 +45,7 @@ func (d *Processor) findIndexFiles(fullpath string, prefix string) []string {
 	for _, ext := range d.parser.SupportedExtensions() {
 		allowedFiles[prefix+ext] = true
 		for lang := range d.ctx.OtherLanguages {
-			allowedFiles[prefix+lang+ext] = true
+			allowedFiles[prefix+"."+lang+ext] = true
 		}
 	}
 

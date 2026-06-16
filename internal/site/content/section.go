@@ -300,6 +300,7 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 			) {
 			if err := d.RenderTemplate(por.Path, tpl, map[string]any{
 				"paginator":     por,
+				"pages":         section.Pages,
 				"section":       section,
 				"current_lang":  section.Lang,
 				"current_index": por.PageNum,
@@ -313,6 +314,7 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 		if tpl := tplset.Lookup(format.Template); tpl != nil {
 			d.ctx.Logger.Debugf("write section format [%s] -> %s", section.File.Path, format.Path)
 			if err := d.RenderTemplate(format.Path, tpl, map[string]any{
+				"pages":        section.Pages,
 				"section":      section,
 				"current_lang": section.Lang,
 			}, writer); err != nil {
