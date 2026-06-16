@@ -19,6 +19,7 @@ var (
 type (
 	Processor struct {
 		ctx        *core.Context
+		contentFS  fs.FS
 		parser     parser.Parser
 		parserExts map[string]bool
 	}
@@ -38,7 +39,7 @@ func (d *Processor) resolvePath(path string, vars map[string]string) string {
 	return doubleSlashRe.ReplaceAllString(r.Replace(path), "/")
 }
 
-func (d *Processor) findIndexFiles(fsys fs.FS, fullpath string, prefix string) []string {
+func (d *Processor) findIndexFiles(fullpath string, prefix string) []string {
 	// 如果有多个扩展: index.md, index.org只返回第一个
 	allowedFiles := make(map[string]bool)
 	for _, ext := range d.parser.SupportedExtensions() {
@@ -48,7 +49,7 @@ func (d *Processor) findIndexFiles(fsys fs.FS, fullpath string, prefix string) [
 		}
 	}
 
-	files, err := fs.ReadDir(fsys, fullpath)
+	files, err := fs.ReadDir(d.contentFS, fullpath)
 	if err != nil {
 		return nil
 	}
@@ -114,15 +115,20 @@ func (d *Processor) RenderTemplate(path string, tpl template.Template, vars map[
 	return nil
 }
 
+func (d *Processor) WalkDir(fn fs.WalkDirFunc) error {
+	return fs.WalkDir(d.contentFS, ".", fn)
+}
+
 func WithParser(p parser.Parser) ProcessorOption {
 	return func(d *Processor) {
 		d.parser = p
 	}
 }
 
-func NewProcessor(ctx *core.Context, opts ...ProcessorOption) *Processor {
+func NewProcessor(ctx *core.Context, fsys fs.FS, opts ...ProcessorOption) *Processor {
 	d := &Processor{
-		ctx: ctx,
+		ctx:       ctx,
+		contentFS: fsys,
 	}
 	for _, opt := range opts {
 		opt(d)

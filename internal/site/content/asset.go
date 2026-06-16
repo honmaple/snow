@@ -13,8 +13,7 @@ import (
 
 type (
 	Asset struct {
-		FS        fs.FS
-		File      string
+		File      *File
 		Path      string
 		Permalink string
 	}
@@ -40,8 +39,8 @@ func (d *Processor) validateAssetPath(assetPath string) error {
 	return nil
 }
 
-func (d *Processor) parseAssetPaths(fsys fs.FS, root string, files []string) ([]string, error) {
-	rootFS, err := fs.Sub(fsys, root)
+func (d *Processor) parseAssetPaths(root string, files []string) ([]string, error) {
+	rootFS, err := fs.Sub(d.contentFS, root)
 	if err != nil {
 		return nil, &core.Error{
 			Op:   "parse content asset",
@@ -90,21 +89,21 @@ func (d *Processor) resolveAssetPath(basePath string, assetPath string) string {
 }
 
 func (d *Processor) RenderAsset(asset *Asset, writer core.Writer) error {
-	if asset == nil || asset.FS == nil || asset.File == "" || asset.Path == "" {
+	if asset == nil || asset.File == nil || asset.File.Path == "" || asset.Path == "" {
 		return nil
 	}
 
-	src, err := asset.FS.Open(asset.File)
+	src, err := d.contentFS.Open(asset.File.Path)
 	if err != nil {
 		return &core.Error{
 			Op:   "open asset",
 			Err:  err,
-			Path: asset.File,
+			Path: asset.File.Path,
 		}
 	}
 	defer src.Close()
 
-	d.ctx.Logger.Debugf("copy content asset [%s] -> %s", asset.File, asset.Path)
+	d.ctx.Logger.Debugf("copy content asset [%s] -> %s", asset.File.Path, asset.Path)
 	if err := writer.WriteFile(context.TODO(), asset.Path, src); err != nil {
 		return &core.Error{
 			Op:   "write asset",

@@ -38,17 +38,11 @@ func (site *Site) IsIgnoredContent(path string, isDir bool) bool {
 	return false
 }
 
-func (site *Site) loadContent() (*ContentStore, error) {
-	contentDir := site.ctx.GetContentDir()
-	if contentDir == "" {
-		return nil, fmt.Errorf("The content dir is null")
-	}
-
+func (site *Site) loadContent(processor *content.Processor) (*ContentStore, error) {
 	store := NewContentStore()
-	contentFS := os.DirFS(contentDir)
 
 	insertPageByFile := func(file string, isBundle bool) error {
-		page, err := site.contentProcessor.ParsePage(contentFS, file, isBundle)
+		page, err := processor.ParsePage(file, isBundle)
 		if err != nil {
 			return err
 		}
@@ -79,7 +73,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 	}
 
 	insertSectionByFile := func(file string) error {
-		section, err := site.contentProcessor.ParseSection(contentFS, file)
+		section, err := processor.ParseSection(file)
 		if err != nil {
 			return err
 		}
@@ -101,7 +95,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 			return err
 		}
 		if path == "." {
-			sections, err := site.contentProcessor.ParseHomeSections(contentFS, ".")
+			sections, err := processor.ParseHomeSections(".")
 			if err != nil {
 				return err
 			}
@@ -118,7 +112,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 			return nil
 		}
 		if info.IsDir() {
-			indexFiles, ok := site.contentProcessor.IsPageBundle(contentFS, path)
+			indexFiles, ok := processor.IsPageBundle(path)
 			if ok {
 				for _, indexFile := range indexFiles {
 					tasks.Invoke(node{
@@ -128,7 +122,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 				}
 				return fs.SkipDir
 			}
-			sectionFiles, ok := site.contentProcessor.IsSection(contentFS, path)
+			sectionFiles, ok := processor.IsSection(path)
 			if len(sectionFiles) > 0 {
 				for _, sectionFile := range sectionFiles {
 					if err := insertSectionByFile(stdpath.Join(path, sectionFile)); err != nil {
@@ -144,7 +138,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 			return nil
 		}
 
-		if !site.contentProcessor.IsPage(path) {
+		if !processor.IsPage(path) {
 			return nil
 		}
 
@@ -155,7 +149,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 		return nil
 	}
 
-	if err := fs.WalkDir(contentFS, ".", walkDir); err != nil {
+	if err := processor.WalkDir(walkDir); err != nil {
 		return nil, err
 	}
 	tasks.StopAndWait()
@@ -180,7 +174,7 @@ func (site *Site) loadContent() (*ContentStore, error) {
 				content.SortPages(pages, root.FrontMatter.GetString("sort_by"))
 			}
 
-			taxonomies := site.contentProcessor.ParseTaxonomies(pages, lang)
+			taxonomies := processor.ParseTaxonomies(pages, lang)
 			for _, taxonomy := range taxonomies {
 				for _, term := range taxonomy.Terms {
 					store.insertTaxonomyTerm(term)
@@ -193,9 +187,15 @@ func (site *Site) loadContent() (*ContentStore, error) {
 }
 
 func (site *Site) BuildContent(ctx context.Context, writer core.Writer) error {
+	contentDir := site.ctx.GetContentDir()
+	if contentDir == "" {
+		return fmt.Errorf("The content dir is null")
+	}
+	processor := content.NewProcessor(site.ctx, os.DirFS(contentDir))
+
 	now := time.Now()
 
-	store, err := site.loadContent()
+	store, err := site.loadContent(processor)
 	if err != nil {
 		return err
 	}
@@ -212,11 +212,11 @@ func (site *Site) BuildContent(ctx context.Context, writer core.Writer) error {
 		tasks := taskutil.NewPool[any](100, func(arg any) (err error) {
 			switch v := arg.(type) {
 			case *content.Section:
-				err = site.contentProcessor.RenderSection(v, tplset, writer)
+				err = processor.RenderSection(v, tplset, writer)
 			case *content.Page:
-				err = site.contentProcessor.RenderPage(v, tplset, writer)
+				err = processor.RenderPage(v, tplset, writer)
 			case *content.Taxonomy:
-				err = site.contentProcessor.RenderTaxonomy(v, tplset, writer)
+				err = processor.RenderTaxonomy(v, tplset, writer)
 			}
 			if err != nil {
 				site.ctx.Logger.Error(err.Error())

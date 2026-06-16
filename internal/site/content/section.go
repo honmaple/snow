@@ -2,7 +2,6 @@ package content
 
 import (
 	"fmt"
-	"io/fs"
 	stdpath "path"
 	"slices"
 	"sort"
@@ -119,21 +118,21 @@ func (d *Processor) resolveSectionPath(section *Section, customPath string) stri
 	return d.resolvePath(customPath, vars)
 }
 
-func (d *Processor) IsSection(fsys fs.FS, fullpath string) ([]string, bool) {
-	sectionFiles := d.findIndexFiles(fsys, fullpath, "_index")
+func (d *Processor) IsSection(fullpath string) ([]string, bool) {
+	sectionFiles := d.findIndexFiles(fullpath, "_index")
 	if len(sectionFiles) > 0 {
 		return sectionFiles, true
 	}
 	return nil, false
 }
 
-func (d *Processor) ParseHomeSections(fsys fs.FS, fullpath string) (Sections, error) {
+func (d *Processor) ParseHomeSections(fullpath string) (Sections, error) {
 	langs := make(map[string]bool)
 
 	sections := make(Sections, 0)
-	sectionFiles, _ := d.IsSection(fsys, fullpath)
+	sectionFiles, _ := d.IsSection(fullpath)
 	for _, file := range sectionFiles {
-		section, err := d.ParseSection(fsys, stdpath.Join(fullpath, file))
+		section, err := d.ParseSection(stdpath.Join(fullpath, file))
 		if err != nil {
 			return nil, err
 		}
@@ -177,8 +176,8 @@ func (d *Processor) ParseHomeSections(fsys fs.FS, fullpath string) (Sections, er
 	return sections, nil
 }
 
-func (d *Processor) ParseSection(fsys fs.FS, fullpath string) (*Section, error) {
-	node, err := d.parseNode(fsys, fullpath)
+func (d *Processor) ParseSection(fullpath string) (*Section, error) {
+	node, err := d.parseNode(fullpath)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +208,7 @@ func (d *Processor) ParseSection(fsys fs.FS, fullpath string) (*Section, error) 
 	section.Path = lctx.GetRelURL(d.resolveSectionPath(section, section.FrontMatter.GetString("path")))
 	section.Permalink = lctx.GetURL(section.Path)
 
-	assets, err := d.ParseSectionAssets(fsys, fullpath, section)
+	assets, err := d.ParseSectionAssets(section)
 	if err != nil {
 		return nil, err
 	}
@@ -218,24 +217,26 @@ func (d *Processor) ParseSection(fsys fs.FS, fullpath string) (*Section, error) 
 	return section, nil
 }
 
-func (d *Processor) ParseSectionAssets(fsys fs.FS, fullpath string, section *Section) (Assets, error) {
-	lctx := d.ctx.For(section.Lang)
+func (d *Processor) ParseSectionAssets(section *Section) (Assets, error) {
+	root := stdpath.Dir(section.File.Path)
 
-	root := stdpath.Dir(fullpath)
-
-	assets := make(Assets, 0)
-	assetPaths, err := d.parseAssetPaths(fsys, root, section.FrontMatter.GetStringSlice("assets"))
+	assetPaths, err := d.parseAssetPaths(root, section.FrontMatter.GetStringSlice("assets"))
 	if err != nil {
 		return nil, err
 	}
+
+	lctx := d.ctx.For(section.Lang)
+	assets := make(Assets, 0)
 	for _, assetPath := range assetPaths {
+		file, err := d.parseFile(stdpath.Join(root, assetPath))
+		if err != nil {
+			return nil, err
+		}
 		asset := &Asset{
-			FS:   fsys,
-			File: stdpath.Join(root, assetPath),
+			File: file,
 		}
 		asset.Path = lctx.GetRelURL(d.resolveAssetPath(section.Path, assetPath))
 		asset.Permalink = lctx.GetURL(asset.Path)
-
 		assets = append(assets, asset)
 	}
 	return assets, nil

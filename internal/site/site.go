@@ -4,18 +4,16 @@ import (
 	"context"
 
 	"github.com/honmaple/snow/internal/core"
-	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/site/hook"
 	"github.com/honmaple/snow/internal/site/template"
 )
 
 type (
 	Site struct {
-		ctx              *core.Context
-		hook             hook.Hook
-		contentProcessor *content.Processor
-		tplset           template.TemplateSet
-		includeDrafts    bool
+		ctx           *core.Context
+		hook          hook.Hook
+		tplset        template.TemplateSet
+		includeDrafts bool
 	}
 	SiteOption func(*Site)
 )
@@ -54,8 +52,7 @@ func IncludeDrafts(b bool) SiteOption {
 
 func New(ctx *core.Context, opts ...SiteOption) (*Site, error) {
 	site := &Site{
-		ctx:              ctx,
-		contentProcessor: content.NewProcessor(ctx),
+		ctx: ctx,
 	}
 	for _, opt := range opts {
 		opt(site)

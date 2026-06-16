@@ -231,16 +231,16 @@ func (d *Processor) IsPage(fullpath string) bool {
 	return d.parserExts[stdpath.Ext(fullpath)]
 }
 
-func (d *Processor) IsPageBundle(fsys fs.FS, fullpath string) ([]string, bool) {
-	indexFiles := d.findIndexFiles(fsys, fullpath, "index")
+func (d *Processor) IsPageBundle(fullpath string) ([]string, bool) {
+	indexFiles := d.findIndexFiles(fullpath, "index")
 	if len(indexFiles) > 0 {
 		return indexFiles, true
 	}
 	return nil, false
 }
 
-func (d *Processor) ParsePage(fsys fs.FS, fullpath string, isBundle bool) (*Page, error) {
-	node, err := d.parseNode(fsys, fullpath)
+func (d *Processor) ParsePage(fullpath string, isBundle bool) (*Page, error) {
+	node, err := d.parseNode(fullpath)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +265,7 @@ func (d *Processor) ParsePage(fsys fs.FS, fullpath string, isBundle bool) (*Page
 		page.Slug = lctx.GetSlug(page.File.BaseName)
 	}
 	if page.Date.IsZero() {
-		stat, err := fs.Stat(fsys, fullpath)
+		stat, err := fs.Stat(d.contentFS, fullpath)
 		if err != nil {
 			page.Date = time.Now()
 		} else {
@@ -281,7 +281,7 @@ func (d *Processor) ParsePage(fsys fs.FS, fullpath string, isBundle bool) (*Page
 
 	// 添加附属资源
 	if isBundle {
-		assets, err := d.ParsePageAssets(fsys, fullpath, page)
+		assets, err := d.ParsePageAssets(page)
 		if err != nil {
 			return nil, err
 		}
@@ -292,59 +292,53 @@ func (d *Processor) ParsePage(fsys fs.FS, fullpath string, isBundle bool) (*Page
 	return page, nil
 }
 
-func (d *Processor) ParsePageAssets(fsys fs.FS, fullpath string, page *Page) (Assets, error) {
-	lctx := d.ctx.For(page.Lang)
+func (d *Processor) ParsePageAssets(page *Page) (Assets, error) {
+	root := stdpath.Dir(page.File.Path)
 
-	root := stdpath.Dir(fullpath)
-
-	assets := make(Assets, 0)
-
+	assetPaths := make([]string, 0)
 	if files := page.FrontMatter.GetStringSlice("assets"); len(files) > 0 {
-		assetPaths, err := d.parseAssetPaths(fsys, root, files)
+		paths, err := d.parseAssetPaths(root, files)
 		if err != nil {
 			return nil, err
 		}
-		for _, assetPath := range assetPaths {
-			asset := &Asset{
-				FS:   fsys,
-				File: stdpath.Join(root, assetPath),
-			}
-			asset.Path = lctx.GetRelURL(d.resolveAssetPath(page.Path, assetPath))
-			asset.Permalink = lctx.GetURL(asset.Path)
-
-			assets = append(assets, asset)
-		}
-		return assets, nil
-	}
-
-	rootFS, err := fs.Sub(fsys, root)
-	if err != nil {
-		return nil, err
-	}
-	if err := fs.WalkDir(rootFS, ".", func(path string, info fs.DirEntry, err error) error {
+		assetPaths = paths
+	} else {
+		rootFS, err := fs.Sub(d.contentFS, root)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if path == "." || info.IsDir() {
-			return nil
-		}
+		if err := fs.WalkDir(rootFS, ".", func(path string, info fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if path == "." || info.IsDir() {
+				return nil
+			}
+			if stdpath.Join(root, path) == page.File.Path {
+				return nil
+			}
 
-		file := stdpath.Join(root, path)
-		if file == fullpath {
+			assetPaths = append(assetPaths, path)
 			return nil
+		}); err != nil {
+			return nil, err
 		}
+	}
 
+	lctx := d.ctx.For(page.Lang)
+
+	assets := make(Assets, 0)
+	for _, assetPath := range assetPaths {
+		file, err := d.parseFile(stdpath.Join(root, assetPath))
+		if err != nil {
+			return nil, err
+		}
 		asset := &Asset{
-			FS:   fsys,
 			File: file,
 		}
-		asset.Path = lctx.GetRelURL(d.resolveAssetPath(page.Path, path))
+		asset.Path = lctx.GetRelURL(d.resolveAssetPath(page.Path, assetPath))
 		asset.Permalink = lctx.GetURL(asset.Path)
-
 		assets = append(assets, asset)
-		return nil
-	}); err != nil {
-		return nil, err
 	}
 	return assets, nil
 }

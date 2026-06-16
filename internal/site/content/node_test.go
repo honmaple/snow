@@ -21,13 +21,11 @@ func TestParseNodePreservesRawContent(t *testing.T) {
 		Content:    "<p>Hello</p>",
 		RawContent: "# Hello",
 	})
-	contentFS := os.DirFS(contentDir)
-
-	page, err := processor.ParsePage(contentFS, "hello.md", false)
+	page, err := processor.ParsePage("hello.md", false)
 	require.NoError(t, err)
 	assert.Equal(t, "# Hello", page.RawContent)
 
-	section, err := processor.ParseSection(contentFS, "blog/_index.md")
+	section, err := processor.ParseSection("blog/_index.md")
 	require.NoError(t, err)
 	assert.Equal(t, "# Hello", section.RawContent)
 }
