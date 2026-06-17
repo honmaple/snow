@@ -12,21 +12,13 @@ Snow 的内容系统围绕三个核心概念构建：
 | [**Section**](/content/sections) | 栏目/目录，组织 Pages | 包含 `_index.*` 的目录 |
 | [**Taxonomy**](/content/taxonomies) | 标签/分类/作者等分类系统 | FrontMatter 字段自动生成 |
 
-## 支持的格式
+## 内容解析
 
-Snow 支持三种内容格式，每种使用不同的解析引擎：
-
-| 格式 | 扩展名 | 解析引擎 |
-|------|--------|----------|
-| Markdown | `.md` | goldmark |
-| Org-mode | `.org` | org-golang |
-| HTML | `.html` | 内置解析器 |
-
-Markdown 支持 YAML (`---`) 与 TOML (`+++`) FrontMatter；Org-mode 支持 `:PROPERTIES:` drawer 和文件开头的 `#+KEY:` 元数据；HTML 会从 `<title>`、`<meta name="..." content="...">`、`<link href="...">`、`<script src="...">` 提取元数据。
+Snow 内置 Markdown、Org-mode、HTML 解析器，并提供可选的 `niklasfasching` Org-mode 解析器。解析器启用方式、元数据来源、摘要分隔符和 `Toc` 行为详见 [解析器 (Parser)](/content/parsers)。
 
 ## FrontMatter
 
-FrontMatter 是文件开头的 YAML 元数据块，定义页面的标题、日期、标签等：
+FrontMatter 是内容文件开头或 HTML `<head>` 中的页面元数据，定义页面的标题、日期、标签等。Markdown 常用 YAML 元数据块：
 
 ```markdown
 ---
@@ -43,12 +35,9 @@ draft: false
 
 更多 FrontMatter 字段详见 [页面 (Page)](/content/pages)。
 
-## 解析限制
-
-Markdown 与 Org-mode 解析器支持最长约 1MB 的单行内容。Markdown FrontMatter 必须使用同类型 fence 闭合；Org-mode 的 `:PROPERTIES:` drawer 必须以 `:END:` 闭合，否则构建会报错。
-
 ## 内容导航
 
+- [解析器 (Parser)](/content/parsers) — Markdown、Org-mode、niklasfasching、HTML 的解析规则
 - [页面 (Page)](/content/pages) — 页面元数据、路径变量、模板变量
 - [栏目 (Section)](/content/sections) — 栏目配置、分页、子栏目
 - [附件资源 (Assets)](/content/assets) — Page Bundle 和 Section 附件复制规则

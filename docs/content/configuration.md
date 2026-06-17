@@ -60,16 +60,29 @@ markups:
     show_toc: true
     show_line_numbers: true
     prevent_pre_code: true
+  markdown:
+    enabled: true
+  orgmode:
+    enabled: true
+  niklasfasching:
+    enabled: false
+  html:
+    enabled: true
 ```
 
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
+| `enabled` | bool | Markdown/Org-mode 为 `true`，HTML/niklasfasching 为 `false` | 是否启用该解析器 |
 | `style` | string | `monokai` | chroma 语法高亮样式 |
 | `show_toc` | bool | `true` | 显示文章目录 |
 | `show_line_numbers` | bool | `true` | 显示行号 |
 | `prevent_pre_code` | bool | `true` | 高亮代码块时避免额外包裹 pre/code |
 
 常见样式：`monokai`、`github`、`dracula`、`solarized-dark`。
+
+`markups._default` 为所有解析器提供默认渲染选项；`markups.markdown`、`markups.orgmode`、`markups.niklasfasching`、`markups.html` 可以分别覆盖。默认启用 Markdown 和 Org-mode，HTML 与 `niklasfasching` parser 已内置注册但默认未启用；解析 `.html` 内容文件时需要设置 `markups.html.enabled: true`。
+
+`show_toc` 对 Markdown、Org-mode、`niklasfasching` 和 HTML 都生效。HTML parser 会根据 `h1`-`h6` 生成目录，并给缺少 `id` 的标题自动补充 `heading-...`。
 
 ## 输出格式 (Formats)
 

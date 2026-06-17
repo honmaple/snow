@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/honmaple/snow/internal/site/content/parser/html"
 	_ "github.com/honmaple/snow/internal/site/content/parser/markdown"
+	_ "github.com/honmaple/snow/internal/site/content/parser/niklasfasching"
 	_ "github.com/honmaple/snow/internal/site/content/parser/orgmode"
 
 	_ "github.com/honmaple/snow/internal/site/template/data"

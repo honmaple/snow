@@ -219,9 +219,11 @@ var (
 	}
 	markupConfig = map[string]any{
 		"markups._default.style":             "monokai",
-		"markups._default.show_toc":          true,
-		"markups._default.show_line_numbers": true,
 		"markups._default.prevent_pre_code":  true,
+		"markups._default.show_toc":          true,
+		"markups._default.show_line_numbers": false,
+		"markups.orgmode.enabled":            true,
+		"markups.markdown.enabled":           true,
 	}
 	hookConfig = map[string]any{
 		"hooks.assets.enabled":    true,

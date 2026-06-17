@@ -5,6 +5,8 @@ weight: 20
 
 Section 是组织 Pages 的树状层级结构。包含 `_index.{md,org,html}` 文件的目录即为 Section。
 
+`.html` Section 文件需要先启用 `markups.html.enabled: true`；Markdown 和 Org-mode 默认启用。
+
 ## 目录示例
 
 ```

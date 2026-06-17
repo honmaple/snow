@@ -145,6 +145,10 @@ func (m *mdParser) Parse(r io.Reader) (*parser.Result, error) {
 	return result, nil
 }
 
+func (m *mdParser) SupportedExtensions() []string {
+	return []string{".md"}
+}
+
 func New(opt *Option) *mdParser {
 	exts := []goldmark.Extender{
 		extension.GFM,
@@ -185,11 +189,11 @@ func markdownFilter(ctx *core.Context) pongo2.FilterFunction {
 }
 
 func init() {
-	parser.Register(".md", func(ctx *core.Context) parser.MarkupParser {
+	parser.Register("markdown", func(ctx *core.Context) parser.MarkupParser {
 		return NewWithContext(ctx)
 	})
 
-	template.Register("markdownParser", func(ctx *core.Context, set template.TemplateSet) error {
+	template.Register("markdown", func(ctx *core.Context, set template.TemplateSet) error {
 		set.RegisterFilter("markdown", markdownFilter(ctx))
 		return nil
 	})

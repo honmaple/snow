@@ -1,4 +1,4 @@
-package orgmode
+package niklasfasching
 
 import (
 	"bufio"
@@ -10,12 +10,12 @@ import (
 	"strings"
 
 	"github.com/flosch/pongo2/v7"
-	"github.com/honmaple/org-golang"
-	orgmodeParser "github.com/honmaple/org-golang/parser"
-	"github.com/honmaple/org-golang/render"
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content/parser"
 	"github.com/honmaple/snow/internal/site/template"
+	org "github.com/niklasfasching/go-org/org"
+
+	_ "github.com/honmaple/snow/internal/site/content/parser/orgmode"
 )
 
 var (
@@ -36,33 +36,48 @@ type orgParser struct {
 	renderer *Renderer
 }
 
-func (m *orgParser) parse(data []byte) ([]*parser.Heading, string, error) {
-	rd := render.HTML{
-		Toc:            false,
-		Document:       org.New(bytes.NewBuffer(data)),
-		RenderNodeFunc: m.renderer.RenderNode,
+func (p *orgParser) parse(data []byte) ([]*parser.Heading, string, error) {
+	conf := org.New().Silent()
+	conf.DefaultSettings["OPTIONS"] = "toc:nil title:nil <:t e:t f:t pri:t todo:t tags:t ealb:nil"
+
+	doc := conf.Parse(bytes.NewReader(data), ".")
+	if doc.Error != nil {
+		return nil, "", doc.Error
 	}
 
-	var ch func([]*orgmodeParser.Section) []*parser.Heading
+	writer := org.NewHTMLWriter()
+	writer.HighlightCodeBlock = p.renderer.highlightCodeBlock
+	toc := p.toc(doc, writer)
 
-	ch = func(children []*orgmodeParser.Section) []*parser.Heading {
-		headings := make([]*parser.Heading, 0)
-		for _, child := range children {
-			h := &parser.Heading{
-				Id:       child.Id(),
-				Title:    rd.RenderNodes(child.Title, ""),
-				Level:    child.Stars,
-				Children: ch(child.Children),
+	out, err := doc.Write(writer)
+	if err != nil {
+		return nil, "", err
+	}
+	return toc, out, nil
+}
+
+func (p *orgParser) toc(doc *org.Document, writer *org.HTMLWriter) []*parser.Heading {
+	var walk func([]*org.Section) []*parser.Heading
+	walk = func(sections []*org.Section) []*parser.Heading {
+		headings := make([]*parser.Heading, 0, len(sections))
+		for _, section := range sections {
+			if section.Headline == nil || section.Headline.IsExcluded(doc) {
+				continue
 			}
-			headings = append(headings, h)
+			heading := &parser.Heading{
+				Id:       section.Headline.ID(),
+				Level:    section.Headline.Lvl,
+				Title:    writer.WriteNodesAsString(section.Headline.Title...),
+				Children: walk(section.Children),
+			}
+			headings = append(headings, heading)
 		}
 		return headings
 	}
-	toc := ch(rd.Document.Sections.Children)
-	return toc, rd.String(), nil
+	return walk(doc.Outline.Children)
 }
 
-func (m *orgParser) Parse(r io.Reader) (*parser.Result, error) {
+func (p *orgParser) Parse(r io.Reader) (*parser.Result, error) {
 	var (
 		content   bytes.Buffer
 		summary   bytes.Buffer
@@ -91,17 +106,17 @@ func (m *orgParser) Parse(r io.Reader) (*parser.Result, error) {
 				match := ORGMODE_META.FindStringSubmatch(l)
 				if match == nil {
 					if drawerErr == nil {
-						drawerErr = fmt.Errorf("org parser invalid properties line: %s", l)
+						drawerErr = fmt.Errorf("niklasfasching org parser invalid properties line: %s", l)
 					}
 					continue
 				}
 				result.SetFrontMatter(match[1], match[2])
 			}
 			if err := scanner.Err(); err != nil {
-				return nil, fmt.Errorf("org parser scan: %w", err)
+				return nil, fmt.Errorf("niklasfasching org parser scan: %w", err)
 			}
 			if !closed {
-				return nil, errors.New("org properties drawer is not closed")
+				return nil, errors.New("niklasfasching org properties drawer is not closed")
 			}
 			if drawerErr != nil {
 				return nil, drawerErr
@@ -134,10 +149,10 @@ func (m *orgParser) Parse(r io.Reader) (*parser.Result, error) {
 		content.WriteString("\n")
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("org parser scan: %w", err)
+		return nil, fmt.Errorf("niklasfasching org parser scan: %w", err)
 	}
 
-	toc, res, err := m.parse(content.Bytes())
+	toc, res, err := p.parse(content.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +162,7 @@ func (m *orgParser) Parse(r io.Reader) (*parser.Result, error) {
 	result.RawContent = content.String()
 
 	if summary.Len() > 0 {
-		_, res, err := m.parse(summary.Bytes())
+		_, res, err := p.parse(summary.Bytes())
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +171,7 @@ func (m *orgParser) Parse(r io.Reader) (*parser.Result, error) {
 	return result, nil
 }
 
-func (m *orgParser) SupportedExtensions() []string {
+func (p *orgParser) SupportedExtensions() []string {
 	return []string{".org"}
 }
 
@@ -166,7 +181,7 @@ func New(opt *Option) *orgParser {
 
 func NewWithContext(ctx *core.Context) *orgParser {
 	opt := &Option{
-		MarkupOption: parser.NewMarkupOption(ctx, "orgmode"),
+		MarkupOption: parser.NewMarkupOption(ctx, "niklasfasching"),
 	}
 	return New(opt)
 }
@@ -177,7 +192,7 @@ func orgFilter(ctx *core.Context) pongo2.FilterFunction {
 		v, ok := in.Interface().(string)
 		if !ok {
 			return nil, &pongo2.Error{
-				Sender:    "filter:org",
+				Sender:    "filter:niklasfasching",
 				OrigError: errors.New("filter input argument must be of type 'string'"),
 			}
 		}
@@ -190,12 +205,15 @@ func orgFilter(ctx *core.Context) pongo2.FilterFunction {
 }
 
 func init() {
-	parser.Register("orgmode", func(ctx *core.Context) parser.MarkupParser {
+	parser.Register("niklasfasching", func(ctx *core.Context) parser.MarkupParser {
 		return NewWithContext(ctx)
 	})
 
-	template.Register("orgmode", func(ctx *core.Context, set template.TemplateSet) error {
-		set.RegisterFilter("org", orgFilter(ctx))
+	template.Register("niklasfasching", func(ctx *core.Context, set template.TemplateSet) error {
+		if !ctx.Config.GetBool("markups.niklasfasching.enabled") {
+			return nil
+		}
+		set.RegisterFilter("niklasfasching", orgFilter(ctx))
 		return nil
 	})
 }

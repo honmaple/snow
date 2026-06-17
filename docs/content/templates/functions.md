@@ -102,6 +102,7 @@ weight: 10
 | `encrypt:"pw"` | 加密 (需 hooks.encrypt) | `{{ page.Content \| encrypt:"123" }}` |
 | `markdown` | Markdown 转 HTML | `{{ text \| markdown }}` |
 | `org` | Org-mode 转 HTML | `{{ text \| org }}` |
+| `niklasfasching` | niklasfasching/go-org 转 HTML，需启用 `markups.niklasfasching.enabled` | `{{ text \| niklasfasching }}` |
 | `parser:"yaml"` | 解析 YAML/TOML/JSON 字符串 | `{{ text \| parser:"yaml" }}` |
 | `jsonify` | 转 JSON 字符串 | `{{ page.FrontMatter \| jsonify }}` |
 | `absURL` | 转绝对 URL | `{{ "posts/" \| absURL }}` |

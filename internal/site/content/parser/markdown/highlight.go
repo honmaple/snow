@@ -2,31 +2,20 @@ package markdown
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/alecthomas/chroma/v2"
-	"github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
+	contentparser "github.com/honmaple/snow/internal/site/content/parser"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
 )
 
-type onlyPreWrapper struct{}
-
-func (onlyPreWrapper) Start(code bool, styleAttr string) string {
-	return fmt.Sprintf(`<pre%s>`, styleAttr)
-}
-
-func (onlyPreWrapper) End(code bool) string {
-	return `</pre>`
-}
-
 type highlightExtension struct {
 	opt       *Option
-	formatter *html.Formatter
+	formatter *contentparser.HTMLFormatter
 }
 
 func (r *highlightExtension) Extend(m goldmark.Markdown) {
@@ -93,16 +82,9 @@ func (r *highlightExtension) renderFencedCodeBlock(w util.BufWriter, source []by
 }
 
 func NewHighlightExtension(opt *Option) goldmark.Extender {
-	opts := make([]html.Option, 0)
-	if opt.ShowLineNumbers {
-		opts = append(opts, html.WithLineNumbers(true))
-	}
-	if opt.PreventPreCode {
-		opts = append(opts, html.WithPreWrapper(onlyPreWrapper{}))
-	}
 	r := &highlightExtension{
 		opt:       opt,
-		formatter: html.New(opts...),
+		formatter: contentparser.NewHTMLFormatter(opt.MarkupOption),
 	}
 	return r
 }

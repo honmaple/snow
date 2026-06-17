@@ -1,30 +1,19 @@
 package orgmode
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/alecthomas/chroma/v2"
-	"github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/honmaple/org-golang/parser"
 	"github.com/honmaple/org-golang/render"
+	contentparser "github.com/honmaple/snow/internal/site/content/parser"
 )
-
-type onlyPreWrapper struct{}
-
-func (onlyPreWrapper) Start(code bool, styleAttr string) string {
-	return fmt.Sprintf(`<pre%s>`, styleAttr)
-}
-
-func (onlyPreWrapper) End(code bool) string {
-	return `</pre>`
-}
 
 type Renderer struct {
 	opt       *Option
-	formatter *html.Formatter
+	formatter *contentparser.HTMLFormatter
 }
 
 func (e *Renderer) highlightCodeBlock(source, lang string) string {
@@ -68,16 +57,9 @@ func (e *Renderer) RenderNode(r render.Renderer, n parser.Node) string {
 }
 
 func NewRenderer(opt *Option) *Renderer {
-	opts := make([]html.Option, 0)
-	if opt.ShowLineNumbers {
-		opts = append(opts, html.WithLineNumbers(true))
-	}
-	if opt.PreventPreCode {
-		opts = append(opts, html.WithPreWrapper(onlyPreWrapper{}))
-	}
 	r := &Renderer{
 		opt:       opt,
-		formatter: html.New(opts...),
+		formatter: contentparser.NewHTMLFormatter(opt.MarkupOption),
 	}
 	return r
 }

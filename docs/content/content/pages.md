@@ -9,6 +9,8 @@ Page 是 Snow 中最基本的内容单元。
 
 在 `content/` 下创建 `.md`、`.org` 或 `.html` 文件：
 
+`.html` 页面需要先启用 `markups.html.enabled: true`；Markdown 和 Org-mode 默认启用。
+
 ```
 content/
 ├── about.md              # 普通 Page → /about/

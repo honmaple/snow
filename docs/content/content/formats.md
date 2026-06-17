@@ -68,16 +68,6 @@ taxonomies:
 3. `formats.{name}.template` — 模板（可选，为空则从全局 `formats.{name}.template` 取值）
 4. `path` 为空或 `template` 为空时跳过该格式
 
-## 内容解析格式
-
-| 格式 | 扩展名 | 元数据来源 | 备注 |
-|------|--------|------------|------|
-| Markdown | `.md` | YAML `---`、TOML `+++`、或开头的 `key: value` 行 | FrontMatter 必须找到同类型结束 fence |
-| Org-mode | `.org` | `:PROPERTIES:` drawer、`#+KEY:`、`#+PROPERTY:` | Drawer 必须以 `:END:` 结束 |
-| HTML | `.html` | `<title>`、`<meta>`、`<link>`、`<script>` | `<body>` 内容作为正文 |
-
-Markdown 与 Org-mode 支持 `<!--more-->` / `#+more` 摘要分隔符，并会生成 `Toc`。单行内容上限约 1MB，超过限制会返回 parser 错误。
-
 ## 模板变量
 
 | 内容类型 | 可用变量 |

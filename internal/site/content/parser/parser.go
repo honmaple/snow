@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/fs"
 	stdpath "path"
+	"sort"
 
 	"github.com/honmaple/snow/internal/core"
 )
@@ -22,6 +23,7 @@ type (
 	}
 	MarkupParser interface {
 		Parse(io.Reader) (*Result, error)
+		SupportedExtensions() []string
 	}
 )
 
@@ -57,10 +59,23 @@ func New(ctx *core.Context) Parser {
 		ps:   make(map[string]MarkupParser),
 		exts: make([]string, 0),
 	}
-	for ext, foctory := range factories {
-		d.exts = append(d.exts, ext)
-
-		d.ps[ext] = foctory(ctx)
+	names := make([]string, 0, len(factories))
+	for name := range factories {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if !ctx.Config.GetBool(fmt.Sprintf("markups.%s.enabled", name)) {
+			continue
+		}
+		p := factories[name](ctx)
+		for _, ext := range p.SupportedExtensions() {
+			if _, ok := d.ps[ext]; ok {
+				continue
+			}
+			d.exts = append(d.exts, ext)
+			d.ps[ext] = p
+		}
 	}
 	return d
 }
@@ -80,8 +95,8 @@ func NewMarkupOption(ctx *core.Context, name string) MarkupOption {
 
 type Factory func(*core.Context) MarkupParser
 
-func Register(ext string, c Factory) {
-	factories[ext] = c
+func Register(name string, c Factory) {
+	factories[name] = c
 }
 
 var factories map[string]Factory

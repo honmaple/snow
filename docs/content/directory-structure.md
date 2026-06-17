@@ -54,6 +54,8 @@ mysite/
 | `index.{md,org,html}` | Page Bundle 标记 |
 | `_*` / `.*` 开头 | 默认忽略 |
 
+`.html` 内容文件需要启用 `markups.html.enabled: true` 后才会被解析；默认启用的是 Markdown 和 Org-mode。
+
 ### Page
 
 普通文件（`.md`、`.org`、`.html`）即为 Page。输出路径由 `pages.{type}.path` 决定。
@@ -76,4 +78,3 @@ ignored_content:
   - "drafts/"
   - "private/*"
 ```
-
