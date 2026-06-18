@@ -9,8 +9,12 @@ weight: 10
 |------|------|
 | `pages` | 当前语言全部页面 |
 | `hidden_pages` | 当前语言隐藏页面 |
-| `sections([lang])` | 栏目列表 |
-| `taxonomies([lang])` | 分类列表 |
+| `sections` | 当前语言栏目列表 |
+| `taxonomies` | 当前语言分类列表 |
+| `get_pages([lang])` | 获取指定语言的全部页面，省略语言时使用当前语言 |
+| `get_hidden_pages([lang])` | 获取指定语言的隐藏页面，省略语言时使用当前语言 |
+| `get_sections([lang])` | 获取指定语言的栏目列表，省略语言时使用当前语言 |
+| `get_taxonomies([lang])` | 获取指定语言的分类列表，省略语言时使用当前语言 |
 | `get_page(path, [lang])` | 获取页面对象 |
 | `get_page_url(path, [lang])` | 获取页面绝对链接 |
 | `get_section(path, [lang])` | 获取栏目对象 |

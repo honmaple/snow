@@ -13,10 +13,14 @@ type ContentTemplate struct {
 
 func (t *ContentTemplate) Execute(vars map[string]any) (string, error) {
 	commonVars := map[string]any{
-		"pages":                 t.Pages(),
-		"hidden_pages":          t.HiddenPages(),
-		"sections":              t.Sections(),
-		"taxonomies":            t.Taxonomies(),
+		"pages":                 t.GetPages(),
+		"hidden_pages":          t.GetHiddenPages(),
+		"sections":              t.GetSections(),
+		"taxonomies":            t.GetTaxonomies(),
+		"get_pages":             t.GetPages,
+		"get_hidden_pages":      t.GetHiddenPages,
+		"get_sections":          t.GetSections,
+		"get_taxonomies":        t.GetTaxonomies,
 		"get_page":              t.GetPage,
 		"get_page_url":          t.GetPageURL,
 		"get_section":           t.GetSection,
@@ -34,7 +38,7 @@ func (t *ContentTemplate) Execute(vars map[string]any) (string, error) {
 	return t.Template.Execute(vars)
 }
 
-func (t *ContentTemplate) Sections(args ...string) content.Sections {
+func (t *ContentTemplate) GetSections(args ...string) content.Sections {
 	lang := t.lang
 	if len(args) > 0 {
 		lang = args[0]
@@ -58,7 +62,7 @@ func (t *ContentTemplate) GetSectionURL(path string, args ...string) string {
 	return t.store.GetSectionURL(path, lang)
 }
 
-func (t *ContentTemplate) Pages(args ...string) content.Pages {
+func (t *ContentTemplate) GetPages(args ...string) content.Pages {
 	lang := t.lang
 	if len(args) > 0 {
 		lang = args[0]
@@ -66,7 +70,7 @@ func (t *ContentTemplate) Pages(args ...string) content.Pages {
 	return t.store.Pages(lang)
 }
 
-func (t *ContentTemplate) HiddenPages(args ...string) content.Pages {
+func (t *ContentTemplate) GetHiddenPages(args ...string) content.Pages {
 	lang := t.lang
 	if len(args) > 0 {
 		lang = args[0]
@@ -90,7 +94,7 @@ func (t *ContentTemplate) GetPageURL(path string, args ...string) string {
 	return t.store.GetPageURL(path, lang)
 }
 
-func (t *ContentTemplate) Taxonomies(args ...string) content.Taxonomies {
+func (t *ContentTemplate) GetTaxonomies(args ...string) content.Taxonomies {
 	lang := t.lang
 	if len(args) > 0 {
 		lang = args[0]

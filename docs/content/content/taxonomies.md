@@ -129,8 +129,9 @@ authors: honmaple
 | `term.Parent` | 父 Term |
 | `term.Formats` | 其他输出格式 |
 | `term.Taxonomy` | 所属 Taxonomy 对象 |
-| `pages` | `term.Pages` 引用 |
 | `paginator` | 分页对象 |
+
+Term 模板中不再注入 `pages` 作为 `term.Pages` 的别名；需要当前 Term 下页面列表时直接使用 `term.Pages`。
 
 ## 时间归档
 

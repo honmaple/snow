@@ -236,7 +236,6 @@ func (d *Processor) RenderTaxonomyTerm(term *TaxonomyTerm, tplset template.Templ
 			) {
 			if err := d.RenderTemplate(por.Path, tpl, map[string]any{
 				"term":          term,
-				"pages":         term.Pages,
 				"taxonomy":      term.Taxonomy,
 				"paginator":     por,
 				"current_path":  por.Path,
@@ -252,7 +251,6 @@ func (d *Processor) RenderTaxonomyTerm(term *TaxonomyTerm, tplset template.Templ
 			d.ctx.Logger.Debugf("write taxonomy term format [%s:%s] -> %s", term.Taxonomy.Name, term.GetFullName(), format.Path)
 			if err := d.RenderTemplate(format.Path, tpl, map[string]any{
 				"term":         term,
-				"pages":        term.Pages,
 				"taxonomy":     term.Taxonomy,
 				"current_lang": term.Taxonomy.Lang,
 			}, writer); err != nil {

@@ -70,11 +70,15 @@ taxonomies:
 
 ## 模板变量
 
-| 内容类型 | 可用变量 |
-|----------|----------|
-| Section | `section`, `pages` |
-| Page | `page` |
-| Taxonomy Term | `term`, `pages`, `taxonomy` |
+所有格式模板都会继承全局模板变量和函数，例如 `pages`、`sections`、`taxonomies`、`get_pages([lang])`。当前内容对象按格式类型额外注入：
+
+| 内容类型 | 当前对象变量 | 当前页面集合 |
+|----------|--------------|--------------|
+| Section | `section` | `section.Pages` |
+| Page | `page` | 无 |
+| Taxonomy Term | `term`, `taxonomy` | `term.Pages` |
+
+`pages` 始终表示当前语言的全局页面列表，不再作为 Section 或 Taxonomy Term 格式模板里的局部页面集合别名。
 
 ## RSS 模板示例
 
@@ -87,7 +91,7 @@ taxonomies:
     <title>{{ config.title }}</title>
     <link>{{ config.base_url }}</link>
     <description>{{ config.description }}</description>
-    {% for page in pages %}
+    {% for page in section.Pages %}
     <item>
       <title>{{ page.Title }}</title>
       <link>{{ page.Permalink }}</link>
@@ -106,9 +110,9 @@ taxonomies:
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>{{ config.title }}</title>
   <link href="{{ config.base_url }}/atom.xml" rel="self"/>
-  <updated>{{ pages[0].Date | date:"2006-01-02T15:04:05Z07:00" }}</updated>
+  <updated>{{ section.Pages[0].Date | date:"2006-01-02T15:04:05Z07:00" }}</updated>
   <id>{{ config.base_url }}/</id>
-  {% for page in pages %}
+  {% for page in section.Pages %}
   <entry>
     <title>{{ page.Title }}</title>
     <link href="{{ page.Permalink }}"/>
