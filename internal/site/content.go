@@ -157,7 +157,7 @@ func (site *Site) loadContent(processor *content.Processor) (*ContentStore, erro
 	for _, lang := range site.ctx.GetAllLanguages() {
 		sections := store.Sections(lang)
 		if len(sections) > 0 {
-			content.SortSections(sections, "weight")
+			content.SortSections(sections, "weight", true)
 
 			for _, section := range sections {
 				content.SortPages(section.Pages, section.FrontMatter.GetString("sort_by"))

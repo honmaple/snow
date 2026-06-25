@@ -195,25 +195,24 @@ var (
 		"static_dir":                "static",
 		"output_dir":                "output",
 		"content_dir":               "content",
-		"slugify":                   true,
 		"content_truncate_len":      49,
 		"content_truncate_ellipsis": "...",
 		"formats.rss.template":      "partials/rss.xml",
 		"formats.atom.template":     "partials/atom.xml",
 	}
 	pageConfig = map[string]any{
-		"pages._default.path": "{path:slug}/{slug}/",
+		"pages._default.path": "/{lang:optional}/{path:slug}/{slug}/",
 	}
 	sectionConfig = map[string]any{
-		"sections._default.path":          "{path:slug}/",
+		"sections._default.path":          "/{lang:optional}/{path:slug}/",
 		"sections._default.sort_by":       "date desc",
 		"sections._default.paginate":      0,
 		"sections._default.paginate_path": "{name}{number:optional}{extension}",
 	}
 	taxonomyConfig = map[string]any{
-		"taxonomies._default.path":               "{taxonomy}/",
+		"taxonomies._default.path":               "/{lang:optional}/{taxonomy}/",
 		"taxonomies._default.sort_by":            "name",
-		"taxonomies._default.term.path":          "{taxonomy}/{term:slug}/",
+		"taxonomies._default.term.path":          "/{lang:optional}/{taxonomy}/{term:slug}/",
 		"taxonomies._default.term.sort_by":       "date desc",
 		"taxonomies._default.term.paginate_path": "{name}{number:optional}{extension}",
 	}

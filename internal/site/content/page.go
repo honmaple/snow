@@ -30,7 +30,8 @@ type (
 
 		Section *Section
 		Assets  Assets
-		Formats Formats
+
+		Formats    Formats
 	}
 	Pages []*Page
 )
@@ -63,6 +64,21 @@ func SortPages(pages Pages, key string) {
 			return utils.Compare(pages[i].FrontMatter.Get(k), pages[j].FrontMatter.Get(k))
 		}
 	}))
+}
+
+func FilterExpr(filter string) func(*Page) bool {
+	tpl, err := pongo2.FromString("{{" + filter + "}}")
+	if err != nil {
+		return func(page *Page) bool {
+			return true
+		}
+	}
+	return func(page *Page) bool {
+		args := page.FrontMatter.AllSettings()
+
+		result, err := tpl.Execute(args)
+		return err == nil && result == "True"
+	}
 }
 
 func (pages Pages) First() *Page {
@@ -121,7 +137,7 @@ func (pages Pages) OrderBy(key string) Pages {
 	return newPs
 }
 
-func (pages Pages) GroupBy(key string) TaxonomyTerms {
+func (pages Pages) GroupBy(key string) PageGroups {
 	var groupf func(*Page) []string
 
 	if strings.HasPrefix(key, "date:") {
@@ -141,12 +157,12 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 		}
 	}
 
-	results := make(TaxonomyTerms, 0)
-	resultMap := make(map[string]*TaxonomyTerm)
+	results := make(PageGroups, 0)
+	resultMap := make(map[string]*PageGroup)
 	for _, page := range pages {
 		for _, name := range groupf(page) {
 			var (
-				currentTerm *TaxonomyTerm
+				currentTerm *PageGroup
 				currentName string
 			)
 			for part := range strings.SplitSeq(strings.Trim(name, "/"), "/") {
@@ -162,11 +178,11 @@ func (pages Pages) GroupBy(key string) TaxonomyTerms {
 
 				term, ok := resultMap[currentName]
 				if !ok {
-					term = &TaxonomyTerm{
+					term = &PageGroup{
 						Name:     part,
 						Pages:    make(Pages, 0),
 						Parent:   currentTerm,
-						Children: make(TaxonomyTerms, 0),
+						Children: make(PageGroups, 0),
 					}
 					resultMap[currentName] = term
 
@@ -189,34 +205,20 @@ func (pages Pages) PaginateBy(number int, path string, paginatePath string, urlF
 	return Paginate(pages, number, path, paginatePath, urlFor...)
 }
 
-func FilterExpr(filter string) func(*Page) bool {
-	tpl, err := pongo2.FromString("{{" + filter + "}}")
-	if err != nil {
-		return func(page *Page) bool {
-			return true
-		}
-	}
-	return func(page *Page) bool {
-		args := page.FrontMatter.AllSettings()
-
-		result, err := tpl.Execute(args)
-		return err == nil && result == "True"
-	}
-}
-
 func (d *Processor) resolvePagePath(page *Page, customPath string) string {
 	lctx := d.ctx.For(page.Lang)
 
 	vars := map[string]string{
-		"{lang}":      page.Lang,
-		"{date:%Y}":   page.Date.Format("2006"),
-		"{date:%m}":   page.Date.Format("01"),
-		"{date:%d}":   page.Date.Format("02"),
-		"{date:%H}":   page.Date.Format("15"),
-		"{path}":      page.File.Dir,
-		"{path:slug}": lctx.GetPathSlug(page.File.Dir),
-		"{slug}":      page.Slug,
-		"{title}":     page.Title,
+		"{lang}":       page.Lang,
+		"{date:%Y}":    page.Date.Format("2006"),
+		"{date:%m}":    page.Date.Format("01"),
+		"{date:%d}":    page.Date.Format("02"),
+		"{date:%H}":    page.Date.Format("15"),
+		"{path}":       page.File.Dir,
+		"{path:slug}":  lctx.GetPathSlug(page.File.Dir),
+		"{slug}":       page.Slug,
+		"{title}":      page.Title,
+		"{title:slug}": lctx.GetSlug(page.Title),
 	}
 	if page.Lang == d.ctx.GetDefaultLanguage() {
 		vars["{lang:optional}"] = ""
@@ -246,12 +248,12 @@ func (d *Processor) ParsePage(fullpath string, isBundle bool) (*Page, error) {
 	lctx := d.ctx.For(node.Lang)
 
 	page := &Page{
-		Node:     node,
-		Draft:    node.FrontMatter.GetBool("draft"),
-		Hidden:   node.FrontMatter.GetBool("hidden"),
-		Date:     node.FrontMatter.GetTime("date"),
-		Modified: node.FrontMatter.GetTime("modified"),
-		IsBundle: isBundle,
+		Node:       node,
+		Draft:      node.FrontMatter.GetBool("draft"),
+		Hidden:     node.FrontMatter.GetBool("hidden"),
+		Date:       node.FrontMatter.GetTime("date"),
+		Modified:   node.FrontMatter.GetTime("modified"),
+		IsBundle:   isBundle,
 	}
 	if page.Title == "" {
 		if isBundle && page.File.Dir != "" {

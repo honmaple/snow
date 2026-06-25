@@ -3,40 +3,22 @@ package content
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/template"
-	"github.com/honmaple/snow/internal/utils"
 )
 
 type (
 	Taxonomy struct {
-		Lang      string
-		Name      string
-		Weight    int
+		Lang string
+		Name string
+
 		Path      string
 		Permalink string
 		Terms     TaxonomyTerms
 	}
 	Taxonomies []*Taxonomy
 )
-
-func SortTaxonomies(ts Taxonomies, key string) {
-	sort.SliceStable(ts, utils.Sort(key, func(k string, i int, j int) int {
-		switch k {
-		case "-":
-			return 0 - strings.Compare(ts[i].Name, ts[j].Name)
-		case "name":
-			return strings.Compare(ts[i].Name, ts[j].Name)
-		case "weight":
-			// 默认weight越小越在前
-			return utils.Compare(ts[i].Weight, ts[j].Weight)
-		default:
-			return 0
-		}
-	}))
-}
 
 func (d *Processor) resolveTaxonomyPath(taxonomy *Taxonomy, customPath string) string {
 	vars := map[string]string{
@@ -64,13 +46,24 @@ func (d *Processor) ParseTaxonomies(pages Pages, lang string) Taxonomies {
 			Name: taxonomyName,
 		}
 		customPath := lctx.GetTaxonomyConfig(taxonomyName, "path").String()
+		if customPath == "" {
+			customPath = "/{lang:optional}/{taxonomy}/"
+		}
 		taxonomy.Path = lctx.GetRelURL(d.resolveTaxonomyPath(taxonomy, customPath))
 		taxonomy.Permalink = lctx.GetURL(taxonomy.Path)
 		taxonomy.Terms = d.ParseTaxonomyTerms(taxonomy, pages, lang)
 
 		taxonomies = append(taxonomies, taxonomy)
 	}
-	SortTaxonomies(taxonomies, "weight")
+
+	sort.SliceStable(taxonomies, func(i, j int) bool {
+		wi := lctx.GetTaxonomyConfig(taxonomies[i].Name, "weight").Int64()
+		wj := lctx.GetTaxonomyConfig(taxonomies[j].Name, "weight").Int64()
+		if wi == wj {
+			return taxonomies[i].Name < taxonomies[j].Name
+		}
+		return wi < wj
+	})
 	return taxonomies
 }
 

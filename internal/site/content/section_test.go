@@ -91,7 +91,7 @@ func TestSortSectionsByFields(t *testing.T) {
 				testSection("beta", "content/beta/_index.md", map[string]any{"weight": 10, "priority": 50}),
 			}
 
-			SortSections(sections, tt.key)
+			SortSections(sections, tt.key, true)
 
 			assert.Equal(t, tt.want, sectionTitles(sections))
 		})
@@ -113,7 +113,7 @@ func TestSortSectionsSortsChildren(t *testing.T) {
 		},
 	}
 
-	SortSections(sections, "weight")
+	SortSections(sections, "weight", true)
 
 	assert.Equal(t, []string{"first", "second"}, sectionTitles(sections[0].Children))
 }

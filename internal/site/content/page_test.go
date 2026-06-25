@@ -26,6 +26,14 @@ func pageTitles(pages Pages) []string {
 	return titles
 }
 
+func pageGroupNames(groups PageGroups) []string {
+	names := make([]string, len(groups))
+	for i, group := range groups {
+		names[i] = group.Name
+	}
+	return names
+}
+
 func TestParseNodeSetsWordCountAndReadingTime(t *testing.T) {
 	processor := newAssetTestProcessor(t, t.TempDir(), &parser.Result{
 		Content: `<p>Hello <strong>world</strong> 你好</p><script>ignored words</script><style>.ignored { color: red; }</style>`,
@@ -181,4 +189,64 @@ func TestSortPagesByFrontMatterFields(t *testing.T) {
 			assert.Equal(t, tt.want, pageTitles(pages))
 		})
 	}
+}
+
+func TestPageGroupsOrderByFields(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+		want []string
+	}{
+		{
+			name: "name asc",
+			key:  "name",
+			want: []string{"alpha", "beta", "gamma"},
+		},
+		{
+			name: "name desc",
+			key:  "name desc",
+			want: []string{"gamma", "beta", "alpha"},
+		},
+		{
+			name: "count asc",
+			key:  "count",
+			want: []string{"beta", "gamma", "alpha"},
+		},
+		{
+			name: "count desc",
+			key:  "count desc",
+			want: []string{"alpha", "gamma", "beta"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			groups := PageGroups{
+				{Name: "gamma", Pages: Pages{testPage("one", nil), testPage("two", nil)}},
+				{Name: "alpha", Pages: Pages{testPage("one", nil), testPage("two", nil), testPage("three", nil)}},
+				{Name: "beta", Pages: Pages{testPage("one", nil)}},
+			}
+
+			got := groups.OrderBy(tt.key)
+
+			assert.Equal(t, tt.want, pageGroupNames(got))
+			assert.Equal(t, []string{"gamma", "alpha", "beta"}, pageGroupNames(groups))
+		})
+	}
+}
+
+func TestPageGroupsOrderBySortsChildren(t *testing.T) {
+	groups := PageGroups{
+		{
+			Name: "root",
+			Children: PageGroups{
+				{Name: "second"},
+				{Name: "first"},
+			},
+		},
+	}
+
+	got := groups.OrderBy("name")
+
+	assert.Equal(t, []string{"first", "second"}, pageGroupNames(got[0].Children))
 }

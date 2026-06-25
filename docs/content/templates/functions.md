@@ -44,13 +44,18 @@ weight: 10
 ```html
 {% for group in pages.GroupBy("date:2006-01").OrderBy("name desc") %}
   <h2>{{ group.Name }}</h2>
-  {% for page in group.List %}
+  {% for page in group.Pages %}
     <li>{{ page.Title }}</li>
   {% endfor %}
 {% endfor %}
 ```
 
-分组支持 FrontMatter 字段或 `date:{Go格式}`。
+| 属性 | 说明 |
+|------|------|
+| `group.Name` | 分组名称 |
+| `group.Pages` | 当前分组下的页面列表 |
+| `group.Parent` | 父分组 |
+| `group.Children` | 子分组列表 |
 
 ### Limit
 

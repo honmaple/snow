@@ -28,6 +28,10 @@ type (
 	Heading = parser.Heading
 )
 
+func (n *Node) Param(key string, defaults ...any) any {
+	return n.FrontMatter.Get("params."+key, defaults...)
+}
+
 func (d *Processor) countReadingTime(wordCount int64) int64 {
 	if wordCount <= 0 {
 		return 0

@@ -45,22 +45,16 @@ func (ctx *LocaleContext) GetSummary(content string) string {
 }
 
 func (ctx *LocaleContext) GetSlug(name string) string {
-	if ctx.Config.GetBool("slugify") {
-		return slug.Make(name)
-	}
-	return name
+	return slug.Make(name)
 }
 
 func (ctx *LocaleContext) GetPathSlug(path string) string {
-	if ctx.Config.GetBool("slugify") {
-		names := strings.Split(path, "/")
-		slugs := make([]string, len(names))
-		for i, name := range names {
-			slugs[i] = slug.Make(name)
-		}
-		return strings.Join(slugs, "/")
+	names := strings.Split(path, "/")
+	slugs := make([]string, len(names))
+	for i, name := range names {
+		slugs[i] = ctx.GetSlug(name)
 	}
-	return path
+	return strings.Join(slugs, "/")
 }
 
 func (ctx *LocaleContext) GetBaseURL() string {

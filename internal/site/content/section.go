@@ -45,7 +45,7 @@ func (sec *Section) Ancestors() Sections {
 	return sections
 }
 
-func SortSections(sections Sections, key string) {
+func SortSections(sections Sections, key string, recursive bool) {
 	sort.SliceStable(sections, utils.Sort(key, func(k string, i int, j int) int {
 		switch k {
 		case "-":
@@ -60,8 +60,10 @@ func SortSections(sections Sections, key string) {
 		}
 	}))
 
-	for _, section := range sections {
-		SortSections(section.Children, key)
+	if recursive {
+		for _, section := range sections {
+			SortSections(section.Children, key, true)
+		}
 	}
 }
 
@@ -95,7 +97,7 @@ func (sections Sections) OrderBy(key string) Sections {
 	ns := make(Sections, len(sections))
 	copy(ns, sections)
 
-	SortSections(ns, key)
+	SortSections(ns, key, true)
 	return ns
 }
 
@@ -103,11 +105,12 @@ func (d *Processor) resolveSectionPath(section *Section, customPath string) stri
 	lctx := d.ctx.For(section.Lang)
 
 	vars := map[string]string{
-		"{lang}":         section.Lang,
-		"{path}":         section.File.Dir,
-		"{path:slug}":    lctx.GetPathSlug(section.File.Dir),
-		"{section}":      section.Title,
-		"{section:slug}": section.Slug,
+		"{lang}":       section.Lang,
+		"{path}":       section.File.Dir,
+		"{path:slug}":  lctx.GetPathSlug(section.File.Dir),
+		"{slug}":       section.Slug,
+		"{title}":      section.Title,
+		"{title:slug}": lctx.GetSlug(section.Title),
 	}
 	if section.Lang == d.ctx.GetDefaultLanguage() {
 		vars["{lang:optional}"] = ""
@@ -157,8 +160,8 @@ func (d *Processor) ParseHomeSections(fullpath string) (Sections, error) {
 			Node: &Node{
 				File:        file,
 				Lang:        lang,
-				Slug:        "index",
-				Title:       "index",
+				Slug:        "home",
+				Title:       "Home",
 				FrontMatter: NewFrontMatter(nil),
 			},
 			Pages:  make(Pages, 0),
@@ -192,14 +195,14 @@ func (d *Processor) ParseSection(fullpath string) (*Section, error) {
 	}
 	if section.Title == "" {
 		if section.IsHome() {
-			section.Title = "index"
+			section.Title = "Home"
 		} else {
 			section.Title = stdpath.Base(section.File.Dir)
 		}
 	}
 	if section.Slug == "" {
 		if section.IsHome() {
-			section.Slug = "index"
+			section.Slug = "home"
 		} else {
 			section.Slug = lctx.GetSlug(stdpath.Base(section.File.Dir))
 		}

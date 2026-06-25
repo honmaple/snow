@@ -50,7 +50,7 @@ func TestSortTaxonomyTermsByFields(t *testing.T) {
 				{Name: "beta", Pages: Pages{testPage("one", nil)}},
 			}
 
-			SortTaxonomyTerms(terms, tt.key)
+			SortTaxonomyTerms(terms, tt.key, true)
 
 			assert.Equal(t, tt.want, taxonomyTermNames(terms))
 		})
@@ -68,7 +68,7 @@ func TestSortTaxonomyTermsSortsChildren(t *testing.T) {
 		},
 	}
 
-	SortTaxonomyTerms(terms, "name")
+	SortTaxonomyTerms(terms, "name", true)
 
 	assert.Equal(t, []string{"first", "second"}, taxonomyTermNames(terms[0].Children))
 }
