@@ -5,44 +5,14 @@ language: "zh"
 mode.publish:
   base_url: "https://honmaple.me"
 
-sections:
-  _default:
-    path: ""
-    templates: "posts.html"
-  posts:
-    path: "posts/index.html"
-    paginate_path: ""
-
 pages:
-  _default:
-    path: "articles/{date:%Y}/{date:%m}/{slug}.html"
-    templates: "post.html"
-  en:
-    lang: "en"
   pages:
-    path: "pages/{slug}.html"
-    template: "page.html"
     hidden: true
   drafts:
     draft: true
 
 taxonomies:
-  _defualt:
-    template: "{taxonomy}/list.html"
-    term.template: "{taxonomy}/single.html"
   tags:
-    template: "tags/list.html"
-    term.template: "tags/single.html"
-  authors:
-    template: "tags/list.html"
-    term.template: "tags/single.html"
 
 output_dir: "output"
 content_dir: "content"
-
-ignored_static:
-  - js/encrypt.js
-
-statics:
-  robots.txt:
-    path: "robots.txt"

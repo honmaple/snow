@@ -71,6 +71,7 @@ func TestNewUsesDefaultHookOrder(t *testing.T) {
 	withFactories(t, map[string]Factory{
 		"assets":    noopFactory,
 		"encrypt":   noopFactory,
+		"links":     noopFactory,
 		"shortcode": noopFactory,
 	})
 
@@ -78,7 +79,7 @@ func TestNewUsesDefaultHookOrder(t *testing.T) {
 	registry, err := New(ctx)
 	require.NoError(t, err)
 
-	assert.Equal(t, []string{"assets", "encrypt", "shortcode"}, registry.names)
+	assert.Equal(t, []string{"assets", "encrypt", "links", "shortcode"}, registry.names)
 }
 
 func TestNewSortsHooksByWeightThenName(t *testing.T) {
@@ -104,6 +105,7 @@ func TestNewLogsEnabledHookOrderAtDebugLevel(t *testing.T) {
 	withFactories(t, map[string]Factory{
 		"assets":    noopFactory,
 		"encrypt":   noopFactory,
+		"links":     noopFactory,
 		"shortcode": noopFactory,
 	})
 
@@ -117,5 +119,5 @@ func TestNewLogsEnabledHookOrderAtDebugLevel(t *testing.T) {
 	_, err := New(ctx)
 	require.NoError(t, err)
 
-	assert.Contains(t, strings.TrimSpace(buf.String()), "Enabled hooks: assets(20), encrypt(50), shortcode(60)")
+	assert.Contains(t, strings.TrimSpace(buf.String()), "Enabled hooks: assets(20), encrypt(50), links(55), shortcode(60)")
 }

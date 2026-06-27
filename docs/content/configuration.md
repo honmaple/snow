@@ -197,7 +197,7 @@ taxonomies:
 
 ## Hook 配置
 
-默认启用 `assets`、`encrypt`、`shortcode`。其他内置 Hook 只设置默认权重，不会自动挂载：
+默认启用 `assets`、`encrypt`、`links`、`shortcode`。其他内置 Hook 只设置默认权重，不会自动挂载：
 
 | Hook | 默认启用 | 默认权重 |
 |------|----------|----------|
@@ -207,6 +207,7 @@ taxonomies:
 | `rewrite` | false | `30` |
 | `filter` | false | `40` |
 | `encrypt` | true | `50` |
+| `links` | true | `55` |
 | `shortcode` | true | `60` |
 | `minify` | false | `70` |
 

@@ -67,14 +67,10 @@ func (r *Registry) HandlePage(result *content.Page) *content.Page {
 	return result
 }
 
-func (r *Registry) HandlePages(results content.Pages) content.Pages {
+func (r *Registry) HandleContent(store ContentStore, lang string) {
 	for _, hook := range r.hooks {
-		results = hook.HandlePages(results)
-		if len(results) == 0 {
-			return nil
-		}
+		hook.HandleContent(store, lang)
 	}
-	return results
 }
 
 func (r *Registry) HandleSection(result *content.Section) *content.Section {
@@ -85,36 +81,6 @@ func (r *Registry) HandleSection(result *content.Section) *content.Section {
 		}
 	}
 	return result
-}
-
-func (r *Registry) HandleSections(results content.Sections) content.Sections {
-	for _, hook := range r.hooks {
-		results = hook.HandleSections(results)
-		if len(results) == 0 {
-			return nil
-		}
-	}
-	return results
-}
-
-func (r *Registry) HandleTaxonomy(result *content.Taxonomy) *content.Taxonomy {
-	for _, hook := range r.hooks {
-		result = hook.HandleTaxonomy(result)
-		if result == nil {
-			return nil
-		}
-	}
-	return result
-}
-
-func (r *Registry) HandleTaxonomies(results content.Taxonomies) content.Taxonomies {
-	for _, hook := range r.hooks {
-		results = hook.HandleTaxonomies(results)
-		if len(results) == 0 {
-			return nil
-		}
-	}
-	return results
 }
 
 func New(ctx *core.Context) (*Registry, error) {

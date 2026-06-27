@@ -199,6 +199,9 @@ func (site *Site) BuildContent(ctx context.Context, writer core.Writer) error {
 	if err != nil {
 		return err
 	}
+	for _, lang := range site.ctx.GetAllLanguages() {
+		site.hook.HandleContent(store, lang)
+	}
 
 	for _, lang := range site.ctx.GetAllLanguages() {
 		site.ctx.Logger.Infof("Building %s site...", lang)

@@ -18,6 +18,7 @@ import (
 	_ "github.com/honmaple/snow/internal/site/hook/assets"
 	_ "github.com/honmaple/snow/internal/site/hook/encrypt"
 	_ "github.com/honmaple/snow/internal/site/hook/filter"
+	_ "github.com/honmaple/snow/internal/site/hook/links"
 	_ "github.com/honmaple/snow/internal/site/hook/minify"
 	_ "github.com/honmaple/snow/internal/site/hook/pelican"
 	_ "github.com/honmaple/snow/internal/site/hook/rewrite"

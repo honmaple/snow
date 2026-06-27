@@ -227,14 +227,16 @@ var (
 	hookConfig = map[string]any{
 		"hooks.assets.enabled":    true,
 		"hooks.encrypt.enabled":   true,
+		"hooks.links.enabled":     true,
 		"hooks.shortcode.enabled": true,
 
-		// hook的执行顺序，先encrypt再shortcode
+		// hook的执行顺序
 		"hooks.snakecase.weight": 10,
 		"hooks.assets.weight":    20,
 		"hooks.pelican.weight":   30,
 		"hooks.rewrite.weight":   30,
 		"hooks.filter.weight":    40,
+		"hooks.links.weight":     55,
 		"hooks.encrypt.weight":   50,
 		"hooks.shortcode.weight": 60,
 		"hooks.minify.weight":    70,
