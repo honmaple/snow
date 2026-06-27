@@ -1,6 +1,8 @@
 package content
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -53,6 +55,87 @@ func TestParseNodeSetsWordCountAndReadingTime(t *testing.T) {
 	assert.Equal(t, int64(1), processor.countReadingTime(1))
 	assert.Equal(t, int64(1), processor.countReadingTime(200))
 	assert.Equal(t, int64(2), processor.countReadingTime(201))
+}
+
+func TestParsePagePathStyleEmptyKeepsPath(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "content")
+	require.NoError(t, os.MkdirAll(dir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "hello.md"), []byte("# Hello"), 0644))
+
+	processor := newAssetTestProcessor(t, root, &parser.Result{
+		FrontMatter: map[string]any{
+			"path":       "/Mixed Path/{slug}/",
+			"path_style": "",
+		},
+		Content: "<p>Hello</p>",
+	})
+
+	page, err := processor.ParsePage("hello.md", false)
+	require.NoError(t, err)
+
+	assert.Equal(t, "/Mixed Path/hello/", page.Path)
+}
+
+func TestParsePagePathStyleLower(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "content", "MixedPath")
+	require.NoError(t, os.MkdirAll(dir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "hello.md"), []byte("# Hello"), 0644))
+
+	processor := newAssetTestProcessor(t, root, &parser.Result{
+		FrontMatter: map[string]any{
+			"path":       "/{path}/File.HTML",
+			"path_style": "lower",
+		},
+		Content: "<p>Hello</p>",
+	})
+
+	page, err := processor.ParsePage("MixedPath/hello.md", false)
+	require.NoError(t, err)
+
+	assert.Equal(t, "/mixedpath/file.html", page.Path)
+}
+
+func TestParsePagePathStyleSupportsMultipleStyles(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "content")
+	require.NoError(t, os.MkdirAll(dir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "hello.md"), []byte("# Hello"), 0644))
+
+	processor := newAssetTestProcessor(t, root, &parser.Result{
+		FrontMatter: map[string]any{
+			"path":       "/Docs Page/Guide File.HTML",
+			"path_style": "lower, slug",
+		},
+		Content: "<p>Hello</p>",
+	})
+
+	page, err := processor.ParsePage("hello.md", false)
+	require.NoError(t, err)
+
+	assert.Equal(t, "/docs-page/guide-file.html", page.Path)
+}
+
+func TestParsePagePathStyleSlugUnicodeIgnoresSlugifyConfig(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "content")
+	require.NoError(t, os.MkdirAll(dir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "hello.md"), []byte("# Hello"), 0644))
+
+	processor := newAssetTestProcessor(t, root, &parser.Result{
+		FrontMatter: map[string]any{
+			"path":       "/你好 World/Guide File.HTML",
+			"path_style": "slug_unicode",
+		},
+		Content: "<p>Hello</p>",
+	})
+	processor.ctx.Config.Set("slugify.preserve_unicode", false)
+
+	page, err := processor.ParsePage("hello.md", false)
+	require.NoError(t, err)
+
+	assert.Equal(t, "/你好-world/guide-file.html", page.Path)
 }
 
 func TestSortPagesWeightAscByDefault(t *testing.T) {

@@ -31,7 +31,7 @@ type (
 		Section *Section
 		Assets  Assets
 
-		Formats    Formats
+		Formats Formats
 	}
 	Pages []*Page
 )
@@ -225,7 +225,9 @@ func (d *Processor) resolvePagePath(page *Page, customPath string) string {
 	} else {
 		vars["{lang:optional}"] = page.Lang
 	}
-	return d.resolvePath(customPath, vars)
+
+	customPath = d.resolvePath(customPath, vars)
+	return lctx.ApplyPathStyle(customPath, page.FrontMatter.GetString("path_style"))
 }
 
 func (d *Processor) IsPage(fullpath string) bool {
@@ -248,12 +250,12 @@ func (d *Processor) ParsePage(fullpath string, isBundle bool) (*Page, error) {
 	lctx := d.ctx.For(node.Lang)
 
 	page := &Page{
-		Node:       node,
-		Draft:      node.FrontMatter.GetBool("draft"),
-		Hidden:     node.FrontMatter.GetBool("hidden"),
-		Date:       node.FrontMatter.GetTime("date"),
-		Modified:   node.FrontMatter.GetTime("modified"),
-		IsBundle:   isBundle,
+		Node:     node,
+		Draft:    node.FrontMatter.GetBool("draft"),
+		Hidden:   node.FrontMatter.GetBool("hidden"),
+		Date:     node.FrontMatter.GetTime("date"),
+		Modified: node.FrontMatter.GetTime("modified"),
+		IsBundle: isBundle,
 	}
 	if page.Title == "" {
 		if isBundle && page.File.Dir != "" {
@@ -277,7 +279,7 @@ func (d *Processor) ParsePage(fullpath string, isBundle bool) (*Page, error) {
 		page.Modified = page.Date
 	}
 
-	page.Path = lctx.GetRelURL(d.resolvePagePath(page, page.FrontMatter.GetString("path")))
+	page.Path = d.resolvePagePath(page, page.FrontMatter.GetString("path"))
 	page.Permalink = lctx.GetURL(page.Path)
 
 	// 添加附属资源
@@ -337,7 +339,7 @@ func (d *Processor) ParsePageAssets(page *Page) (Assets, error) {
 		asset := &Asset{
 			File: file,
 		}
-		asset.Path = lctx.GetRelURL(d.resolveAssetPath(page.Path, assetPath))
+		asset.Path = d.resolveAssetPath(page.Path, assetPath)
 		asset.Permalink = lctx.GetURL(asset.Path)
 		assets = append(assets, asset)
 	}
@@ -363,10 +365,9 @@ func (d *Processor) ParsePageFormats(page *Page) Formats {
 			Name:     name,
 			Template: customTemplate,
 		}
-		outputPath := d.resolvePagePath(page, customPath)
 
-		format.Path = lctx.GetRelURL(outputPath)
-		format.Permalink = lctx.GetRelURL(format.Path)
+		format.Path = d.resolvePagePath(page, customPath)
+		format.Permalink = lctx.GetURL(format.Path)
 
 		formats = append(formats, format)
 	}

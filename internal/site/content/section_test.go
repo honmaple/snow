@@ -1,9 +1,13 @@
 package content
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/honmaple/snow/internal/site/content/parser"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func testSection(title string, path string, frontMatter map[string]any) *Section {
@@ -48,6 +52,26 @@ func TestSectionRecursivePagesUsesWeightAscending(t *testing.T) {
 	pages := section.RecursivePages()
 
 	assert.Equal(t, []string{"first", "second", "third"}, pageTitles(pages))
+}
+
+func TestParseSectionPathStyleSlug(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "content", "docs")
+	require.NoError(t, os.MkdirAll(dir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "_index.md"), []byte("# Section"), 0644))
+
+	processor := newAssetTestProcessor(t, root, &parser.Result{
+		FrontMatter: map[string]any{
+			"path":       "/Docs.v1/Guide Page.html",
+			"path_style": "slug",
+		},
+		Content: "<p>Section</p>",
+	})
+
+	section, err := processor.ParseSection("docs/_index.md")
+	require.NoError(t, err)
+
+	assert.Equal(t, "/docs-v1/guide-page.html", section.Path)
 }
 
 func TestSortSectionsByFields(t *testing.T) {

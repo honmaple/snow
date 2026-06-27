@@ -118,7 +118,8 @@ func (d *Processor) resolveSectionPath(section *Section, customPath string) stri
 		vars["{lang:optional}"] = section.Lang
 	}
 
-	return d.resolvePath(customPath, vars)
+	customPath = d.resolvePath(customPath, vars)
+	return lctx.ApplyPathStyle(customPath, section.FrontMatter.GetString("path_style"))
 }
 
 func (d *Processor) IsSection(fullpath string) ([]string, bool) {
@@ -208,7 +209,7 @@ func (d *Processor) ParseSection(fullpath string) (*Section, error) {
 		}
 	}
 
-	section.Path = lctx.GetRelURL(d.resolveSectionPath(section, section.FrontMatter.GetString("path")))
+	section.Path = d.resolveSectionPath(section, section.FrontMatter.GetString("path"))
 	section.Permalink = lctx.GetURL(section.Path)
 
 	assets, err := d.ParseSectionAssets(section)
@@ -238,7 +239,7 @@ func (d *Processor) ParseSectionAssets(section *Section) (Assets, error) {
 		asset := &Asset{
 			File: file,
 		}
-		asset.Path = lctx.GetRelURL(d.resolveAssetPath(section.Path, assetPath))
+		asset.Path = d.resolveAssetPath(section.Path, assetPath)
 		asset.Permalink = lctx.GetURL(asset.Path)
 		assets = append(assets, asset)
 	}
@@ -263,8 +264,8 @@ func (d *Processor) ParseSectionFormats(section *Section) Formats {
 			Name:     name,
 			Template: customTemplate,
 		}
-		format.Path = lctx.GetRelURL(d.resolveSectionPath(section, customPath))
-		format.Permalink = lctx.GetRelURL(format.Path)
+		format.Path = d.resolveSectionPath(section, customPath)
+		format.Permalink = lctx.GetURL(format.Path)
 
 		formats = append(formats, format)
 	}

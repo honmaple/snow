@@ -36,6 +36,7 @@ taxonomies:
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
 | `path` | `{taxonomy}/` | 分类列表页路径 |
+| `path_style` | `none` | 路径后处理，见 [Path Style 配置](/configuration/#path-style-配置) |
 | `template` | — | 自定义模板 |
 | `sort_by` | `name` | Term 排序（`"name"` 或 `"count"`） |
 
@@ -44,6 +45,7 @@ taxonomies:
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
 | `term.path` | `{taxonomy}/{term:slug}/` | Term 页面路径 |
+| `term.path_style` | `none` | 路径后处理，见 [Path Style 配置](/configuration/#path-style-配置) |
 | `term.template` | — | Term 页面模板 |
 | `term.sort_by` | `date desc` | Term 下页面排序 |
 | `term.filter_by` | — | Term 下页面筛选 |

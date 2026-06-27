@@ -5,8 +5,8 @@ import (
 	stdpath "path"
 	"strings"
 
-	"github.com/gosimple/slug"
 	"github.com/honmaple/snow/internal/utils"
+	"github.com/honmaple/snow/internal/utils/slugify"
 	"github.com/spf13/viper"
 )
 
@@ -45,7 +45,17 @@ func (ctx *LocaleContext) GetSummary(content string) string {
 }
 
 func (ctx *LocaleContext) GetSlug(name string) string {
-	return slug.Make(name)
+	opts := make([]slugify.Option, 0)
+	if k := "slugify.lowercase"; ctx.Config.IsSet(k) {
+		opts = append(opts, slugify.WithLowercase(ctx.Config.GetBool(k)))
+	}
+	if k := "slugify.preserve_chars"; ctx.Config.IsSet(k) {
+		opts = append(opts, slugify.WithPreserveChars(ctx.Config.GetString(k)))
+	}
+	if k := "slugify.preserve_unicode"; ctx.Config.IsSet(k) {
+		opts = append(opts, slugify.WithPreserveUnicode(ctx.Config.GetBool(k)))
+	}
+	return slugify.Make(name, opts...)
 }
 
 func (ctx *LocaleContext) GetPathSlug(path string) string {
@@ -57,18 +67,45 @@ func (ctx *LocaleContext) GetPathSlug(path string) string {
 	return strings.Join(slugs, "/")
 }
 
-func (ctx *LocaleContext) GetBaseURL() string {
-	return ctx.Config.GetString("base_url")
+func (ctx *LocaleContext) applyPathStyle(path string, includeFile bool, opts ...slugify.Option) string {
+	if includeFile {
+		dir, file := stdpath.Split(path)
+		if file != "" {
+			ext := stdpath.Ext(file)
+			if ext != "" && ext != file {
+				base := strings.TrimSuffix(file, ext)
+				return ctx.applyPathStyle(dir+base, false, opts...) + strings.ToLower(ext)
+			}
+		}
+	}
+	names := strings.Split(path, "/")
+	slugs := make([]string, len(names))
+	for i, name := range names {
+		if len(opts) > 0 {
+			slugs[i] = slugify.Make(name, opts...)
+		} else {
+			slugs[i] = ctx.GetSlug(name)
+		}
+	}
+	return strings.Join(slugs, "/")
 }
 
-func (ctx *LocaleContext) GetURL(path string) string {
-	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		return path
+func (ctx *LocaleContext) ApplyPathStyle(path string, style string) string {
+	for s := range strings.SplitSeq(style, ",") {
+		switch strings.ToLower(strings.TrimSpace(s)) {
+		case "lower":
+			path = strings.ToLower(path)
+		case "slug":
+			path = ctx.applyPathStyle(path, true)
+		case "slug_unicode":
+			path = ctx.applyPathStyle(path, true, slugify.WithPreserveUnicode(true))
+		}
 	}
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	return ctx.Config.GetString("base_url") + path
+	return path
+}
+
+func (ctx *LocaleContext) GetBaseURL() string {
+	return ctx.Config.GetString("base_url")
 }
 
 func (ctx *LocaleContext) GetRelURL(path string) string {
@@ -79,6 +116,16 @@ func (ctx *LocaleContext) GetRelURL(path string) string {
 		path = "/" + path
 	}
 	return path
+}
+
+func (ctx *LocaleContext) GetURL(path string) string {
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		return path
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return ctx.GetBaseURL() + path
 }
 
 func (ctx *LocaleContext) GetPageConfig(dir string) map[string]any {
@@ -166,24 +213,3 @@ func (ctx *LocaleContext) GetMarkupConfig(name string, keyName string) Result {
 	}
 	return Result{value: val}
 }
-
-// func (ctx *LocaleContext) CleanOutputDir() error {
-//	if out := ctx.GetOutputDir(); out != "" {
-//		ctx.Logger.Infoln("Removing the contents of", out)
-
-//		files, err := os.ReadDir(out)
-//		if err != nil {
-//			return err
-//		}
-//		for _, file := range files {
-//			if strings.HasPrefix(file.Name(), ".") {
-//				continue
-//			}
-//			if err := os.RemoveAll(filepath.Join(out, file.Name())); err != nil {
-//				return err
-//			}
-//		}
-//		return nil
-//	}
-//	return nil
-// }

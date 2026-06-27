@@ -36,7 +36,12 @@ func (d *Processor) resolvePath(path string, vars map[string]string) string {
 		args = append(args, v)
 	}
 	r := strings.NewReplacer(args...)
-	return doubleSlashRe.ReplaceAllString(r.Replace(path), "/")
+
+	path = doubleSlashRe.ReplaceAllString(r.Replace(path), "/")
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return path
 }
 
 func (d *Processor) findIndexFiles(fullpath string, prefix string) []string {

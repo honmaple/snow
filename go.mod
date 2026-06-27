@@ -14,7 +14,7 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/gorilla/websocket v1.5.3
-	github.com/gosimple/slug v1.13.1
+	github.com/gosimple/unidecode v1.0.1
 	github.com/honmaple/org-golang v0.0.0-20231114033037-6fde0a6c226d
 	github.com/iancoleman/strcase v0.3.0
 	github.com/niklasfasching/go-org v1.9.1
@@ -35,7 +35,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.12.0 // indirect
-	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect

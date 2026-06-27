@@ -106,7 +106,9 @@ func (d *Processor) resolveTaxonomyTermPath(term *TaxonomyTerm, customPath strin
 	} else {
 		vars["{lang:optional}"] = term.Taxonomy.Lang
 	}
-	return d.resolvePath(customPath, vars)
+
+	customPath = d.resolvePath(customPath, vars)
+	return lctx.ApplyPathStyle(customPath, lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.path_style").String())
 }
 
 func (d *Processor) parseTaxonomyTermsFromGroups(taxonomy *Taxonomy, groups PageGroups, parent *TaxonomyTerm) TaxonomyTerms {
@@ -127,7 +129,7 @@ func (d *Processor) parseTaxonomyTermsFromGroups(taxonomy *Taxonomy, groups Page
 		if customPath == "" {
 			customPath = "/{lang:optional}/{taxonomy}/{term:slug}/"
 		}
-		term.Path = lctx.GetRelURL(d.resolveTaxonomyTermPath(term, customPath))
+		term.Path = d.resolveTaxonomyTermPath(term, customPath)
 		term.Permalink = lctx.GetURL(term.Path)
 		term.Children = d.parseTaxonomyTermsFromGroups(taxonomy, group.Children, term)
 		term.Formats = d.ParseTaxonomyTermFormats(term, taxonomy.Lang)
@@ -171,7 +173,7 @@ func (d *Processor) ParseTaxonomyTermFormats(term *TaxonomyTerm, lang string) Fo
 			Template: customTemplate,
 		}
 
-		format.Path = lctx.GetRelURL(d.resolveTaxonomyTermPath(term, customPath))
+		format.Path = d.resolveTaxonomyTermPath(term, customPath)
 		format.Permalink = lctx.GetURL(format.Path)
 		formats = append(formats, format)
 	}

@@ -117,6 +117,7 @@ sections:
 | 关键配置项 | 默认值 | 说明 |
 |------------|--------|------|
 | `path` | `{path:slug}/` | 输出路径，为空禁用渲染 |
+| `path_style` | - | 输出路径后处理，见 [Path Style 配置](#path-style-配置) |
 | `sort_by` | `date desc` | 页面排序 |
 | `paginate` | `0` | 分页数，`0` 不分页 |
 | `paginate_path` | `{name}{number:optional}{extension}` | 分页路径 |
@@ -142,10 +143,39 @@ pages:
 | 关键配置项 | 默认值 | 说明 |
 |------------|--------|------|
 | `path` | `{path:slug}/{slug}/` | 输出路径 |
+| `path_style` | - | 输出路径后处理，见 [Path Style 配置](#path-style-配置) |
 | `template` | — | 无默认，按 `page.html` 查找 |
 | `draft` | `false` | 标记为草稿 |
 | `hidden` | `false` | 隐藏页面 |
 | `lang` | 站点配置 | 语言 |
+
+## Path Style 配置
+
+`path_style` 用于在路径变量解析后做统一后处理，可用于 Page、Section、Taxonomy 和 Taxonomy Term。可选值为 `none`、`lower`、`slug`、`slug_unicode`，也可以用逗号按顺序组合，例如 `lower,slug`。
+
+| 值 | 说明 |
+|----|------|
+| `none` 或空字符串 | 保持解析后的路径不变 |
+| `lower` | 将输出路径全部转为小写 |
+| `slug` | 按路径段 slug 化，并保留最后一个文件扩展名 |
+| `slug_unicode` | 按路径段 slug 化并保留 Unicode 字符，不受 `slugify.preserve_unicode` 配置影响 |
+
+## Slugify 配置
+
+```yaml
+slugify:
+  lowercase: true
+  preserve_unicode: false
+  preserve_chars: ""
+```
+
+Slugify 配置用于 `{slug}`、`{path:slug}`、`{title:slug}`、`{term:slug}` 和 `path_style: slug`。默认会将 Unicode 字符转写为 ASCII，例如中文标题会生成类似 `ni-hao-world` 的 slug；如果希望保留中文等 Unicode 字符，可以设置 `slugify.preserve_unicode: true`。
+
+| 关键配置项 | 默认值 | 说明 |
+|------------|--------|------|
+| `lowercase` | `true` | 是否转为小写 |
+| `preserve_chars` | 空字符串 | 额外允许保留的字符，例如 `+` 或 `.` |
+| `preserve_unicode` | `false` | 是否保留 Unicode 字母和数字，例如中文；默认会转写为 ASCII |
 
 ## Taxonomy 配置
 

@@ -21,6 +21,8 @@ type (
 )
 
 func (d *Processor) resolveTaxonomyPath(taxonomy *Taxonomy, customPath string) string {
+	lctx := d.ctx.For(taxonomy.Lang)
+
 	vars := map[string]string{
 		"{lang}":     taxonomy.Lang,
 		"{taxonomy}": taxonomy.Name,
@@ -30,7 +32,9 @@ func (d *Processor) resolveTaxonomyPath(taxonomy *Taxonomy, customPath string) s
 	} else {
 		vars["{lang:optional}"] = taxonomy.Lang
 	}
-	return d.resolvePath(customPath, vars)
+
+	customPath = d.resolvePath(customPath, vars)
+	return lctx.ApplyPathStyle(customPath, lctx.GetTaxonomyConfig(taxonomy.Name, "path_style").String())
 }
 
 func (d *Processor) ParseTaxonomies(pages Pages, lang string) Taxonomies {
@@ -49,7 +53,8 @@ func (d *Processor) ParseTaxonomies(pages Pages, lang string) Taxonomies {
 		if customPath == "" {
 			customPath = "/{lang:optional}/{taxonomy}/"
 		}
-		taxonomy.Path = lctx.GetRelURL(d.resolveTaxonomyPath(taxonomy, customPath))
+
+		taxonomy.Path = d.resolveTaxonomyPath(taxonomy, customPath)
 		taxonomy.Permalink = lctx.GetURL(taxonomy.Path)
 		taxonomy.Terms = d.ParseTaxonomyTerms(taxonomy, pages, lang)
 
