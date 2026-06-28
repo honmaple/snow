@@ -67,17 +67,12 @@ func (ctx *LocaleContext) GetPathSlug(path string) string {
 	return strings.Join(slugs, "/")
 }
 
-func (ctx *LocaleContext) applyPathStyle(path string, includeFile bool, opts ...slugify.Option) string {
-	if includeFile {
-		dir, file := stdpath.Split(path)
-		if file != "" {
-			ext := stdpath.Ext(file)
-			if ext != "" && ext != file {
-				base := strings.TrimSuffix(file, ext)
-				return ctx.applyPathStyle(dir+base, false, opts...) + strings.ToLower(ext)
-			}
-		}
+func (ctx *LocaleContext) applyPathStyle(path string, opts ...slugify.Option) string {
+	ext := stdpath.Ext(path)
+	if ext != "" {
+		path = strings.TrimSuffix(path, ext)
 	}
+
 	names := strings.Split(path, "/")
 	slugs := make([]string, len(names))
 	for i, name := range names {
@@ -87,7 +82,7 @@ func (ctx *LocaleContext) applyPathStyle(path string, includeFile bool, opts ...
 			slugs[i] = ctx.GetSlug(name)
 		}
 	}
-	return strings.Join(slugs, "/")
+	return strings.Join(slugs, "/") + strings.ToLower(ext)
 }
 
 func (ctx *LocaleContext) ApplyPathStyle(path string, style string) string {
@@ -96,9 +91,9 @@ func (ctx *LocaleContext) ApplyPathStyle(path string, style string) string {
 		case "lower":
 			path = strings.ToLower(path)
 		case "slug":
-			path = ctx.applyPathStyle(path, true)
+			path = ctx.applyPathStyle(path)
 		case "slug_unicode":
-			path = ctx.applyPathStyle(path, true, slugify.WithPreserveUnicode(true))
+			path = ctx.applyPathStyle(path, slugify.WithPreserveUnicode(true))
 		}
 	}
 	return path
