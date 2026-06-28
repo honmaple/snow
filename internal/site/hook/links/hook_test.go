@@ -110,6 +110,16 @@ func TestLinksHookRewritesContentRootLinks(t *testing.T) {
 	assert.Contains(t, source.Content, `<a href="/pages/test/">test</a>`)
 }
 
+func TestLinksHookKeepsUnchangedTagsRaw(t *testing.T) {
+	target := testLinkPage("pages/test.md", "pages", "/pages/test/", "")
+	source := testLinkPage("posts/source.md", "posts", "/posts/source/", `<p>before<br><hr><img src="cover.png"><a href="@/pages/test.md">test</a></p>`)
+
+	h := &LinksHook{}
+	h.HandleContent(testContentStore{pages: content.Pages{source, target}}, "zh")
+
+	assert.Equal(t, `<p>before<br><hr><img src="cover.png"><a href="/pages/test/">test</a></p>`, source.Content)
+}
+
 func TestLinksHookPreservesQueryAndFragment(t *testing.T) {
 	target := testLinkPage("pages/hello.md", "pages", "/custom/hello/", "")
 	source := testLinkPage("posts/source.md", "posts", "/posts/source/", `<a href="@/pages/hello.md?ref=1#intro">hello</a>`)

@@ -2,6 +2,7 @@ package links
 
 import (
 	"bytes"
+	"io"
 	"net/url"
 	stdpath "path"
 	"strings"
@@ -113,42 +114,66 @@ func (r *contentLinkRewriter) rewriteHTML(node *content.Node, data string) strin
 		return data
 	}
 
-	doc, err := html.Parse(strings.NewReader("<div>" + data + "</div>"))
-	if err != nil {
-		return data
-	}
-
-	var walk func(*html.Node)
-	walk = func(htmlNode *html.Node) {
-		if htmlNode.Type == html.ElementNode && htmlNode.Data == "a" {
-			for i, attr := range htmlNode.Attr {
-				if attr.Key != "href" {
-					continue
-				}
-				if href, ok := r.resolveHref(node, attr.Val); ok {
-					htmlNode.Attr[i].Val = href
-				}
-				break
-			}
-		}
-		for child := htmlNode.FirstChild; child != nil; child = child.NextSibling {
-			walk(child)
-		}
-	}
-	walk(doc)
-
-	container := findFirstElement(doc, "div")
-	if container == nil {
-		return data
-	}
-
 	var buf bytes.Buffer
-	for child := container.FirstChild; child != nil; child = child.NextSibling {
-		if err := html.Render(&buf, child); err != nil {
-			return data
+	tokenizer := html.NewTokenizer(strings.NewReader(data))
+	for {
+		tokenType := tokenizer.Next()
+		switch tokenType {
+		case html.ErrorToken:
+			if err := tokenizer.Err(); err != nil && err != io.EOF {
+				return data
+			}
+			return buf.String()
+		case html.StartTagToken, html.SelfClosingTagToken:
+			token := tokenizer.Token()
+			if token.Data != "a" {
+				buf.Write(tokenizer.Raw())
+				continue
+			}
+			if r.rewriteAnchorHref(node, &token) {
+				writeToken(&buf, token, tokenType == html.SelfClosingTagToken)
+			} else {
+				buf.Write(tokenizer.Raw())
+			}
+		default:
+			buf.Write(tokenizer.Raw())
 		}
 	}
-	return buf.String()
+}
+
+func (r *contentLinkRewriter) rewriteAnchorHref(node *content.Node, token *html.Token) bool {
+	for i, attr := range token.Attr {
+		if attr.Key != "href" {
+			continue
+		}
+		if href, ok := r.resolveHref(node, attr.Val); ok {
+			token.Attr[i].Val = href
+			return true
+		}
+		return false
+	}
+	return false
+}
+
+func writeToken(buf *bytes.Buffer, token html.Token, selfClosing bool) {
+	buf.WriteByte('<')
+	buf.WriteString(token.Data)
+	for _, attr := range token.Attr {
+		buf.WriteByte(' ')
+		if attr.Namespace != "" {
+			buf.WriteString(attr.Namespace)
+			buf.WriteByte(':')
+		}
+		buf.WriteString(attr.Key)
+		buf.WriteString(`="`)
+		buf.WriteString(html.EscapeString(attr.Val))
+		buf.WriteByte('"')
+	}
+	if selfClosing {
+		buf.WriteString(" />")
+	} else {
+		buf.WriteByte('>')
+	}
 }
 
 func (r *contentLinkRewriter) resolveHref(node *content.Node, href string) (string, bool) {
@@ -210,18 +235,6 @@ func normalizeContentPath(node *content.Node, hrefPath string) string {
 		base = node.File.Dir
 	}
 	return stdpath.Clean(stdpath.Join(base, hrefPath))
-}
-
-func findFirstElement(node *html.Node, name string) *html.Node {
-	if node.Type == html.ElementNode && node.Data == name {
-		return node
-	}
-	for child := node.FirstChild; child != nil; child = child.NextSibling {
-		if result := findFirstElement(child, name); result != nil {
-			return result
-		}
-	}
-	return nil
 }
 
 func joinTargetHref(targetPath string, u *url.URL) string {
