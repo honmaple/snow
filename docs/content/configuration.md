@@ -210,6 +210,7 @@ taxonomies:
 | `links` | true | `55` |
 | `shortcode` | true | `60` |
 | `minify` | false | `70` |
+| `alias` | false | `80` |
 
 `weight` 越小越先执行；权重相同时按 Hook 名称排序。如果显式配置 `hooks.<name>.enabled: true`，但对应 Hook 未注册，构建会返回错误。
 

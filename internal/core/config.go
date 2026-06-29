@@ -238,6 +238,7 @@ var (
 		"hooks.encrypt.weight":   50,
 		"hooks.shortcode.weight": 60,
 		"hooks.minify.weight":    70,
+		"hooks.alias.weight":     80,
 	}
 )
 

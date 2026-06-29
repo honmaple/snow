@@ -15,6 +15,7 @@ import (
 	_ "github.com/honmaple/snow/internal/site/template/data"
 	_ "github.com/honmaple/snow/internal/site/template/i18n"
 
+	_ "github.com/honmaple/snow/internal/site/hook/alias"
 	_ "github.com/honmaple/snow/internal/site/hook/assets"
 	_ "github.com/honmaple/snow/internal/site/hook/encrypt"
 	_ "github.com/honmaple/snow/internal/site/hook/filter"

@@ -101,11 +101,11 @@ params:
 
 ## Hooks
 
-Hooks let plugins inject behavior into the content processing pipeline. Snow includes seven built-in hooks, with three enabled by default.
+Hooks let plugins inject behavior into the content processing pipeline. Snow includes built-in hooks for assets, redirects, content links, shortcodes, and more.
 
 ```bash
 $ snow hooks
-assets(enabled), encrypt(enabled), shortcode(enabled), filter, minify, pelican, rewrite
+assets(enabled), encrypt(enabled), links(enabled), shortcode(enabled), alias, filter, minify, pelican, rewrite
 ```
 
 ## Templates
