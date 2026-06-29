@@ -201,10 +201,6 @@ func (pages Pages) GroupBy(key string) PageGroups {
 	return results
 }
 
-func (pages Pages) PaginateBy(number int, path string, paginatePath string, urlFor ...func(string) string) []*Paginator[*Page] {
-	return Paginate(pages, number, path, paginatePath, urlFor...)
-}
-
 func (d *Processor) resolvePagePath(page *Page, customPath string) string {
 	lctx := d.ctx.For(page.Lang)
 

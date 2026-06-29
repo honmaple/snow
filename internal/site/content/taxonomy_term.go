@@ -190,22 +190,19 @@ func (d *Processor) RenderTaxonomyTerm(term *TaxonomyTerm, tplset template.Templ
 	}
 	if tpl := tplset.Lookup(lookups...); tpl != nil {
 		d.ctx.Logger.Debugf("write taxonomy term [%s:%s] -> %s", term.Taxonomy.Name, term.GetFullName(), term.Path)
-		for _, por := range term.Pages.
-			FilterBy(
-				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate_filter_by").String(),
-			).
-			PaginateBy(
-				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate").Int(),
-				term.Path,
-				lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate_path").String(),
-				lctx.GetURL,
-			) {
-			if err := d.RenderTemplate(por.Path, tpl, map[string]any{
+
+		pagers := d.PaginateBy(term.Pages.FilterBy(lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate_filter_by").String()),
+			lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate").Int(),
+			term.Path,
+			lctx.GetTaxonomyConfig(term.Taxonomy.Name, "term.paginate_path").String(),
+			term.Taxonomy.Lang,
+		)
+		for _, pager := range pagers {
+			if err := d.RenderTemplate(pager.Path, tpl, map[string]any{
+				"paginator":     NewPaginator(pager, pagers),
 				"term":          term,
 				"taxonomy":      term.Taxonomy,
-				"paginator":     por,
-				"current_path":  por.Path,
-				"current_index": por.PageNum,
+				"current_index": pager.PageNum,
 				"current_lang":  term.Taxonomy.Lang,
 			}, writer); err != nil {
 				return err

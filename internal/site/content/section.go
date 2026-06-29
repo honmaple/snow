@@ -292,21 +292,18 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 	}
 
 	if tpl := tplset.Lookup(lookups...); tpl != nil {
-		for _, por := range section.Pages.
-			FilterBy(
-				section.FrontMatter.GetString("paginate_filter_by"),
-			).
-			PaginateBy(
-				section.FrontMatter.GetInt("paginate"),
-				section.Path,
-				section.FrontMatter.GetString("paginate_path"),
-				d.ctx.For(section.Lang).GetURL,
-			) {
-			if err := d.RenderTemplate(por.Path, tpl, map[string]any{
-				"paginator":     por,
+		pagers := d.PaginateBy(section.Pages.FilterBy(section.FrontMatter.GetString("paginate_filter_by")),
+			section.FrontMatter.GetInt("paginate"),
+			section.Path,
+			section.FrontMatter.GetString("paginate_path"),
+			section.Lang,
+		)
+		for _, pager := range pagers {
+			if err := d.RenderTemplate(pager.Path, tpl, map[string]any{
+				"paginator":     NewPaginator(pager, pagers),
 				"section":       section,
+				"current_index": pager.PageNum,
 				"current_lang":  section.Lang,
-				"current_index": por.PageNum,
 			}, writer); err != nil {
 				return err
 			}

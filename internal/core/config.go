@@ -204,17 +204,15 @@ var (
 		"pages._default.path": "/{lang:optional}/{path:slug}/{slug}/",
 	}
 	sectionConfig = map[string]any{
-		"sections._default.path":          "/{lang:optional}/{path:slug}/",
-		"sections._default.sort_by":       "date desc",
-		"sections._default.paginate":      0,
-		"sections._default.paginate_path": "{name}{number:optional}{extension}",
+		"sections._default.path":     "/{lang:optional}/{path:slug}/",
+		"sections._default.sort_by":  "date desc",
+		"sections._default.paginate": 0,
 	}
 	taxonomyConfig = map[string]any{
-		"taxonomies._default.path":               "/{lang:optional}/{taxonomy}/",
-		"taxonomies._default.sort_by":            "name",
-		"taxonomies._default.term.path":          "/{lang:optional}/{taxonomy}/{term:slug}/",
-		"taxonomies._default.term.sort_by":       "date desc",
-		"taxonomies._default.term.paginate_path": "{name}{number:optional}{extension}",
+		"taxonomies._default.path":         "/{lang:optional}/{taxonomy}/",
+		"taxonomies._default.sort_by":      "name",
+		"taxonomies._default.term.path":    "/{lang:optional}/{taxonomy}/{term:slug}/",
+		"taxonomies._default.term.sort_by": "date desc",
 	}
 	markupConfig = map[string]any{
 		"markups._default.style":             "monokai",

@@ -3,7 +3,7 @@
     <li class="prev"><a href="{{ paginator.Prev.Permalink }}">&laquo;</a></li>
   {%- endif %}
   {%- with isWrite = 0 %}
-    {%- for por in paginator.All %}
+    {%- for por in paginator.Pagers %}
       {%- if por.PageNum <= 3 or (por.PageNum >= paginator.PageNum - 1 and por.PageNum <= paginator.PageNum + 1) or (por.PageNum > paginator.Total - 3) %}
         <li><a href="{{ por.Permalink }}">{{ por.PageNum }}</a></li>
         {%- if isWrite == 1 %}

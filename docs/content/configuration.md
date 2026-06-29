@@ -103,7 +103,6 @@ sections:
     path: "{path:slug}/"
     sort_by: "date desc"
     paginate: 0
-    paginate_path: "{name}{number:optional}{extension}"
   posts:
     sort_by: "date desc"
     paginate: 5
@@ -120,8 +119,10 @@ sections:
 | `path_style` | - | 输出路径后处理，见 [Path Style 配置](#path-style-配置) |
 | `sort_by` | `date desc` | 页面排序 |
 | `paginate` | `0` | 分页数，`0` 不分页 |
-| `paginate_path` | `{name}{number:optional}{extension}` | 分页路径 |
+| `paginate_path` | 自动 | 分页路径 |
 | `template` | — | 无默认，按 `section.html` 查找 |
+
+未设置或设为空字符串时，分页器会按输出路径类型选择默认值：pretty 路径使用 `page/{number}/`，ugly 路径使用 `{name}{number}{extension}`；详见 [分页](/content/pagination)。
 
 ## Page 配置
 
@@ -187,7 +188,6 @@ taxonomies:
     term:
       path: "{taxonomy}/{term:slug}/"
       sort_by: "date desc"
-      paginate_path: "{name}{number:optional}{extension}"
   tags:
   categories:
   authors:

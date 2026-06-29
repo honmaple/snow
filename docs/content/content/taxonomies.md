@@ -21,7 +21,6 @@ taxonomies:
     term:
       path: "{taxonomy}/{term:slug}/"
       sort_by: "date desc"
-      paginate_path: "{name}{number:optional}{extension}"
   tags:
   categories:
   authors:
@@ -50,10 +49,12 @@ taxonomies:
 | `term.sort_by` | `date desc` | Term 下页面排序 |
 | `term.filter_by` | — | Term 下页面筛选 |
 | `term.paginate` | — | 分页数，不设不分页 |
-| `term.paginate_path` | `{name}{number:optional}{extension}` | 分页路径模板 |
+| `term.paginate_path` | 自动 | 分页路径模板 |
 | `term.paginate_filter_by` | — | 分页前筛选 |
 
 配置查找：`taxonomies.{name}.{key}` → `taxonomies._default.{key}`
+
+`term.paginate_path` 未设置或为空字符串时会按 Term 输出路径类型选择默认值；分页路径变量和模板对象见 [分页](/content/pagination)。
 
 ## FrontMatter 中使用
 
