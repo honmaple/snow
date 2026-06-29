@@ -376,8 +376,6 @@ func (d *Processor) RenderPage(page *Page, tplset template.TemplateSet, writer c
 		if err := d.RenderTemplate(page.Path, tpl, map[string]any{
 			"page":         page,
 			"current_lang": page.Lang,
-			"current_url":  page.Permalink,
-			"current_path": page.Path,
 		}, writer); err != nil {
 			return err
 		}
@@ -396,12 +394,13 @@ func (d *Processor) RenderPage(page *Page, tplset template.TemplateSet, writer c
 					alias = stdpath.Join(stdpath.Dir(page.Path), alias)
 				}
 			}
-			d.ctx.Logger.Debugf("write page alias [%s] -> %s", page.File.Path, alias)
+			// alias可以使用变量，方便重构url
+			alias = d.resolvePagePath(page, alias)
+
+			d.ctx.Logger.Debugf("write page alias [%s] -> %s", alias, page.Path)
 			if err := d.RenderTemplate(alias, tpl, map[string]any{
-				"page":         page,
+				"url":          page.Permalink,
 				"current_lang": page.Lang,
-				"current_url":  d.ctx.GetURL(alias),
-				"current_path": alias,
 			}, writer); err != nil {
 				return err
 			}
@@ -413,8 +412,6 @@ func (d *Processor) RenderPage(page *Page, tplset template.TemplateSet, writer c
 			if err := d.RenderTemplate(format.Path, tpl, map[string]any{
 				"page":         page,
 				"current_lang": page.Lang,
-				"current_url":  format.Permalink,
-				"current_path": format.Path,
 			}, writer); err != nil {
 				return err
 			}

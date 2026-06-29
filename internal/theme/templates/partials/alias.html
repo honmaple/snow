@@ -1,10 +1,23 @@
 <!DOCTYPE html>
-<html lang="{{ current_lang|default:page.Lang }}">
+<html lang="{{ current_lang }}">
   <head>
-    <title>{{ page.Permalink }}</title>
-    <link rel="canonical" href="{{ page.Permalink }}">
-    <meta name="robots" content="noindex">
-    <meta charset="utf-8">
-    <meta http-equiv="refresh" content="0; url={{ page.Permalink }}">
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="{{ url }}">
+    <title>Redirecting...</title>
+    <script>
+     const target = "{{ url }}";
+     const hash = window.location.hash || "";
+     window.location.replace(target + hash);
+    </script>
+    <noscript>
+      <meta http-equiv="refresh" content="0;url={{ url }}">
+    </noscript>
   </head>
+  <body>
+    <div style="margin: 50px auto; text-align: center; color: #333; line-height: 1.6;">
+      <p>This page has moved. Redirecting you to the new location...</p>
+      <p>If you are not redirected automatically, please <a href="{{ url }}" style="text-decoration: none; font-weight: bold;">click here</a> to proceed.</p>
+    </div>
+  </body>
 </html>

@@ -310,6 +310,32 @@ func (d *Processor) RenderSection(section *Section, tplset template.TemplateSet,
 		}
 	}
 
+	if tpl := tplset.Lookup("alias.html", "partials/alias.html"); tpl != nil {
+		for _, alias := range section.FrontMatter.GetStringSlice("aliases") {
+			if alias == "" || alias == "." || stdpath.Clean(alias) != alias {
+				d.ctx.Logger.Warnf("invalid alias '%s' for %s", alias, section.File.Path)
+				continue
+			}
+			if !strings.HasPrefix(alias, "/") {
+				if strings.HasSuffix(section.Path, "/") {
+					alias = stdpath.Join(section.Path, alias)
+				} else {
+					alias = stdpath.Join(stdpath.Dir(section.Path), alias)
+				}
+			}
+			// alias可以使用变量，方便重构url
+			alias = d.resolveSectionPath(section, alias)
+
+			d.ctx.Logger.Debugf("write section alias [%s] -> %s", alias, section.Path)
+			if err := d.RenderTemplate(alias, tpl, map[string]any{
+				"url":          section.Permalink,
+				"current_lang": section.Lang,
+			}, writer); err != nil {
+				return err
+			}
+		}
+	}
+
 	for _, format := range section.Formats {
 		if tpl := tplset.Lookup(format.Template); tpl != nil {
 			d.ctx.Logger.Debugf("write section format [%s] -> %s", section.File.Path, format.Path)
