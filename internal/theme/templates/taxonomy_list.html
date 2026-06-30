@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <h1 class="text-2xl font-bold text-text mb-6">标签</h1>
+  <h1 class="text-2xl font-bold text-text mb-6">{{ taxonomy.Name | capfirst }}</h1>
   <div class="flex flex-wrap gap-3">
-    {% for term in terms %}
+    {% for term in taxonomy.Terms %}
       <a href="{{ term.Permalink }}" class="bg-accent/10 text-accent px-3 py-1.5 rounded-full text-sm hover:bg-accent/20 transition-colors">{{ term.Name }}</a>
     {% endfor %}
   </div>

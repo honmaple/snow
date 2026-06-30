@@ -8,16 +8,19 @@
     {% if page.Date or page.FrontMatter.IsSet("tags") %}
       <div class="flex items-center justify-between mb-8">
         <div>
-          {% if page.FrontMatter.IsSet("tags") %}
-            <div class="flex flex-wrap gap-2">
-              {% for tag in page.FrontMatter.GetStringSlice("tags") %}
-                <a href="{{ get_taxonomy_term_url("tags", tag) }}" class="text-xs bg-accent/10 text-accent px-2.5 py-1 rounded-full hover:bg-accent/20 transition-colors">{{ tag }}</a>
-              {% endfor %}
-            </div>
+          <time class="text-sm text-date/70">{{ page.Date | date:"2006-01-02" }} {{ page.Date | date:"Mon" }}</time>
+          {% if page.FrontMatter.IsSet("categories") %}
+            {% for name in page.FrontMatter.GetStringSlice("categories") %}
+              <a href="{{ get_taxonomy_term_url("categories", name) }}" class="text-sm text-accent">{{ name }}</a>
+            {% endfor %}
           {% endif %}
         </div>
-        {% if page.Date %}
-          <time class="text-sm text-date/70">{{ page.Date | date:"2006-01-02" }}</time>
+        {% if page.FrontMatter.IsSet("tags") %}
+          <div class="flex flex-wrap gap-2">
+            {% for tag in page.FrontMatter.GetStringSlice("tags") %}
+              <a href="{{ get_taxonomy_term_url("tags", tag) }}" class="text-xs bg-accent/10 text-accent px-2.5 py-1 rounded-full hover:bg-accent/20 transition-colors">{{ tag }}</a>
+            {% endfor %}
+          </div>
         {% endif %}
       </div>
     {% endif %}
