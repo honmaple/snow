@@ -11,11 +11,13 @@ import (
 )
 
 func testSection(title string, path string, frontMatter map[string]any) *Section {
+	fm := NewFrontMatter(frontMatter)
 	return &Section{
 		Node: &Node{
 			File:        &File{Path: path},
 			Title:       title,
-			FrontMatter: NewFrontMatter(frontMatter),
+			Weight:      fm.GetInt64("weight"),
+			FrontMatter: fm,
 		},
 	}
 }

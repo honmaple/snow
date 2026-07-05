@@ -12,10 +12,12 @@ import (
 )
 
 func testPage(title string, frontMatter map[string]any) *Page {
+	fm := NewFrontMatter(frontMatter)
 	return &Page{
 		Node: &Node{
 			Title:       title,
-			FrontMatter: NewFrontMatter(frontMatter),
+			Weight:      fm.GetInt64("weight"),
+			FrontMatter: fm,
 		},
 	}
 }

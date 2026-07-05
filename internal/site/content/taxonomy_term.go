@@ -75,6 +75,13 @@ func (term *TaxonomyTerm) FindChild(name string) *TaxonomyTerm {
 	return nil
 }
 
+func (terms TaxonomyTerms) Limit(n int) TaxonomyTerms {
+	if n >= len(terms) {
+		return terms
+	}
+	return terms[:n]
+}
+
 func (terms TaxonomyTerms) Reverse() TaxonomyTerms {
 	ns := make(TaxonomyTerms, len(terms))
 	for i, j := 0, len(terms)-1; j >= 0; i, j = i+1, j-1 {

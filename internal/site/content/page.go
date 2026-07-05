@@ -59,7 +59,7 @@ func SortPages(pages Pages, key string) {
 		case "modified":
 			return utils.Compare(pages[i].Modified, pages[j].Modified)
 		case "weight":
-			return utils.Compare(pages[i].FrontMatter.Get(k), pages[j].FrontMatter.Get(k))
+			return utils.Compare(pages[i].Weight, pages[j].Weight)
 		default:
 			return utils.Compare(pages[i].FrontMatter.Get(k), pages[j].FrontMatter.Get(k))
 		}

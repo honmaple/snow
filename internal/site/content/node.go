@@ -22,6 +22,8 @@ type (
 		Content     string
 		RawContent  string
 		Description string
+
+		Weight      int64
 		WordCount   int64
 		ReadingTime int64
 	}
@@ -132,10 +134,11 @@ func (d *Processor) parseNode(fullpath string) (*Node, error) {
 		Slug:        fm.GetString("slug"),
 		Title:       fm.GetString("title"),
 		Description: fm.GetString("description"),
+		Weight:      fm.GetInt64("weight"),
+		Toc:         result.Toc,
 		Content:     result.Content,
 		RawContent:  result.RawContent,
 		Summary:     result.Summary,
-		Toc:         result.Toc,
 	}
 	node.WordCount, node.ReadingTime = d.countReadingStats(node.Content)
 
