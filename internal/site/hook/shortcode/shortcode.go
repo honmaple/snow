@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/honmaple/snow/internal/core"
-	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/site/template"
+	"github.com/spf13/cast"
 	"golang.org/x/net/html"
 )
 
@@ -41,8 +41,8 @@ func shortcodeName(token html.Token) string {
 	return ""
 }
 
-func shortcodeParams(token html.Token, name string) map[string]any {
-	params := make(map[string]any)
+func shortcodeParams(token html.Token, name string) Params {
+	params := make(Params)
 	for _, attr := range token.Attr {
 		if attr.Key == "_name" || (attr.Key == name && attr.Val == "") {
 			continue
@@ -52,7 +52,32 @@ func shortcodeParams(token html.Token, name string) map[string]any {
 	return params
 }
 
-func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToken string, page *content.Page, counter map[string]int) bool {
+func nextCounter(source Source, name string) int {
+	key := "counter:" + name
+	counter := 0
+	if value, ok := source.Get(key); ok {
+		counter = cast.ToInt(value)
+	}
+	source.Set(key, counter+1)
+	return counter
+}
+
+func (h *ShortcodeSet) renderContext(source Source, name string, params Params, counter int) map[string]any {
+	vars := map[string]any{
+		"name":     name,
+		"body":     "",
+		"params":   params,
+		"counter":  counter,
+		"_name":    name,
+		"_counter": counter,
+	}
+	for k, v := range source.Context() {
+		vars[k] = v
+	}
+	return vars
+}
+
+func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToken string, source Source) bool {
 	for {
 		tokenType := z.Next()
 		if tokenType == html.ErrorToken {
@@ -66,33 +91,19 @@ func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToke
 			if token.Data == "shortcode" {
 				name = shortcodeName(token)
 				if name == "" {
-					h.ctx.Logger.Warnf("%s: shortcode no name", page.File.Path)
+					h.ctx.Logger.Warnf("%s: shortcode no name", source.Id())
 					break
 				}
 			}
 			tpl, ok := h.tpls[name]
 			if ok {
-				params := shortcodeParams(token, name)
-
-				vars := map[string]any{
-					"page":     page,
-					"name":     name,
-					"body":     "",
-					"params":   params,
-					"counter":  counter[name],
-					"_name":    name,
-					"_counter": counter[name],
-					"_shortcode": func(s string) string {
-						return h.Render(page, s)
-					},
-				}
-				counter[name]++
+				vars := h.renderContext(source, name, shortcodeParams(token, name), nextCounter(source, name))
 
 				if tokenType == html.StartTagToken && !isSelfClosing(token.Data) {
 					var buf bytes.Buffer
 
-					if !h.renderNext(z, &buf, token.Data, page, counter) {
-						h.ctx.Logger.Warnf("%s for %s: closing delimiter '</%s>' is missing", page.File.Path, name, token.Data)
+					if !h.renderNext(z, &buf, token.Data, source) {
+						h.ctx.Logger.Warnf("%s for %s: closing delimiter '</%s>' is missing", source.Id(), name, token.Data)
 					}
 					vars["body"] = buf.String()
 				}
@@ -114,17 +125,24 @@ func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToke
 	}
 }
 
-func (h *ShortcodeSet) Render(page *content.Page, content string) string {
+func (h *ShortcodeSet) Render(id string, content string, context map[string]any) string {
 	if len(h.tpls) == 0 {
 		return content
 	}
+	s := &source{id: id, content: content, context: context}
+	return h.RenderSource(s)
+}
+
+func (h *ShortcodeSet) RenderSource(source Source) string {
+	if len(h.tpls) == 0 {
+		return source.Content()
+	}
 
 	var (
-		w       bytes.Buffer
-		z       = html.NewTokenizer(strings.NewReader(content))
-		counter = make(map[string]int)
+		w bytes.Buffer
+		z = html.NewTokenizer(strings.NewReader(source.Content()))
 	)
-	h.renderNext(z, &w, "", page, counter)
+	h.renderNext(z, &w, "", source)
 	return w.String()
 }
 

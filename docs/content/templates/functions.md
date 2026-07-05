@@ -187,4 +187,4 @@ print("hello")
 </shortcode>
 ```
 
-模板位于 `templates/shortcodes/`。可用变量：`params.{key}`、`body`、`name`、`counter`。
+模板位于 `templates/shortcodes/`。可用变量：`params.{key}`、`body`、`name`、`counter`、`current_lang`，页面内容提供 `page`，Section 内容提供 `section`。`params` 还支持 `Get("key")`、`Pop("key")`、`String()`。

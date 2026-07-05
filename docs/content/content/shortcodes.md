@@ -36,9 +36,14 @@ hooks:
 | 变量 | 说明 |
 |------|------|
 | `params.{key}` | 传入的参数 |
+| `params.Get("key")` | 读取参数值 |
+| `params.Pop("key")` | 读取并移除参数，适合取走特定参数后透传剩余属性 |
+| `params.String()` | 将剩余参数渲染为稳定排序的 HTML 属性字符串 |
 | `body` | Shortcode 闭合标签内的内容 |
 | `name` | Shortcode 的名称 |
-| `counter` | 当前文章中此 Shortcode 的使用次数 |
+| `counter` | 当前内容中此 Shortcode 的使用次数 |
+| `current_lang` | 当前内容语言 |
+| `page` / `section` | 当前内容对象；页面内容提供 `page`，Section 内容提供 `section` |
 
 ## 使用 Shortcode
 
@@ -64,6 +69,15 @@ hooks:
 
 ```html
 <div class="notice notice-{{ params.type }}">
+  {{ body }}
+</div>
+```
+
+也可以取走一个参数后透传剩余属性：
+
+```html
+{% set type = params.Pop("type") %}
+<div class="notice notice-{{ type }}" {{ params.String() }}>
   {{ body }}
 </div>
 ```
