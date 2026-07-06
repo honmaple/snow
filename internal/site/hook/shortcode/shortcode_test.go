@@ -1,12 +1,15 @@
 package shortcode
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content"
 	"github.com/honmaple/snow/internal/site/template"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -48,6 +51,18 @@ func testSection() *content.Section {
 			Lang: "en",
 		},
 	}
+}
+
+func captureShortcodeWarnings(set *ShortcodeSet) *bytes.Buffer {
+	var buf bytes.Buffer
+	logger := logrus.New()
+	logger.SetOutput(&buf)
+	logger.SetFormatter(&logrus.TextFormatter{
+		DisableColors:    true,
+		DisableTimestamp: true,
+	})
+	set.ctx = &core.Context{Logger: logger}
+	return &buf
 }
 
 func TestRenderShortcodeUsesBooleanAttributeAsName(t *testing.T) {
@@ -158,6 +173,40 @@ func TestRenderShortcodeCountersUseSourceState(t *testing.T) {
 	})
 
 	assert.Equal(t, `item:0wrap:0[item:1]item:2`, result)
+}
+
+func TestRenderShortcodeBreaksAndWarnsOnExecuteError(t *testing.T) {
+	set := testShortcodeSet(map[string]*testTemplate{
+		"broken": {
+			execute: func(vars map[string]any) (string, error) {
+				return "", errors.New("filter failed")
+			},
+		},
+	})
+	logs := captureShortcodeWarnings(set)
+
+	result := set.Render("content/test.md", `<shortcode broken />`, map[string]any{
+		"page": testPage(),
+	})
+
+	assert.Equal(t, `<shortcode broken=""/>`, result)
+	assert.Contains(t, logs.String(), "filter failed")
+}
+
+func TestRenderShortcodeBreaksWithBodyOnExecuteError(t *testing.T) {
+	set := testShortcodeSet(map[string]*testTemplate{
+		"broken": {
+			execute: func(vars map[string]any) (string, error) {
+				return "", errors.New("filter failed")
+			},
+		},
+	})
+
+	result := set.Render("content/test.md", `<shortcode broken>body</shortcode>`, map[string]any{
+		"page": testPage(),
+	})
+
+	assert.Equal(t, `<shortcode broken="">`, result)
 }
 
 func TestRenderShortcodeSupportsSection(t *testing.T) {

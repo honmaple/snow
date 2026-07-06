@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	stdpath "path"
 	"sort"
-	"strings"
 
 	"github.com/honmaple/snow/internal/core"
 )
@@ -16,38 +15,26 @@ type (
 		Parse(fs.FS, string) (*Result, error)
 		SupportedExtensions() []string
 	}
+	MarkupParser interface {
+		Parse(io.Reader) (*Result, error)
+		SupportedExtensions() []string
+	}
 	MarkupOption struct {
 		Style           string
 		ShowToc         bool
 		ShowLineNumbers bool
 		PreventPreCode  bool
 	}
-	MarkupParser interface {
-		Parse(io.Reader) (*Result, error)
-		SupportedExtensions() []string
-	}
 )
 
 type parserImpl struct {
-	ps      map[string]MarkupParser
-	exts    []string
-	formats map[string]MarkupParser
-}
-
-func (d *parserImpl) ParseString(content string, format string) (*Result, error) {
-	p, ok := d.formats[format]
-	if !ok {
-		return nil, fmt.Errorf("no %s parser", format)
-	}
-	result, err := p.Parse(strings.NewReader(content))
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+	exts      []string
+	extMap    map[string]MarkupParser
+	formatMap map[string]MarkupParser
 }
 
 func (d *parserImpl) Parse(fsys fs.FS, file string) (*Result, error) {
-	p, ok := d.ps[stdpath.Ext(file)]
+	markup, ok := d.extMap[stdpath.Ext(file)]
 	if !ok {
 		return nil, fmt.Errorf("no parser for %s", file)
 	}
@@ -57,7 +44,7 @@ func (d *parserImpl) Parse(fsys fs.FS, file string) (*Result, error) {
 	}
 	defer f.Close()
 
-	result, err := p.Parse(f)
+	result, err := markup.Parse(f)
 	if err != nil {
 		return nil, fmt.Errorf("Read file %s err: %s", file, err.Error())
 	}
@@ -70,9 +57,9 @@ func (d *parserImpl) SupportedExtensions() []string {
 
 func New(ctx *core.Context) Parser {
 	d := &parserImpl{
-		ps:      make(map[string]MarkupParser),
-		exts:    make([]string, 0),
-		formats: make(map[string]MarkupParser),
+		exts:      make([]string, 0),
+		extMap:    make(map[string]MarkupParser),
+		formatMap: make(map[string]MarkupParser),
 	}
 	names := make([]string, 0, len(factories))
 	for name := range factories {
@@ -85,13 +72,13 @@ func New(ctx *core.Context) Parser {
 		}
 		p := factories[name](ctx)
 		for _, ext := range p.SupportedExtensions() {
-			if _, ok := d.ps[ext]; ok {
+			if _, ok := d.extMap[ext]; ok {
 				continue
 			}
 			d.exts = append(d.exts, ext)
-			d.ps[ext] = p
+			d.extMap[ext] = p
 		}
-		d.formats[name] = p
+		d.formatMap[name] = p
 	}
 	return d
 }

@@ -19,6 +19,13 @@ type ShortcodeSet struct {
 	tplset template.TemplateSet
 }
 
+type shortcodeFrame struct {
+	token html.Token
+	name  string
+	vars  map[string]any
+	body  bytes.Buffer
+}
+
 func isSelfClosing(tag string) bool {
 	switch tag {
 	case "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr":
@@ -52,6 +59,14 @@ func shortcodeParams(token html.Token, name string) Params {
 	return params
 }
 
+func writeShortcodeOutput(out *bytes.Buffer, stack []*shortcodeFrame, result string) {
+	if len(stack) == 0 {
+		out.WriteString(result)
+		return
+	}
+	stack[len(stack)-1].body.WriteString(result)
+}
+
 func nextCounter(source Source, name string) int {
 	key := "counter:" + name
 	counter := 0
@@ -77,11 +92,44 @@ func (h *ShortcodeSet) renderContext(source Source, name string, params Params, 
 	return vars
 }
 
-func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToken string, source Source) bool {
+func (h *ShortcodeSet) warnf(format string, args ...any) {
+	if h.ctx != nil && h.ctx.Logger != nil {
+		h.ctx.Logger.Warnf(format, args...)
+	}
+}
+
+func (h *ShortcodeSet) renderFrame(frame *shortcodeFrame, source Source) string {
+	frame.vars["body"] = frame.body.String()
+
+	tpl, ok := h.tpls[frame.name]
+	if !ok {
+		return frame.token.String()
+	}
+	result, err := tpl.Execute(frame.vars)
+	if err != nil {
+		h.warnf("%s: %s", source.Id(), err)
+		return frame.token.String()
+	}
+	return result
+}
+
+func (h *ShortcodeSet) render(source Source) string {
+	var (
+		out   bytes.Buffer
+		stack []*shortcodeFrame
+		z     = html.NewTokenizer(strings.NewReader(source.Content()))
+	)
+
 	for {
 		tokenType := z.Next()
 		if tokenType == html.ErrorToken {
-			return false
+			for len(stack) > 0 {
+				frame := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				h.warnf("%s: closing delimiter '</%s>' is missing", source.Id(), frame.token.Data)
+				writeShortcodeOutput(&out, stack, h.renderFrame(frame, source))
+			}
+			return out.String()
 		}
 
 		token := z.Token()
@@ -91,7 +139,7 @@ func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToke
 			if token.Data == "shortcode" {
 				name = shortcodeName(token)
 				if name == "" {
-					h.ctx.Logger.Warnf("%s: shortcode no name", source.Id())
+					h.warnf("%s: shortcode no name", source.Id())
 					break
 				}
 			}
@@ -100,28 +148,31 @@ func (h *ShortcodeSet) renderNext(z *html.Tokenizer, out *bytes.Buffer, stopToke
 				vars := h.renderContext(source, name, shortcodeParams(token, name), nextCounter(source, name))
 
 				if tokenType == html.StartTagToken && !isSelfClosing(token.Data) {
-					var buf bytes.Buffer
-
-					if !h.renderNext(z, &buf, token.Data, source) {
-						h.ctx.Logger.Warnf("%s for %s: closing delimiter '</%s>' is missing", source.Id(), name, token.Data)
-					}
-					vars["body"] = buf.String()
+					stack = append(stack, &shortcodeFrame{
+						token: token,
+						name:  name,
+						vars:  vars,
+					})
+					continue
 				}
 
 				result, err := tpl.Execute(vars)
 				if err != nil {
-					out.WriteString("")
-				} else {
-					out.WriteString(result)
+					h.warnf("%s: %s", source.Id(), err)
+					break
 				}
+				writeShortcodeOutput(&out, stack, result)
 				continue
 			}
 		case html.EndTagToken:
-			if stopToken != "" && stopToken == token.Data {
-				return true
+			if len(stack) > 0 && stack[len(stack)-1].token.Data == token.Data {
+				frame := stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+				writeShortcodeOutput(&out, stack, h.renderFrame(frame, source))
+				continue
 			}
 		}
-		out.WriteString(token.String())
+		writeShortcodeOutput(&out, stack, token.String())
 	}
 }
 
@@ -137,13 +188,7 @@ func (h *ShortcodeSet) RenderSource(source Source) string {
 	if len(h.tpls) == 0 {
 		return source.Content()
 	}
-
-	var (
-		w bytes.Buffer
-		z = html.NewTokenizer(strings.NewReader(source.Content()))
-	)
-	h.renderNext(z, &w, "", source)
-	return w.String()
+	return h.render(source)
 }
 
 func (h *ShortcodeSet) Load() (map[string]template.Template, error) {
