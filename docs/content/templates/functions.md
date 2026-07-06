@@ -109,10 +109,8 @@ weight: 10
 | `upper` | 转大写 | `{{ text \| upper }}` |
 | `split:sep` | 分割 | `{{ "a,b" \| split:"," }}` |
 | `encrypt:"pw"` | 加密 (需 hooks.encrypt) | `{{ page.Content \| encrypt:"123" }}` |
-| `markdown` | Markdown 转 HTML | `{{ text \| markdown }}` |
-| `org` | Org-mode 转 HTML | `{{ text \| org }}` |
-| `niklasfasching` | niklasfasching/go-org 转 HTML，需启用 `markups.niklasfasching.enabled` | `{{ text \| niklasfasching }}` |
-| `parser:"yaml"` | 解析 YAML/TOML/JSON 字符串 | `{{ text \| parser:"yaml" }}` |
+| `parser:"markdown"` | 使用已启用的内容解析器把字符串转为 HTML | `{{ text \| parser:"markdown" }}` |
+| `unmarshal:"yaml"` | 解析 YAML/TOML/JSON 字符串 | `{{ text \| unmarshal:"yaml" }}` |
 | `jsonify` | 转 JSON 字符串 | `{{ page.FrontMatter \| jsonify }}` |
 | `absURL` | 转绝对 URL | `{{ "posts/" \| absURL }}` |
 | `relURL` | 转相对 URL | `{{ "/posts/" \| relURL }}` |
@@ -162,7 +160,7 @@ Date 格式参考：
 {% set remote = load_data("https://example.com/data.json", "json") %}
 ```
 
-本地路径从站点或主题的 `data/` 目录读取；`format` 支持 `yaml`、`json`，其他格式按字符串返回。读取失败时返回 `nil` 并记录 warn 日志。
+本地路径从站点或主题的 `data/` 目录读取；`format` 支持 `yaml`、`toml`、`json`，其他格式按字符串返回。读取失败时返回 `nil` 并记录 warn 日志。
 
 ## Assets 块
 

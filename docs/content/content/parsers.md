@@ -76,9 +76,11 @@ Markdown 和 Org-mode 根据标题结构生成目录。HTML parser 会扫描 `h1
 
 | Filter | 说明 |
 |--------|------|
-| `markdown` | 使用 Markdown parser 把字符串转为 HTML |
-| `org` | 使用默认 Org-mode parser 把字符串转为 HTML |
-| `niklasfasching` | 使用 niklasfasching/go-org 把字符串转为 HTML；只有 `markups.niklasfasching.enabled: true` 时注册 |
+| `parser:"markdown"` | 使用 Markdown parser 把字符串转为 HTML |
+| `parser:"orgmode"` | 使用默认 Org-mode parser 把字符串转为 HTML |
+| `parser:"niklasfasching"` | 使用 niklasfasching/go-org 把字符串转为 HTML；只有 `markups.niklasfasching.enabled: true` 时可用 |
+
+`parser` filter 只会调用当前配置中已启用的解析器。解析器未启用或格式名不存在时，模板渲染会返回错误。
 
 ## 错误处理与限制
 

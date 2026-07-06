@@ -164,10 +164,12 @@ func TestTemplateFilterRequiresEnabledParser(t *testing.T) {
 
 	tplset, err := template.NewSet(ctx)
 	require.NoError(t, err)
-	_, err = tplset.FromString(`{{ "* One" | niklasfasching }}`)
+	tpl, err := tplset.FromString(`{{ "* One" | parser:"niklasfasching" }}`)
+	require.NoError(t, err)
+	_, err = tpl.Execute(nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "niklasfasching")
-	assert.Contains(t, err.Error(), "does not exist")
+	assert.Contains(t, err.Error(), "no niklasfasching parser")
 }
 
 func TestTemplateFilter(t *testing.T) {
@@ -179,7 +181,7 @@ func TestTemplateFilter(t *testing.T) {
 
 	tplset, err := template.NewSet(ctx)
 	require.NoError(t, err)
-	tpl, err := tplset.FromString(`{{ "* One" | niklasfasching }}`)
+	tpl, err := tplset.FromString(`{{ "* One" | parser:"niklasfasching" }}`)
 	require.NoError(t, err)
 
 	out, err := tpl.Execute(nil)

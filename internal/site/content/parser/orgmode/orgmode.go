@@ -9,13 +9,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/flosch/pongo2/v7"
 	"github.com/honmaple/org-golang"
 	orgmodeParser "github.com/honmaple/org-golang/parser"
 	"github.com/honmaple/org-golang/render"
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content/parser"
-	"github.com/honmaple/snow/internal/site/template"
 )
 
 var (
@@ -171,31 +169,8 @@ func NewWithContext(ctx *core.Context) *orgParser {
 	return New(opt)
 }
 
-func orgFilter(ctx *core.Context) pongo2.FilterFunction {
-	r := NewWithContext(ctx)
-	return func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, error) {
-		v, ok := in.Interface().(string)
-		if !ok {
-			return nil, &pongo2.Error{
-				Sender:    "filter:org",
-				OrigError: errors.New("filter input argument must be of type 'string'"),
-			}
-		}
-		_, res, err := r.parse([]byte(v))
-		if err != nil {
-			return nil, err
-		}
-		return pongo2.AsValue(res), nil
-	}
-}
-
 func init() {
 	parser.Register("orgmode", func(ctx *core.Context) parser.MarkupParser {
 		return NewWithContext(ctx)
-	})
-
-	template.Register("orgmode", func(ctx *core.Context, set template.TemplateSet) error {
-		set.RegisterFilter("org", orgFilter(ctx))
-		return nil
 	})
 }

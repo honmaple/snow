@@ -61,6 +61,7 @@ markups:
     prevent_pre_code: true
   markdown:
     enabled: true
+    unsafe: false
   orgmode:
     enabled: true
   niklasfasching:
@@ -76,6 +77,7 @@ markups:
 | `show_toc` | bool | `true` | 显示文章目录 |
 | `show_line_numbers` | bool | `true` | 显示行号 |
 | `prevent_pre_code` | bool | `true` | 高亮代码块时避免额外包裹 pre/code |
+| `unsafe` | bool | `false` | Markdown 专用；允许 goldmark 输出原始 HTML |
 
 常见样式：`monokai`、`github`、`dracula`、`solarized-dark`。
 

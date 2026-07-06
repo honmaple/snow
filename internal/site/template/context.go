@@ -6,15 +6,17 @@ import (
 	"strings"
 
 	"github.com/flosch/pongo2/v7"
+	"github.com/pelletier/go-toml/v2"
+	"gopkg.in/yaml.v3"
+
 	"github.com/honmaple/snow/internal/core"
-	"github.com/spf13/viper"
 )
 
 type registry struct {
 	ctx *core.Context
 }
 
-func newError(name string, err error) *pongo2.Error {
+func NewFilterError(name string, err error) *pongo2.Error {
 	return &pongo2.Error{
 		Sender:    "filter:" + name,
 		OrigError: err,
@@ -62,32 +64,41 @@ func (r *registry) jsonify(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value
 
 	buf, err := json.Marshal(v)
 	if err != nil {
-		return nil, newError("jsonify", err)
+		return nil, NewFilterError("jsonify", err)
 	}
 	return pongo2.AsValue(string(buf)), nil
 }
 
-func (r *registry) parser(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, error) {
-	kind := "yaml"
-	if param != nil {
-		if t := param.String(); t != "" {
-			kind = t
-		}
+func (r *registry) unmarshal(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, error) {
+	data := in.String()
+	if data == "" {
+		return nil, NewFilterError("unmarshal", errors.New("filter input argument is empty"))
 	}
-
-	conf := viper.New()
-	conf.SetConfigType(kind)
-
-	if err := conf.ReadConfig(strings.NewReader(in.String())); err != nil {
-		return nil, newError("parser", err)
+	var (
+		err    error
+		result any
+	)
+	format := param.String()
+	switch format {
+	case "json":
+		err = json.Unmarshal([]byte(data), &result)
+	case "yaml":
+		err = yaml.Unmarshal([]byte(data), &result)
+	case "toml":
+		err = toml.Unmarshal([]byte(data), &result)
+	default:
+		result = data
 	}
-	return pongo2.AsValue(conf.AllSettings()), nil
+	if err != nil {
+		return nil, NewFilterError("unmarshal", err)
+	}
+	return pongo2.AsValue(result), nil
 }
 
 func (r *registry) absURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err error) {
 	v, ok := in.Interface().(string)
 	if !ok {
-		return nil, newError("absURL", errors.New("filter input argument must be of type 'string'"))
+		return nil, NewFilterError("absURL", errors.New("filter input argument must be of type 'string'"))
 	}
 	return pongo2.AsValue(r.ctx.GetURL(v)), nil
 }
@@ -95,7 +106,7 @@ func (r *registry) absURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Va
 func (r *registry) relURL(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err error) {
 	v, ok := in.Interface().(string)
 	if !ok {
-		return nil, newError("relURL", errors.New("filter input argument must be of type 'string'"))
+		return nil, NewFilterError("relURL", errors.New("filter input argument must be of type 'string'"))
 	}
 	return pongo2.AsValue(r.ctx.GetRelURL(v)), nil
 }
@@ -116,9 +127,9 @@ func init() {
 		set.Register("slice", r.slice)
 		set.Register("startsWith", r.startsWith)
 
-		set.RegisterFilter("parser", r.parser)
 		set.RegisterFilter("slient", r.slient)
 		set.RegisterFilter("jsonify", r.jsonify)
+		set.RegisterFilter("unmarshal", r.unmarshal)
 		set.RegisterFilter("absURL", r.absURL)
 		set.RegisterFilter("relURL", r.relURL)
 

@@ -3,20 +3,19 @@ package markdown
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"regexp"
 	"strings"
 
-	"github.com/flosch/pongo2/v7"
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content/parser"
-	"github.com/honmaple/snow/internal/site/template"
 	"github.com/spf13/viper"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	goldmarkParser "github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer"
+	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/text"
 )
 
@@ -32,6 +31,7 @@ const scannerMaxTokenSize = 1024 * 1024
 type (
 	Option struct {
 		parser.MarkupOption
+		Unsafe bool
 	}
 	Heading = parser.Heading
 )
@@ -159,42 +159,30 @@ func New(opt *Option) *mdParser {
 	if opt.ShowToc {
 		exts = append(exts, NewTocExtension(opt))
 	}
-	md := goldmark.New(goldmark.WithExtensions(exts...))
+
+	rers := make([]renderer.Option, 0)
+	if opt.Unsafe {
+		rers = append(rers, html.WithUnsafe())
+	}
+	md := goldmark.New(
+		goldmark.WithExtensions(exts...),
+		goldmark.WithRendererOptions(rers...),
+	)
 	return &mdParser{md: md, opt: opt}
 }
 
+const parserName = "markdown"
+
 func NewWithContext(ctx *core.Context) *mdParser {
 	opt := &Option{
-		MarkupOption: parser.NewMarkupOption(ctx, "markdown"),
+		MarkupOption: parser.NewMarkupOption(ctx, parserName),
+		Unsafe:       ctx.GetMarkupConfig(parserName, "unsafe").Bool(),
 	}
 	return New(opt)
 }
 
-func markdownFilter(ctx *core.Context) pongo2.FilterFunction {
-	r := NewWithContext(ctx)
-	return func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, error) {
-		v, ok := in.Interface().(string)
-		if !ok {
-			return nil, &pongo2.Error{
-				Sender:    "filter:markdown",
-				OrigError: errors.New("filter input argument must be of type 'string'"),
-			}
-		}
-		_, res, err := r.parse([]byte(v))
-		if err != nil {
-			return nil, err
-		}
-		return pongo2.AsValue(res), nil
-	}
-}
-
 func init() {
-	parser.Register("markdown", func(ctx *core.Context) parser.MarkupParser {
+	parser.Register(parserName, func(ctx *core.Context) parser.MarkupParser {
 		return NewWithContext(ctx)
-	})
-
-	template.Register("markdown", func(ctx *core.Context, set template.TemplateSet) error {
-		set.RegisterFilter("markdown", markdownFilter(ctx))
-		return nil
 	})
 }

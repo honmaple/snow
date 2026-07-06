@@ -6,9 +6,11 @@ import (
 	"strings"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/pelletier/go-toml/v2"
+	"gopkg.in/yaml.v3"
+
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/template"
-	"gopkg.in/yaml.v3"
 )
 
 type Data struct {
@@ -26,6 +28,8 @@ func (d *Data) loadFromBytes(data []byte, format string) (any, error) {
 		err = json.Unmarshal(data, &result)
 	case "yaml":
 		err = yaml.Unmarshal(data, &result)
+	case "toml":
+		err = toml.Unmarshal(data, &result)
 	default:
 		return string(data), nil
 	}

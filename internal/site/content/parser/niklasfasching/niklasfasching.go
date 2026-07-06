@@ -9,10 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/flosch/pongo2/v7"
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content/parser"
-	"github.com/honmaple/snow/internal/site/template"
 	org "github.com/niklasfasching/go-org/org"
 
 	_ "github.com/honmaple/snow/internal/site/content/parser/orgmode"
@@ -186,34 +184,8 @@ func NewWithContext(ctx *core.Context) *orgParser {
 	return New(opt)
 }
 
-func orgFilter(ctx *core.Context) pongo2.FilterFunction {
-	r := NewWithContext(ctx)
-	return func(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, error) {
-		v, ok := in.Interface().(string)
-		if !ok {
-			return nil, &pongo2.Error{
-				Sender:    "filter:niklasfasching",
-				OrigError: errors.New("filter input argument must be of type 'string'"),
-			}
-		}
-		_, res, err := r.parse([]byte(v))
-		if err != nil {
-			return nil, err
-		}
-		return pongo2.AsValue(res), nil
-	}
-}
-
 func init() {
 	parser.Register("niklasfasching", func(ctx *core.Context) parser.MarkupParser {
 		return NewWithContext(ctx)
-	})
-
-	template.Register("niklasfasching", func(ctx *core.Context, set template.TemplateSet) error {
-		if !ctx.Config.GetBool("markups.niklasfasching.enabled") {
-			return nil
-		}
-		set.RegisterFilter("niklasfasching", orgFilter(ctx))
-		return nil
 	})
 }

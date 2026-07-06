@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	stdpath "path"
 	"sort"
+	"strings"
 
 	"github.com/honmaple/snow/internal/core"
 )
@@ -28,8 +29,21 @@ type (
 )
 
 type parserImpl struct {
-	ps   map[string]MarkupParser
-	exts []string
+	ps      map[string]MarkupParser
+	exts    []string
+	formats map[string]MarkupParser
+}
+
+func (d *parserImpl) ParseString(content string, format string) (*Result, error) {
+	p, ok := d.formats[format]
+	if !ok {
+		return nil, fmt.Errorf("no %s parser", format)
+	}
+	result, err := p.Parse(strings.NewReader(content))
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func (d *parserImpl) Parse(fsys fs.FS, file string) (*Result, error) {
@@ -56,8 +70,9 @@ func (d *parserImpl) SupportedExtensions() []string {
 
 func New(ctx *core.Context) Parser {
 	d := &parserImpl{
-		ps:   make(map[string]MarkupParser),
-		exts: make([]string, 0),
+		ps:      make(map[string]MarkupParser),
+		exts:    make([]string, 0),
+		formats: make(map[string]MarkupParser),
 	}
 	names := make([]string, 0, len(factories))
 	for name := range factories {
@@ -76,6 +91,7 @@ func New(ctx *core.Context) Parser {
 			d.exts = append(d.exts, ext)
 			d.ps[ext] = p
 		}
+		d.formats[name] = p
 	}
 	return d
 }
