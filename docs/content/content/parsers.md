@@ -47,6 +47,39 @@ draft: false
 ---
 ```
 
+启用 `markups.markdown.directive_blocks` 后，Markdown 支持类似 Org-mode 的指令块：
+
+```yaml
+markups:
+  markdown:
+    directive_blocks: true
+```
+
+````markdown
+:::export html
+<div class="raw-html">
+  <span>原样输出 HTML</span>
+</div>
+:::
+
+:::center
+这里的 **Markdown** 会继续解析，并包裹在 `<div style="text-align: center;">` 中。
+:::
+
+:::quote
+这里的 **Markdown** 会继续解析，并包裹在 `<blockquote>` 中。
+:::
+
+:::shortcode notice type=info
+这里的 **Markdown** 会继续解析，并作为 shortcode body 传入。
+
+- static-site
+- go
+:::
+````
+
+`:::shortcode` 会渲染为 `<shortcode ...>...</shortcode>`，块内 Markdown 会继续解析，再作为 shortcode body 传入。开头行中第二个字段是 shortcode 名称，后续 `key=value` 会转为 shortcode 属性。需要在 body 中传递 YAML、TOML 等原始配置时，使用普通 HTML 标签形式 `<shortcode name>...</shortcode>`。
+
 HTML parser 会把 `<head>` 中的标签转换为 FrontMatter：
 
 | HTML 标签 | 写入字段 |

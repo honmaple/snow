@@ -31,7 +31,8 @@ const scannerMaxTokenSize = 1024 * 1024
 type (
 	Option struct {
 		parser.MarkupOption
-		Unsafe bool
+		Unsafe          bool
+		DirectiveBlocks bool
 	}
 	Heading = parser.Heading
 )
@@ -153,6 +154,9 @@ func New(opt *Option) *mdParser {
 	exts := []goldmark.Extender{
 		extension.GFM,
 	}
+	if opt.DirectiveBlocks {
+		exts = append(exts, NewDirectiveBlockExtension())
+	}
 	if opt.Style != "" && opt.Style != "none" {
 		exts = append(exts, NewHighlightExtension(opt))
 	}
@@ -175,8 +179,9 @@ const parserName = "markdown"
 
 func NewWithContext(ctx *core.Context) *mdParser {
 	opt := &Option{
-		MarkupOption: parser.NewMarkupOption(ctx, parserName),
-		Unsafe:       ctx.GetMarkupConfig(parserName, "unsafe").Bool(),
+		MarkupOption:    parser.NewMarkupOption(ctx, parserName),
+		Unsafe:          ctx.GetMarkupConfig(parserName, "unsafe").Bool(),
+		DirectiveBlocks: ctx.GetMarkupConfig(parserName, "directive_blocks").Bool(),
 	}
 	return New(opt)
 }

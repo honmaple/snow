@@ -62,6 +62,7 @@ markups:
   markdown:
     enabled: true
     unsafe: false
+    directive_blocks: false
   orgmode:
     enabled: true
   niklasfasching:
@@ -78,6 +79,7 @@ markups:
 | `show_line_numbers` | bool | `true` | 显示行号 |
 | `prevent_pre_code` | bool | `true` | 高亮代码块时避免额外包裹 pre/code |
 | `unsafe` | bool | `false` | Markdown 专用；允许 goldmark 输出原始 HTML |
+| `directive_blocks` | bool | `false` | Markdown 专用；启用 `:::export html`、`:::center`、`:::quote`、`:::shortcode` 指令块 |
 
 常见样式：`monokai`、`github`、`dracula`、`solarized-dark`。
 

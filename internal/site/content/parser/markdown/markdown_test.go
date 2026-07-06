@@ -206,6 +206,72 @@ func TestTOC(t *testing.T) {
 	assert.Equal(t, 3, result.Toc[0].Children[0].Children[0].Level)
 }
 
+func TestExportHTMLBlock(t *testing.T) {
+	result := parseMarkdown(t, `before
+
+:::export html
+<div class="raw">
+  <span>HTML</span>
+</div>
+:::
+
+after
+`, &Option{DirectiveBlocks: true})
+
+	assert.Contains(t, result.Content, `<p>before</p>`)
+	assert.Contains(t, result.Content, `<div class="raw">`+"\n"+`  <span>HTML</span>`)
+	assert.Contains(t, result.Content, `<p>after</p>`)
+	assert.NotContains(t, result.Content, ":::export")
+}
+
+func TestCenterBlock(t *testing.T) {
+	result := parseMarkdown(t, `:::center
+**centered**
+:::
+`, &Option{DirectiveBlocks: true})
+
+	assert.Contains(t, result.Content, `<div style="text-align: center;">`)
+	assert.Contains(t, result.Content, `<strong>centered</strong>`)
+	assert.Contains(t, result.Content, `</div>`)
+}
+
+func TestQuoteBlock(t *testing.T) {
+	result := parseMarkdown(t, `:::quote
+quoted **text**
+:::
+`, &Option{DirectiveBlocks: true})
+
+	assert.Contains(t, result.Content, `<blockquote>`)
+	assert.Contains(t, result.Content, `<strong>text</strong>`)
+	assert.Contains(t, result.Content, `</blockquote>`)
+}
+
+func TestShortcodeBlock(t *testing.T) {
+	result := parseMarkdown(t, `:::shortcode notice type=info
+**Snow**
+
+- static-site
+- go
+:::
+`, &Option{DirectiveBlocks: true})
+
+	assert.Contains(t, result.Content, `<shortcode notice type="info">`)
+	assert.Contains(t, result.Content, `<strong>Snow</strong>`)
+	assert.Contains(t, result.Content, `<li>static-site</li>`)
+	assert.Contains(t, result.Content, `</shortcode>`)
+	assert.NotContains(t, result.Content, ":::shortcode")
+}
+
+func TestDirectiveBlocksDisabledByDefault(t *testing.T) {
+	result := parseMarkdown(t, `:::center
+**centered**
+:::
+`, nil)
+
+	assert.NotContains(t, result.Content, `<div style="text-align: center;">`)
+	assert.Contains(t, result.Content, `:::center`)
+}
+
 func TestLongLineCanBeParsed(t *testing.T) {
 	longLine := strings.Repeat("a", 70*1024)
 	result := parseMarkdown(t, longLine+"\n", nil)
