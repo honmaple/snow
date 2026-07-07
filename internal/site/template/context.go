@@ -69,6 +69,57 @@ func (r *registry) jsonify(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value
 	return pongo2.AsValue(string(buf)), nil
 }
 
+func (r *registry) trimline(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, error) {
+	text := in.String()
+	if text == "" {
+		return pongo2.AsValue(""), nil
+	}
+	lines := strings.Split(text, "\n")
+
+	start := 0
+	end := len(lines)
+
+	for start < end && strings.TrimSpace(lines[start]) == "" {
+		start++
+	}
+	if start == end {
+		return pongo2.AsValue(""), nil
+	}
+
+	for end > start && strings.TrimSpace(lines[end-1]) == "" {
+		end--
+	}
+	return pongo2.AsValue(strings.Join(lines[start:end], "\n")), nil
+}
+
+func (r *registry) dedent(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, error) {
+	text := in.String()
+	if text == "" {
+		return pongo2.AsValue(""), nil
+	}
+
+	min := -1
+
+	lines := strings.Split(text, "\n")
+	for _, line := range lines {
+		newline := strings.TrimLeft(line, " ")
+		if newline == "" {
+			continue
+		}
+		if indent := len(line) - len(newline); min == -1 || indent < min {
+			min = indent
+		}
+	}
+	if min == -1 {
+		return pongo2.AsValue(text), nil
+	}
+	prefix := strings.Repeat(" ", min)
+	for i, line := range lines {
+		lines[i] = strings.TrimPrefix(line, prefix)
+	}
+	return pongo2.AsValue(strings.Join(lines, "\n")), nil
+}
+
 func (r *registry) unmarshal(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, error) {
 	data := in.String()
 	if data == "" {
@@ -129,7 +180,10 @@ func init() {
 
 		set.RegisterFilter("slient", r.slient)
 		set.RegisterFilter("jsonify", r.jsonify)
+		set.RegisterFilter("dedent", r.dedent)
+		set.RegisterFilter("trimline", r.trimline)
 		set.RegisterFilter("unmarshal", r.unmarshal)
+
 		set.RegisterFilter("absURL", r.absURL)
 		set.RegisterFilter("relURL", r.relURL)
 
