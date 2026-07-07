@@ -1,7 +1,7 @@
 package shortcode
 
 import (
-	"bytes"
+	"io"
 	"io/fs"
 	stdpath "path"
 	"slices"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/template"
+	"github.com/honmaple/snow/internal/utils"
 	"github.com/spf13/cast"
 	"golang.org/x/net/html"
 )
@@ -19,20 +20,19 @@ type ShortcodeSet struct {
 	tplset template.TemplateSet
 }
 
-type shortcodeFrame struct {
-	token html.Token
-	name  string
-	vars  map[string]any
-	body  bytes.Buffer
-}
-
-func isSelfClosing(tag string) bool {
-	switch tag {
-	case "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr":
-		return true
+type (
+	shortcodeToken struct {
+		tpl  template.Template
+		name string
+		attr []html.Attribute
 	}
-	return false
-}
+	shortcodeFrame struct {
+		tag      string
+		body     strings.Builder
+		rawToken string
+		newToken *shortcodeToken
+	}
+)
 
 func shortcodeName(token html.Token) string {
 	for _, attr := range token.Attr {
@@ -48,132 +48,130 @@ func shortcodeName(token html.Token) string {
 	return ""
 }
 
-func shortcodeParams(token html.Token, name string) Params {
-	params := make(Params)
-	for _, attr := range token.Attr {
-		if attr.Key == "_name" || (attr.Key == name && attr.Val == "") {
-			continue
-		}
-		params[attr.Key] = attr.Val
-	}
-	return params
-}
-
-func writeShortcodeOutput(out *bytes.Buffer, stack []*shortcodeFrame, result string) {
-	if len(stack) == 0 {
-		out.WriteString(result)
-		return
-	}
-	stack[len(stack)-1].body.WriteString(result)
-}
-
-func nextCounter(source Source, name string) int {
-	key := "counter:" + name
-	counter := 0
-	if value, ok := source.Get(key); ok {
-		counter = cast.ToInt(value)
-	}
-	source.Set(key, counter+1)
-	return counter
-}
-
-func (h *ShortcodeSet) renderContext(source Source, name string, params Params, counter int) map[string]any {
-	vars := map[string]any{
-		"name":     name,
-		"body":     "",
-		"params":   params,
-		"counter":  counter,
-		"_name":    name,
-		"_counter": counter,
-	}
-	for k, v := range source.Context() {
-		vars[k] = v
-	}
-	return vars
-}
-
 func (h *ShortcodeSet) warnf(format string, args ...any) {
 	if h.ctx != nil && h.ctx.Logger != nil {
 		h.ctx.Logger.Warnf(format, args...)
 	}
 }
 
-func (h *ShortcodeSet) renderFrame(frame *shortcodeFrame, source Source) string {
-	frame.vars["body"] = frame.body.String()
+func (h *ShortcodeSet) resolveShortcode(source Source, token html.Token) (*shortcodeToken, bool) {
+	name := token.Data
+	if name == "shortcode" {
+		name = shortcodeName(token)
+		if name == "" {
+			h.warnf("%s: shortcode no name", source.Id())
+			return nil, false
+		}
+	}
 
-	tpl, ok := h.tpls[frame.name]
+	tpl, ok := h.tpls[name]
 	if !ok {
-		return frame.token.String()
+		return nil, false
 	}
-	result, err := tpl.Execute(frame.vars)
-	if err != nil {
-		h.warnf("%s: %s", source.Id(), err)
-		return frame.token.String()
-	}
-	return result
+	return &shortcodeToken{tpl: tpl, name: name, attr: token.Attr}, true
 }
 
-func (h *ShortcodeSet) render(source Source) string {
+func (h *ShortcodeSet) executeShortcode(source Source, token *shortcodeToken, body string) (string, error) {
+	params := make(Params)
+	for _, attr := range token.attr {
+		if attr.Key == "_name" || (attr.Key == token.name && attr.Val == "") {
+			continue
+		}
+		params[attr.Key] = attr.Val
+	}
+
+	counter := 0
+	counterKey := "counter:" + token.name
+	if value, ok := source.Get(counterKey); ok {
+		counter = cast.ToInt(value)
+	}
+	source.Set(counterKey, counter+1)
+
+	vars := map[string]any{
+		"name":     token.name,
+		"body":     body,
+		"params":   params,
+		"counter":  counter,
+		"_name":    token.name,
+		"_counter": counter,
+	}
+	for k, v := range source.Context() {
+		vars[k] = v
+	}
+	return token.tpl.Execute(vars)
+}
+
+func (h *ShortcodeSet) render(source Source) (string, error) {
 	var (
-		out   bytes.Buffer
-		stack []*shortcodeFrame
-		z     = html.NewTokenizer(strings.NewReader(source.Content()))
+		stack     = []*shortcodeFrame{{}}
+		tokenizer = html.NewTokenizer(strings.NewReader(source.Content()))
 	)
 
 	for {
-		tokenType := z.Next()
+		tokenType := tokenizer.Next()
 		if tokenType == html.ErrorToken {
-			for len(stack) > 0 {
-				frame := stack[len(stack)-1]
-				stack = stack[:len(stack)-1]
-				h.warnf("%s: closing delimiter '</%s>' is missing", source.Id(), frame.token.Data)
-				writeShortcodeOutput(&out, stack, h.renderFrame(frame, source))
+			err := tokenizer.Err()
+			if err == io.EOF {
+				break
 			}
-			return out.String()
+			return source.Content(), err
 		}
 
-		token := z.Token()
+		top := stack[len(stack)-1]
+		raw := string(tokenizer.Raw())
+		token := tokenizer.Token()
 		switch tokenType {
 		case html.StartTagToken, html.SelfClosingTagToken:
-			name := token.Data
-			if token.Data == "shortcode" {
-				name = shortcodeName(token)
-				if name == "" {
-					h.warnf("%s: shortcode no name", source.Id())
-					break
-				}
-			}
-			tpl, ok := h.tpls[name]
-			if ok {
-				vars := h.renderContext(source, name, shortcodeParams(token, name), nextCounter(source, name))
-
-				if tokenType == html.StartTagToken && !isSelfClosing(token.Data) {
+			if newToken, ok := h.resolveShortcode(source, token); ok {
+				// 如果是自闭合标签则直接替换
+				if tokenType == html.SelfClosingTagToken || utils.IsHTMLVoidElement(token.Data) {
+					newHTML, err := h.executeShortcode(source, newToken, "")
+					if err != nil {
+						h.warnf("%s: %s", source.Id(), err)
+						top.body.WriteString(raw)
+					} else {
+						top.body.WriteString(newHTML)
+					}
+				} else {
 					stack = append(stack, &shortcodeFrame{
-						token: token,
-						name:  name,
-						vars:  vars,
+						tag:      token.Data,
+						rawToken: raw,
+						newToken: newToken,
 					})
-					continue
 				}
-
-				result, err := tpl.Execute(vars)
-				if err != nil {
-					h.warnf("%s: %s", source.Id(), err)
-					break
-				}
-				writeShortcodeOutput(&out, stack, result)
-				continue
+			} else {
+				top.body.WriteString(raw)
 			}
 		case html.EndTagToken:
-			if len(stack) > 0 && stack[len(stack)-1].token.Data == token.Data {
-				frame := stack[len(stack)-1]
+			if len(stack) > 1 && top.tag == token.Data {
 				stack = stack[:len(stack)-1]
-				writeShortcodeOutput(&out, stack, h.renderFrame(frame, source))
-				continue
+				parent := stack[len(stack)-1]
+
+				newHTML, err := h.executeShortcode(source, top.newToken, top.body.String())
+				if err != nil {
+					h.warnf("%s: %s", source.Id(), err)
+					fallback := top.rawToken + top.body.String() + raw
+					parent.body.WriteString(fallback)
+				} else {
+					parent.body.WriteString(newHTML)
+				}
+			} else {
+				top.body.WriteString(raw)
 			}
+		default:
+			top.body.WriteString(raw)
 		}
-		writeShortcodeOutput(&out, stack, token.String())
 	}
+
+	for len(stack) > 1 {
+		top := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		parent := stack[len(stack)-1]
+
+		h.warnf("%s: closing delimiter '</%s>' is missing", source.Id(), top.tag)
+		parent.body.WriteString(top.rawToken + top.body.String())
+	}
+	return stack[0].body.String(), nil
 }
 
 func (h *ShortcodeSet) Render(id string, content string, context map[string]any) string {
@@ -188,7 +186,12 @@ func (h *ShortcodeSet) RenderSource(source Source) string {
 	if len(h.tpls) == 0 {
 		return source.Content()
 	}
-	return h.render(source)
+	result, err := h.render(source)
+	if err != nil {
+		h.warnf("parse html err: %s", err.Error())
+		return source.Content()
+	}
+	return result
 }
 
 func (h *ShortcodeSet) Load() (map[string]template.Template, error) {

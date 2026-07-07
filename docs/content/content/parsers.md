@@ -78,7 +78,7 @@ markups:
 :::
 ````
 
-`:::shortcode` 会渲染为 `<shortcode ...>...</shortcode>`，块内 Markdown 会继续解析，再作为 shortcode body 传入。开头行中第二个字段是 shortcode 名称，后续 `key=value` 会转为 shortcode 属性。需要在 body 中传递 YAML、TOML 等原始配置时，使用普通 HTML 标签形式 `<shortcode name>...</shortcode>`。
+`:::shortcode` 会渲染为 `<shortcode ...>...</shortcode>`，块内 Markdown 会继续解析，再作为 shortcode body 传入。若 body 中还有嵌套 shortcode，会先渲染最内层 shortcode，再把渲染后的 HTML 传给外层。开头行中第二个字段是 shortcode 名称，后续 `key=value` 会转为 shortcode 属性。需要在 body 中传递 YAML、TOML 等原始配置时，使用普通 HTML 标签形式 `<shortcode name>...</shortcode>`。
 
 HTML parser 会把 `<head>` 中的标签转换为 FrontMatter：
 
