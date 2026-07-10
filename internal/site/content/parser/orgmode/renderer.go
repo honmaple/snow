@@ -1,6 +1,7 @@
 package orgmode
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/alecthomas/chroma/v2"
@@ -39,21 +40,41 @@ func (e *Renderer) highlightCodeBlock(source, lang string) string {
 	return w.String()
 }
 
-func (e *Renderer) RenderNode(r render.Renderer, n parser.Node) string {
-	if e.opt.Style != "" && e.opt.Style != "none" {
-		switch node := n.(type) {
-		case *parser.Block:
-			if node.Type == "SRC" || node.Type == "EXAMPLE" {
-				lang := ""
-				if len(node.Parameters) > 0 {
-					lang = node.Parameters[0]
-				}
-				text := render.DedentString(r.RenderNodes(node.Children, "\n"))
-				return e.highlightCodeBlock(text, lang)
+func (e *Renderer) RenderKeyword(r render.Renderer, n *parser.Keyword) string {
+	if strings.ToUpper(n.Key) == "HTML" {
+		return n.Value
+	}
+	return r.RenderKeyword(n)
+}
+
+func (e *Renderer) RenderBlock(r render.Renderer, n *parser.Block) string {
+	switch n.Type {
+	case "SRC", "EXAMPLE":
+		if e.opt.Style != "" && e.opt.Style != "none" {
+			lang := ""
+			if len(n.Parameters) > 0 {
+				lang = n.Parameters[0]
 			}
+			text := render.DedentString(r.RenderNodes(n.Children, "\n"))
+			return e.highlightCodeBlock(text, lang)
+		}
+	case "SHORTCODE":
+		if len(n.Parameters) > 0 {
+			return fmt.Sprintf("<shortcode %[1]s>\n%[2]s\n</shortcode>", strings.Join(n.Parameters, " "), r.RenderNodes(n.Children, "\n"))
 		}
 	}
-	return r.RenderNode(n, true)
+	return r.RenderBlock(n)
+}
+
+func (e *Renderer) RenderNode(r render.Renderer, n parser.Node) string {
+	switch node := n.(type) {
+	case *parser.Block:
+		return e.RenderBlock(r, node)
+	case *parser.Keyword:
+		return e.RenderKeyword(r, node)
+	default:
+		return r.RenderNode(n, true)
+	}
 }
 
 func NewRenderer(opt *Option) *Renderer {

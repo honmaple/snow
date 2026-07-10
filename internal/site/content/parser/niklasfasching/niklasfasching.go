@@ -12,8 +12,6 @@ import (
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content/parser"
 	org "github.com/niklasfasching/go-org/org"
-
-	_ "github.com/honmaple/snow/internal/site/content/parser/orgmode"
 )
 
 var (
