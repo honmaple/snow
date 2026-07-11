@@ -27,7 +27,7 @@ require (
 	github.com/tdewolff/minify/v2 v2.12.4
 	github.com/urfave/cli/v2 v2.27.7
 	github.com/yuin/goldmark v1.8.2
-	golang.org/x/net v0.43.0
+	golang.org/x/net v0.57.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -46,9 +46,9 @@ require (
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/tdewolff/parse/v2 v2.6.4 // indirect
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
-	golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8 // indirect
-	golang.org/x/sys v0.44.0 // indirect
-	golang.org/x/text v0.33.0 // indirect
+	golang.org/x/image v0.44.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
 	google.golang.org/protobuf v1.35.2 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
