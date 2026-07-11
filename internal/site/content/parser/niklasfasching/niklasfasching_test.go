@@ -8,6 +8,7 @@ import (
 
 	"github.com/honmaple/snow/internal/core"
 	"github.com/honmaple/snow/internal/site/content/parser"
+	_ "github.com/honmaple/snow/internal/site/content/parser/orgmode"
 	"github.com/honmaple/snow/internal/site/template"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,7 +46,7 @@ func TestPropertiesDrawerMeta(t *testing.T) {
 :END:
 
 summary
-#+MORE
+#+snow: more
 content
 `, nil)
 
@@ -61,7 +62,7 @@ content
 	}, result.FrontMatter["formats"])
 
 	assert.Equal(t, "\nsummary\n", result.RawSummary)
-	assert.Equal(t, "\nsummary\n#+MORE\ncontent\n", result.RawContent)
+	assert.Equal(t, "\nsummary\n#+snow: more\ncontent\n", result.RawContent)
 	assert.Contains(t, result.Content, "summary")
 	assert.Contains(t, result.Content, "content")
 }
@@ -76,7 +77,7 @@ func TestKeywordMeta(t *testing.T) {
 #+PROPERTY: formats.atom.template index.json
 
 summary
-#+MORE
+#+snow: more
 content
 `, nil)
 
@@ -90,6 +91,36 @@ content
 			"template": "index.json",
 		},
 	}, result.FrontMatter["formats"])
+}
+
+func TestSummaryWithSnowMoreKeyword(t *testing.T) {
+	result := parseOrg(t, `#+TITLE: aaa
+
+summary
+#+snow: more
+content
+`, nil)
+
+	assert.Equal(t, "aaa", result.FrontMatter["title"])
+	assert.NotContains(t, result.FrontMatter, "snow")
+	assert.Equal(t, "\nsummary\n", result.RawSummary)
+	assert.Equal(t, "\nsummary\n#+snow: more\ncontent\n", result.RawContent)
+	assert.Contains(t, result.Summary, "summary")
+}
+
+func TestSummaryWithHTMLMoreKeyword(t *testing.T) {
+	result := parseOrg(t, `#+TITLE: aaa
+
+summary
+#+html: <!--more-->
+content
+`, nil)
+
+	assert.Equal(t, "aaa", result.FrontMatter["title"])
+	assert.NotContains(t, result.FrontMatter, "html")
+	assert.Equal(t, "\nsummary\n", result.RawSummary)
+	assert.Equal(t, "\nsummary\n#+html: <!--more-->\ncontent\n", result.RawContent)
+	assert.Contains(t, result.Summary, "summary")
 }
 
 func TestTOC(t *testing.T) {

@@ -45,7 +45,7 @@ func assertFunc(t *testing.T, text string) {
 	}, result.FrontMatter["formats"])
 
 	assert.Equal(t, "\nsummary\n", result.RawSummary)
-	assert.Equal(t, "\nsummary\n#+MORE\ncontent\n", result.RawContent)
+	assert.Equal(t, "\nsummary\n#+snow: more\ncontent\n", result.RawContent)
 	assert.Contains(t, result.Content, "summary")
 	assert.Contains(t, result.Content, "content")
 }
@@ -62,7 +62,7 @@ func TestPropertiesDrawerMeta(t *testing.T) {
 :END:
 
 summary
-#+MORE
+#+snow: more
 content
 `
 	assertFunc(t, text)
@@ -78,7 +78,7 @@ func TestKeywordMeta(t *testing.T) {
 #+PROPERTY: formats.atom.template index.json
 
 summary
-#+MORE
+#+snow: more
 content
 `
 	assertFunc(t, text)
@@ -109,6 +109,36 @@ content
 	assert.Empty(t, result.Summary)
 	assert.Equal(t, "* Title\n\ncontent\n", result.RawContent)
 	assert.Contains(t, result.Content, "Title")
+}
+
+func TestSummaryWithSnowMoreKeyword(t *testing.T) {
+	result := parseOrg(t, `#+TITLE: aaa
+
+summary
+#+snow: more
+content
+`, nil)
+
+	assert.Equal(t, "aaa", result.FrontMatter["title"])
+	assert.NotContains(t, result.FrontMatter, "snow")
+	assert.Equal(t, "\nsummary\n", result.RawSummary)
+	assert.Equal(t, "\nsummary\n#+snow: more\ncontent\n", result.RawContent)
+	assert.Contains(t, result.Summary, "summary")
+}
+
+func TestSummaryWithHTMLMoreKeyword(t *testing.T) {
+	result := parseOrg(t, `#+TITLE: aaa
+
+summary
+#+html: <!--more-->
+content
+`, nil)
+
+	assert.Equal(t, "aaa", result.FrontMatter["title"])
+	assert.NotContains(t, result.FrontMatter, "html")
+	assert.Equal(t, "\nsummary\n", result.RawSummary)
+	assert.Equal(t, "\nsummary\n#+html: <!--more-->\ncontent\n", result.RawContent)
+	assert.Contains(t, result.Summary, "summary")
 }
 
 func TestTOC(t *testing.T) {

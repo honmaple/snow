@@ -143,8 +143,12 @@ func (d *Processor) parseNode(fullpath string) (*Node, error) {
 	node.WordCount, node.ReadingTime = d.countReadingStats(node.Content)
 
 	lctx := d.ctx.For(lang)
-	if node.Summary == "" && node.Content != "" {
-		node.Summary = lctx.GetSummary(node.Content)
+	if node.Summary == "" {
+		if summary := fm.GetString("summary"); summary != "" {
+			node.Summary = summary
+		} else if node.Content != "" {
+			node.Summary = lctx.GetSummary(node.Content)
+		}
 	}
 	return node, nil
 }

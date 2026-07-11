@@ -96,8 +96,24 @@ HTML parser 会把 `<head>` 中的标签转换为 FrontMatter：
 | 格式 | 正文来源 | 摘要分隔符 |
 |------|----------|------------|
 | Markdown | Markdown 渲染结果 | `<!--more-->` |
-| Org-mode | Org 渲染结果 | `#+more` |
+| Org-mode | Org 渲染结果 | `#+snow: more` 或 `#+html: <!--more-->` |
 | HTML | `<body>` 子节点；没有完整文档结构时把 HTML 片段作为正文 | `<!--more-->` |
+
+Org-mode 的摘要分隔符使用 Snow 专用 keyword：
+
+```org
+summary
+#+snow: more
+content
+```
+
+也可以使用导出 HTML keyword，便于沿用已有 Org 内容：
+
+```org
+summary
+#+html: <!--more-->
+content
+```
 
 ## Toc
 

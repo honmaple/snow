@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	ORGMODE_MORE       = regexp.MustCompile(`^(?i:#\+more)\s*$`)
+	ORGMODE_SUMMARY    = regexp.MustCompile(`(?i)^\s*#\+(snow:\s*more|html:\s*<!--more-->)\s*$`)
 	ORGMODE_KEYWORD    = regexp.MustCompile(`^#\+([^:]+):(\s+(.*)|$)`)
 	ORGMODE_PROPERTIES = regexp.MustCompile(`^(?i::PROPERTIES:)$`)
 	ORGMODE_META       = regexp.MustCompile(`^:([^:]+):(\s+(.*)|$)`)
@@ -107,6 +107,11 @@ func (m *orgParser) Parse(r io.Reader) (*parser.Result, error) {
 			isFormat = false
 			continue
 		}
+		if isSummary && ORGMODE_SUMMARY.MatchString(line) {
+			summary.WriteString(content.String())
+			isSummary = false
+			isMeta = false
+		}
 		if isMeta {
 			if match := ORGMODE_KEYWORD.FindStringSubmatch(line); match != nil {
 				if match[1] == "PROPERTY" {
@@ -124,10 +129,6 @@ func (m *orgParser) Parse(r io.Reader) (*parser.Result, error) {
 			}
 		}
 		isMeta = false
-		if isSummary && ORGMODE_MORE.MatchString(line) {
-			summary.WriteString(content.String())
-			isSummary = false
-		}
 		content.WriteString(line)
 		content.WriteString("\n")
 	}
