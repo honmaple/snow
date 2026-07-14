@@ -206,6 +206,18 @@ func TestTOC(t *testing.T) {
 	assert.Equal(t, 3, result.Toc[0].Children[0].Children[0].Level)
 }
 
+func TestTOCHeadingTitleWithInlineMarkup(t *testing.T) {
+	result := parseMarkdown(t, "# One **Two** [Three](https://example.com) `Four`\n", &Option{
+		MarkupOption: parser.MarkupOption{
+			ShowToc: true,
+			Style:   "none",
+		},
+	})
+
+	require.Len(t, result.Toc, 1)
+	assert.Equal(t, "One Two Three Four", result.Toc[0].Title)
+}
+
 func TestExportHTMLBlock(t *testing.T) {
 	result := parseMarkdown(t, `before
 

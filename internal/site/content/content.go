@@ -79,11 +79,6 @@ func (d *Processor) RenderTemplate(path string, tpl template.Template, vars map[
 	if path == "" {
 		return nil
 	}
-	// 支持uglyurls和非uglyurls形式
-	if strings.HasSuffix(path, "/") {
-		path = path + "index.html"
-	}
-
 	lang := d.ctx.GetDefaultLanguage()
 	if l, ok := vars["current_lang"]; ok {
 		lang = l.(string)
@@ -109,6 +104,11 @@ func (d *Processor) RenderTemplate(path string, tpl template.Template, vars map[
 			Err:  err,
 			Path: tpl.Name(),
 		}
+	}
+
+	// 支持uglyurls和非uglyurls形式
+	if strings.HasSuffix(path, "/") {
+		path = path + "index.html"
 	}
 	if err := writer.WriteFile(context.TODO(), path, strings.NewReader(result)); err != nil {
 		return &core.Error{

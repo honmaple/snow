@@ -67,19 +67,19 @@ func SortSections(sections Sections, key string, recursive bool) {
 	}
 }
 
-func (sec *Section) RecursivePages() Pages {
+func (sec *Section) AllPages() Pages {
 	ns := slices.Clone(sec.Pages)
 	for _, child := range sec.Children {
-		ns = append(ns, child.RecursivePages()...)
+		ns = append(ns, child.AllPages()...)
 	}
 	SortPages(ns, sec.FrontMatter.GetString("sort_by"))
 	return ns
 }
 
-func (sec *Section) RecursiveHiddenPages() Pages {
+func (sec *Section) AllHiddenPages() Pages {
 	ns := slices.Clone(sec.HiddenPages)
 	for _, child := range sec.Children {
-		ns = append(ns, child.RecursiveHiddenPages()...)
+		ns = append(ns, child.AllHiddenPages()...)
 	}
 	SortPages(ns, sec.FrontMatter.GetString("sort_by"))
 	return ns

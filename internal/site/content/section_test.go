@@ -30,7 +30,7 @@ func sectionTitles(sections Sections) []string {
 	return titles
 }
 
-func TestSectionRecursivePagesUsesWeightAscending(t *testing.T) {
+func TestSectionAllPagesUsesWeightAscending(t *testing.T) {
 	section := &Section{
 		Node: &Node{
 			FrontMatter: NewFrontMatter(map[string]any{"sort_by": "weight"}),
@@ -51,7 +51,7 @@ func TestSectionRecursivePagesUsesWeightAscending(t *testing.T) {
 		},
 	}
 
-	pages := section.RecursivePages()
+	pages := section.AllPages()
 
 	assert.Equal(t, []string{"first", "second", "third"}, pageTitles(pages))
 }

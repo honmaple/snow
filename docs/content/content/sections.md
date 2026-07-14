@@ -150,8 +150,8 @@ paginate_filter_by: "'emacs' in tags and not draft"
 | `section.Children` | Sections | 子栏目列表 |
 | `section.IsHome()` | bool | 是否为首页 Section |
 | `section.Ancestors()` | Sections | 从父栏目开始向上的栏目列表，不包含自身 |
-| `section.RecursivePages()` | Pages | 当前栏目和子栏目下的普通页面 |
-| `section.RecursiveHiddenPages()` | Pages | 当前栏目和子栏目下的隐藏页面 |
+| `section.AllPages()` | Pages | 当前栏目和子栏目下的普通页面 |
+| `section.AllHiddenPages()` | Pages | 当前栏目和子栏目下的隐藏页面 |
 | `paginator` | Paginator | 分页对象（启用分页时） |
 
 常用关联对象字段：

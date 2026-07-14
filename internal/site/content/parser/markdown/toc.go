@@ -27,12 +27,20 @@ func (e *tocExtension) Extend(m goldmark.Markdown) {
 
 func (e *tocExtension) headingTitle(h *ast.Heading, source []byte) string {
 	var buf bytes.Buffer
-	for c := h.FirstChild(); c != nil; c = c.NextSibling() {
-		if text, ok := c.(*ast.Text); ok {
-			buf.Write(text.Segment.Value(source))
+	e.writeNodeText(&buf, h, source)
+	return strings.TrimSpace(buf.String())
+}
+
+func (e *tocExtension) writeNodeText(buf *bytes.Buffer, node ast.Node, source []byte) {
+	if text, ok := node.(*ast.Text); ok {
+		buf.Write(text.Value(source))
+		if text.SoftLineBreak() || text.HardLineBreak() {
+			buf.WriteByte(' ')
 		}
 	}
-	return strings.TrimSpace(buf.String())
+	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+		e.writeNodeText(buf, child, source)
+	}
 }
 
 func (e *tocExtension) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
