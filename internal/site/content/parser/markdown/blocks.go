@@ -29,6 +29,7 @@ type directiveBlock struct {
 	kind      blockKind
 	name      string
 	arguments []string
+	nesting   int
 }
 
 func (b *directiveBlock) Kind() ast.NodeKind {
@@ -69,16 +70,26 @@ func (p *directiveBlockParser) Open(parent ast.Node, reader text.Reader, pc pars
 
 func (p *directiveBlockParser) Continue(node ast.Node, reader text.Reader, pc parser.Context) parser.State {
 	line, segment := reader.PeekLine()
+	block, ok := node.(*directiveBlock)
+	if !ok {
+		return parser.Close
+	}
 	if p.isClose(line) {
+		if block.nesting > 0 {
+			block.nesting--
+			return parser.Continue | parser.HasChildren
+		}
 		reader.AdvanceToEOL()
 		return parser.Close
 	}
 
-	block := node.(*directiveBlock)
 	if block.kind == blockKindExportHTML {
 		block.Lines().Append(text.NewSegment(segment.Start, segment.Stop))
 		reader.AdvanceToEOL()
 		return parser.Continue | parser.NoChildren
+	}
+	if p.isOpen(line) {
+		block.nesting++
 	}
 	return parser.Continue | parser.HasChildren
 }
@@ -123,6 +134,11 @@ func (p *directiveBlockParser) isClose(line []byte) bool {
 	return strings.TrimSpace(string(line)) == ":::"
 }
 
+func (p *directiveBlockParser) isOpen(line []byte) bool {
+	kind, _, _, ok := p.parseLine(line)
+	return ok && kind != ""
+}
+
 type directiveBlockRenderer struct{}
 
 func (r *directiveBlockRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
@@ -130,7 +146,10 @@ func (r *directiveBlockRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegi
 }
 
 func (r *directiveBlockRenderer) renderDirectiveBlock(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	block := node.(*directiveBlock)
+	block, ok := node.(*directiveBlock)
+	if !ok {
+		return ast.WalkContinue, nil
+	}
 	switch block.kind {
 	case blockKindExportHTML:
 		if entering {

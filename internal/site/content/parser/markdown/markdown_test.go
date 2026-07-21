@@ -234,6 +234,7 @@ after
 	assert.Contains(t, result.Content, `<div class="raw">`+"\n"+`  <span>HTML</span>`)
 	assert.Contains(t, result.Content, `<p>after</p>`)
 	assert.NotContains(t, result.Content, ":::export")
+	assert.NotContains(t, result.Content, ":::")
 }
 
 func TestCenterBlock(t *testing.T) {
@@ -245,6 +246,7 @@ func TestCenterBlock(t *testing.T) {
 	assert.Contains(t, result.Content, `<div style="text-align: center;">`)
 	assert.Contains(t, result.Content, `<strong>centered</strong>`)
 	assert.Contains(t, result.Content, `</div>`)
+	assert.NotContains(t, result.Content, ":::")
 }
 
 func TestQuoteBlock(t *testing.T) {
@@ -256,6 +258,7 @@ quoted **text**
 	assert.Contains(t, result.Content, `<blockquote>`)
 	assert.Contains(t, result.Content, `<strong>text</strong>`)
 	assert.Contains(t, result.Content, `</blockquote>`)
+	assert.NotContains(t, result.Content, ":::")
 }
 
 func TestShortcodeBlock(t *testing.T) {
@@ -272,6 +275,45 @@ func TestShortcodeBlock(t *testing.T) {
 	assert.Contains(t, result.Content, `<li>static-site</li>`)
 	assert.Contains(t, result.Content, `</shortcode>`)
 	assert.NotContains(t, result.Content, ":::shortcode")
+	assert.NotContains(t, result.Content, ":::")
+}
+
+func TestNestedDirectiveBlocks(t *testing.T) {
+	result := parseMarkdown(t, `:::center
+outer
+
+:::quote
+inner **text**
+:::
+
+after
+:::
+`, &Option{DirectiveBlocks: true})
+
+	assert.Contains(t, result.Content, `<div style="text-align: center;">`)
+	assert.Contains(t, result.Content, `<blockquote>`)
+	assert.Contains(t, result.Content, `<strong>text</strong>`)
+	assert.Contains(t, result.Content, `after`)
+	assert.Contains(t, result.Content, `</blockquote>`)
+	assert.Contains(t, result.Content, `</div>`)
+	assert.NotContains(t, result.Content, ":::")
+}
+
+func TestSiblingDirectiveBlocks(t *testing.T) {
+	result := parseMarkdown(t, `:::quote
+first
+:::
+
+:::center
+second
+:::
+`, &Option{DirectiveBlocks: true})
+
+	assert.Contains(t, result.Content, `<blockquote>`)
+	assert.Contains(t, result.Content, `first`)
+	assert.Contains(t, result.Content, `<div style="text-align: center;">`)
+	assert.Contains(t, result.Content, `second`)
+	assert.NotContains(t, result.Content, ":::")
 }
 
 func TestDirectiveBlocksDisabledByDefault(t *testing.T) {
