@@ -15,13 +15,6 @@ type File struct {
 	Ext          string // md
 }
 
-func (file *File) GetSectionPath() string {
-	if file.BaseName == "index" {
-		return stdpath.Dir(file.Dir)
-	}
-	return file.Dir
-}
-
 func (d *Processor) parseFile(fullpath string) (*File, error) {
 	relPath := filepath.ToSlash(fullpath)
 	if relPath == "." {
