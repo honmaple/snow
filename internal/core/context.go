@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	stdpath "path"
+	"path/filepath"
 
 	"github.com/honmaple/snow/internal/theme"
 	"github.com/honmaple/snow/internal/utils/mergefs"
@@ -14,11 +16,22 @@ type (
 	Context struct {
 		*LocaleContext
 		Logger         Logger
-		ThemeFS        fs.FS
+		FS             VirtualFS
 		OtherLanguages map[string]*LocaleContext
 	}
 	ContextOption func(*Context)
 )
+
+func (ctx *Context) For(lang string) *LocaleContext {
+	if lang == ctx.GetDefaultLanguage() {
+		return ctx.LocaleContext
+	}
+	lctx, ok := ctx.OtherLanguages[lang]
+	if ok {
+		return lctx
+	}
+	return ctx.LocaleContext
+}
 
 func (ctx *Context) GetAllLanguages() []string {
 	langs := []string{
@@ -45,33 +58,31 @@ func (ctx *Context) VerifyLanguage(lang string) bool {
 	return ok
 }
 
-func (ctx *Context) GetFS(path string, internal bool) (fs.FS, error) {
-	fsys := make([]fs.FS, 0)
+func (ctx *Context) GetFS(name string, includeTheme bool, includeInternal bool) (fs.FS, error) {
+	name = normalizeVirtualPath(name)
+	fsys := make([]fs.FS, 0, 4)
 
-	if _, err := os.Stat(path); err == nil {
-		fsys = append(fsys, os.DirFS(path))
-	}
-
-	if subFS, err := fs.Sub(ctx.ThemeFS, path); err == nil {
+	if subFS := subDirFSIfExists(ctx.FS, name); subFS != nil {
 		fsys = append(fsys, subFS)
 	}
-	if internal {
-		if subFS, err := fs.Sub(ctx.ThemeFS, "internal/"+path); err == nil {
+
+	if includeTheme {
+		if theme := ctx.GetTheme(); theme != "" {
+			if subFS := subDirFSIfExists(ctx.FS, stdpath.Join(MountThemes, theme, name)); subFS != nil {
+				fsys = append(fsys, subFS)
+			}
+		}
+	}
+	if includeInternal {
+		if subFS := subDirFSIfExists(theme.FS, name); subFS != nil {
 			fsys = append(fsys, subFS)
+			item, err := newMountEntry(subFS, "internal")
+			if err == nil {
+				fsys = append(fsys, item)
+			}
 		}
 	}
 	return mergefs.Merge(fsys...), nil
-}
-
-func (ctx *Context) For(lang string) *LocaleContext {
-	if lang == ctx.GetDefaultLanguage() {
-		return ctx.LocaleContext
-	}
-	lctx, ok := ctx.OtherLanguages[lang]
-	if ok {
-		return lctx
-	}
-	return ctx.LocaleContext
 }
 
 func WithLogger(log Logger) ContextOption {
@@ -105,15 +116,12 @@ func NewContext(conf *Config, opts ...ContextOption) (*Context, error) {
 		}
 	}
 
-	themeFS, err := theme.New(ctx.GetThemeDir(), ctx.GetTheme())
-	if err != nil {
-		return nil, err
+	if theme := ctx.GetTheme(); theme != "" {
+		if err := conf.MergeFromThemeConfig(filepath.Join(MountThemes, theme)); err != nil {
+			return nil, err
+		}
 	}
-	ctx.ThemeFS = themeFS
-
-	if err := conf.MergeFromThemeConfig(ctx.ThemeFS); err != nil {
-		return nil, err
-	}
+	ctx.FS = newVirtualFS(os.DirFS("."))
 
 	defaultLanguage := ctx.GetDefaultLanguage()
 	if defaultLanguage == "" {

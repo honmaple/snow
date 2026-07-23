@@ -10,7 +10,7 @@ import (
 )
 
 func (site *Site) IsIgnoredStatic(path string, isDir bool) bool {
-	// path 是 static FS 内部路径，不包含 static_dir 前缀。
+	// path 是 static FS 内部路径，不包含 static 前缀。
 	matchPath := path
 	if isDir {
 		matchPath = matchPath + "/"
@@ -33,8 +33,7 @@ func (site *Site) BuildStatic(ctx context.Context, writer core.Writer) error {
 
 	now := time.Now()
 
-	// 主题为空时才使用内置主题的css
-	staticFS, err := site.ctx.GetFS("static", site.ctx.GetTheme() == "")
+	staticFS, err := site.ctx.GetFS(core.MountStatic, true, true)
 	if err != nil {
 		return err
 	}

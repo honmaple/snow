@@ -50,7 +50,7 @@ func (d *Data) loadFromURL(url string, format string) (any, error) {
 }
 
 func (d *Data) loadFromFile(path string, format string) (any, error) {
-	subFS, err := d.ctx.GetFS("data", false)
+	subFS, err := d.ctx.GetFS("data", true, false)
 	if err != nil {
 		return nil, err
 	}

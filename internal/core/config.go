@@ -143,11 +143,18 @@ func (conf *Config) LoadFromFile(file string) error {
 	return nil
 }
 
-func (conf *Config) MergeFromThemeConfig(theme fs.FS) error {
+func (conf *Config) MergeFromThemeConfig(path string) error {
 	var themeFile string
+	if path == "" {
+		path = "."
+	}
+	if _, err := os.Stat(path); err != nil {
+		return fmt.Errorf("The theme path %s not found: %s", path, err.Error())
+	}
+	rootFS := fs.FS(os.DirFS(path))
 
 	for _, file := range []string{"theme.yaml", "theme.toml", "theme.json"} {
-		if _, err := fs.Stat(theme, file); err == nil {
+		if _, err := fs.Stat(rootFS, file); err == nil {
 			themeFile = file
 			break
 		}
@@ -156,7 +163,7 @@ func (conf *Config) MergeFromThemeConfig(theme fs.FS) error {
 		return nil
 	}
 
-	content, err := fs.ReadFile(theme, themeFile)
+	content, err := fs.ReadFile(rootFS, themeFile)
 	if err != nil {
 		return err
 	}
@@ -191,10 +198,7 @@ var (
 		"description":               "snow is a static site generator.",
 		"author":                    "honmaple",
 		"language":                  "en",
-		"theme_dir":                 "themes",
-		"static_dir":                "static",
 		"output_dir":                "output",
-		"content_dir":               "content",
 		"content_truncate_len":      49,
 		"content_truncate_ellipsis": "...",
 		"formats.rss.template":      "partials/rss.xml",
@@ -229,6 +233,7 @@ var (
 		"hooks.shortcode.enabled": true,
 
 		// hook的执行顺序
+		"hooks.mount.weight":     5,
 		"hooks.snakecase.weight": 10,
 		"hooks.assets.weight":    20,
 		"hooks.pelican.weight":   30,

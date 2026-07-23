@@ -21,6 +21,7 @@ import (
 	_ "github.com/honmaple/snow/internal/site/hook/filter"
 	_ "github.com/honmaple/snow/internal/site/hook/links"
 	_ "github.com/honmaple/snow/internal/site/hook/minify"
+	_ "github.com/honmaple/snow/internal/site/hook/mount"
 	_ "github.com/honmaple/snow/internal/site/hook/pelican"
 	_ "github.com/honmaple/snow/internal/site/hook/rewrite"
 	_ "github.com/honmaple/snow/internal/site/hook/shortcode"

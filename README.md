@@ -5,7 +5,7 @@ A static site generator.
 ## Features
 
 - **Multiple content formats** — Markdown, Org-mode, and HTML
-- **Multilingual sites** — Detect languages by directory, file suffix, or Front Matter, with built-in i18n support
+- **Multilingual sites** — Detect languages by file suffix or Front Matter, with built-in i18n support
 - **Taxonomies** — Automatically generate tag, category, author, and archive pages
 - **Output formats** — Custom formats such as RSS, Atom, and JSON
 - **Templates** — Pongo2 templates with Django/Jinja2-style syntax
@@ -81,7 +81,6 @@ title: "My Blog"
 language: "en"
 
 theme: "snow"            # Theme name, matching a directory under themes/
-content_dir: "content"
 output_dir: "output"
 
 sections:
@@ -105,7 +104,7 @@ Hooks let plugins inject behavior into the content processing pipeline. Snow inc
 
 ```bash
 $ snow hooks
-assets(enabled), encrypt(enabled), links(enabled), shortcode(enabled), alias, filter, minify, pelican, rewrite
+mount, snakecase, assets(enabled), pelican, rewrite, filter, encrypt(enabled), links(enabled), shortcode(enabled), minify, alias
 ```
 
 ## Templates

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/honmaple/snow/internal/core"
 )
 
 func (s *Server) watchDir(watcher *fsnotify.Watcher, path string) error {
@@ -80,21 +81,19 @@ func (s *Server) watch(paths []string, fn func(string, fs.FileInfo)) error {
 }
 
 func (s *Server) watchFiles() {
-	staticDirs := []string{"static"}
-	templatesDirs := []string{"templates"}
-	if theme := s.ctx.GetTheme(); theme != "" {
-		staticDirs = append(staticDirs, filepath.Join("themes", theme, "static"))
-		templatesDirs = append(templatesDirs, filepath.Join("themes", theme, "templates"))
-	}
-	contentDir := s.ctx.GetContentDir()
+	contentDirs := []string{core.MountContent}
+	staticDirs := s.resloveWatchDirs(core.MountStatic)
+	templatesDirs := s.resloveWatchDirs(core.MountTemplates)
 
-	watchDirs := slices.Concat([]string{contentDir}, staticDirs, templatesDirs)
+	watchDirs := slices.Concat(contentDirs, staticDirs, templatesDirs)
 	if err := s.watch(watchDirs, func(file string, info fs.FileInfo) {
-		if strings.HasPrefix(file, contentDir+"/") {
-			if err := s.reloadContent(file, info); err != nil {
-				s.ctx.Logger.Errorf("Reload content err: %s", err.Error())
+		for _, contentDir := range contentDirs {
+			if strings.HasPrefix(file, contentDir+"/") {
+				if err := s.reloadContent(contentDir, file, info); err != nil {
+					s.ctx.Logger.Errorf("Reload content err: %s", err.Error())
+				}
+				return
 			}
-			return
 		}
 		for _, staticDir := range staticDirs {
 			if strings.HasPrefix(file, staticDir+"/") {
@@ -117,12 +116,20 @@ func (s *Server) watchFiles() {
 	}
 }
 
-func (s *Server) reloadContent(file string, info fs.FileInfo) error {
-	contentPath, err := filepath.Rel(s.ctx.GetContentDir(), file)
+func (s *Server) resloveWatchDirs(name string) []string {
+	results := []string{name}
+	if theme := s.ctx.GetTheme(); theme != "" {
+		results = append(results, filepath.Join(core.MountThemes, theme, name))
+	}
+	return results
+}
+
+func (s *Server) reloadContent(baseDir string, file string, info fs.FileInfo) error {
+	srcPath, err := filepath.Rel(baseDir, file)
 	if err != nil {
 		return err
 	}
-	if s.site.IsIgnoredContent(filepath.ToSlash(contentPath), info.IsDir()) {
+	if s.site.IsIgnoredContent(filepath.ToSlash(srcPath), info.IsDir()) {
 		return nil
 	}
 
@@ -146,7 +153,7 @@ func (s *Server) reloadStatic(baseDir string, file string, info fs.FileInfo) err
 		return nil
 	}
 
-	staticFS, err := s.ctx.GetFS("static", true)
+	staticFS, err := s.ctx.GetFS(core.MountStatic, true, true)
 	if err != nil {
 		return err
 	}

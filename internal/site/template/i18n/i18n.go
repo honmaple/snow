@@ -42,7 +42,7 @@ func LoadTranslations(ctx *core.Context) (map[string]map[string]*Translation, er
 	trans := make(map[string]map[string]*Translation)
 
 	// 加载主题下以及当前目录下的的翻译文件
-	subFS, err := ctx.GetFS("i18n", false)
+	subFS, err := ctx.GetFS("i18n", true, false)
 	if err != nil {
 		return nil, err
 	}

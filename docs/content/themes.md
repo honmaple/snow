@@ -9,13 +9,11 @@ Snow 通过主题系统管理站点外观。主题包含模板、静态资源和
 
 ```yaml
 theme: "mytheme"
-theme_dir: "themes"
 ```
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
 | `theme` | — | 主题名称，对应 `themes/{name}/` 目录 |
-| `theme_dir` | `themes` | 主题存放目录 |
 
 ## 主题目录结构
 
@@ -39,7 +37,7 @@ themes/mytheme/
     └── zh.yaml
 ```
 
-`templates`、`static`、`i18n` 目录名不可修改。
+`themes`、主题内的 `templates`、`static`、`i18n` 目录名不可修改。
 
 ## 主题配置 (theme.yaml)
 

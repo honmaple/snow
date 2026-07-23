@@ -20,7 +20,7 @@ params.hero:
       code_label: "config.yaml"
       code_lines: 
         - "title: \"My Blog\""
-        - "content_dir: \"content\""
+        - "theme: \"snow\""
         - "hooks:"
         - "  shortcode:"
         - "    enabled: true"
@@ -101,4 +101,3 @@ snow server -D
 - [模板](/templates) — 模板语法与变量
 - [主题](/themes) — 主题创建与使用
 - [插件](/hooks) — 插件系统
-

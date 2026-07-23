@@ -195,7 +195,7 @@ func (h *ShortcodeSet) RenderSource(source Source) string {
 }
 
 func (h *ShortcodeSet) Load() (map[string]template.Template, error) {
-	subFS, err := h.ctx.GetFS("templates", true)
+	subFS, err := h.ctx.GetFS(core.MountTemplates, true, true)
 	if err != nil {
 		return nil, err
 	}

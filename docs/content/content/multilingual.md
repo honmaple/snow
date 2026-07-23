@@ -3,7 +3,7 @@ title: "多语言 (Multilingual)"
 weight: 60
 ---
 
-Snow 内置多语言支持，通过三种方式区分内容语言。
+Snow 内置多语言支持，通过文件后缀或 FrontMatter 区分内容语言。
 
 ## 配置
 
@@ -13,7 +13,6 @@ language: "zh"
 
 languages:
   en:
-    content_dir: "content/en"
     translations: "i18n/en.yaml"
   fr:
     translations: "i18n/fr.yaml"
@@ -31,20 +30,9 @@ languages:
 
 语言必须存在于 `languages` 配置中，否则回退到默认语言。
 
-## 三种使用方式
+## 使用方式
 
-### 方式一：按目录
-
-```yaml
-language: "zh"
-content_dir: "content/zh"
-
-languages:
-  en:
-    content_dir: "content/en"
-```
-
-### 方式二：按文件后缀
+### 文件后缀
 
 ```
 content/
@@ -56,7 +44,7 @@ content/
     └── hello.en.md        # 英文
 ```
 
-### 方式三：FrontMatter
+### FrontMatter
 
 ```yaml
 ---

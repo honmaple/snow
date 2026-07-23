@@ -45,7 +45,6 @@ func newAssetTestProcessor(t *testing.T, root string, result *parser.Result) *Pr
 	t.Helper()
 
 	conf := core.DefaultConfig()
-	conf.Set("content_dir", filepath.Join(root, "content"))
 	ctx, err := core.NewContext(conf)
 	require.NoError(t, err)
 

@@ -95,7 +95,7 @@ func (h *AssetsHook) HandleTemplateSet(set template.TemplateSet) (template.Templ
 }
 
 func New(ctx *core.Context) (hook.Hook, error) {
-	assetsFS, err := ctx.GetFS("assets", false)
+	assetsFS, err := ctx.GetFS("assets", true, false)
 	if err != nil {
 		return nil, err
 	}

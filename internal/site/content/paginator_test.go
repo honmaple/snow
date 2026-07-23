@@ -18,7 +18,6 @@ func newPaginatorTestProcessor(t *testing.T, setup ...func(*core.Config)) *Proce
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "content"), 0755))
 
 	conf := core.DefaultConfig()
-	conf.Set("content_dir", filepath.Join(root, "content"))
 	conf.Set("base_url", "https://example.com")
 	for _, fn := range setup {
 		fn(conf)

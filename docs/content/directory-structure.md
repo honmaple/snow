@@ -8,7 +8,7 @@ Snow 站点的标准文件布局：
 ```
 mysite/
 ├── config.yaml          # 站点配置
-├── content/             # 内容目录（content_dir）
+├── content/             # 内容目录（固定名）
 │   ├── _index.md        # 根 Section
 │   ├── about.md         # Page
 │   └── posts/           # Section
@@ -16,9 +16,9 @@ mysite/
 │       ├── hello.md     # Page
 │       └── tutorials/   # 子 Section
 │           └── _index.md
-├── static/              # 静态文件（static_dir）
+├── static/              # 静态文件（固定名，原样复制到输出）
 ├── templates/           # 站点自定义模板（覆盖主题模板）
-├── themes/              # 主题目录（theme_dir）
+├── themes/              # 主题目录（固定名）
 │   └── snow/            # 主题名称 = theme
 │       ├── theme.yaml
 │       ├── templates/
@@ -33,15 +33,20 @@ mysite/
     └── zh.yaml
 ```
 
-## 可配置目录
+## 固定目录
 
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| `content_dir` | `content` | 内容目录 |
-| `static_dir` | `static` | 静态文件目录，原样复制到输出 |
-| `output_dir` | `output` | 构建输出 |
-| `theme_dir` | `themes` | 主题目录 |
-| `theme` | — | 主题名称，对应 `themes/` 下子目录 |
+| 目录 | 说明 |
+|------|------|
+| `content/` | 内容目录 |
+| `static/` | 静态文件目录，原样复制到输出 |
+| `templates/` | 站点模板目录，优先于主题模板 |
+| `themes/` | 主题目录，`theme` 对应 `themes/{name}/` |
+| `assets/` | assets hook 默认读取的资源目录 |
+| `data/` | data 模板扩展默认读取的数据目录 |
+| `i18n/` | i18n 模板扩展默认读取的翻译目录 |
+| `output/` | 默认构建输出目录，可通过 `output_dir` 修改 |
+
+核心目录 `content`、`static`、`templates`、`themes` 使用固定名称；扩展目录（如 `assets`、`data`、`i18n`）由各扩展按需交给虚拟文件系统读取。
 
 ## 内容目录详解
 

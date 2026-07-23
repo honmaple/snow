@@ -149,7 +149,7 @@ func (set *templateSet) RegisterTransient(name string, fn TransientFunction) err
 }
 
 func NewSet(ctx *core.Context) (TemplateSet, error) {
-	tplFS, err := ctx.GetFS("templates", true)
+	tplFS, err := ctx.GetFS(core.MountTemplates, true, true)
 	if err != nil {
 		return nil, err
 	}

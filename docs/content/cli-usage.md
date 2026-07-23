@@ -99,7 +99,7 @@ snow hooks
 输出会标记当前配置中启用的 Hook，例如：
 
 ```text
-snakecase, assets(enabled), pelican, rewrite, filter, encrypt(enabled), shortcode(enabled), minify
+mount, snakecase, assets(enabled), pelican, rewrite, filter, encrypt(enabled), links(enabled), shortcode(enabled), minify, alias
 ```
 
 ## 共享参数

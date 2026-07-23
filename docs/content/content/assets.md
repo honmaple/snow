@@ -3,7 +3,7 @@ title: "附件资源 (Assets)"
 weight: 25
 ---
 
-Page Bundle 和 Section 都可以声明附件资源。附件会从 `content_dir` 中读取，并在构建时复制到对应页面或栏目的输出目录。
+Page Bundle 和 Section 都可以声明附件资源。附件会从固定的 `content/` 目录中读取，并在构建时复制到对应页面或栏目的输出目录。
 
 ## Page Bundle 附件
 

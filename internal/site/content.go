@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"os"
 	stdpath "path"
 	"strings"
 	"time"
@@ -187,11 +186,11 @@ func (site *Site) loadContent(processor *content.Processor) (*ContentStore, erro
 }
 
 func (site *Site) BuildContent(ctx context.Context, writer core.Writer) error {
-	contentDir := site.ctx.GetContentDir()
-	if contentDir == "" {
-		return fmt.Errorf("The content dir is null")
+	contentFS, err := site.ctx.GetFS(core.MountContent, false, false)
+	if err != nil {
+		return err
 	}
-	processor := content.NewProcessor(site.ctx, os.DirFS(contentDir))
+	processor := content.NewProcessor(site.ctx, contentFS)
 
 	now := time.Now()
 

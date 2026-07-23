@@ -22,18 +22,6 @@ func (ctx *LocaleContext) GetTheme() string {
 	return ctx.Config.GetString("theme")
 }
 
-func (ctx *LocaleContext) GetThemeDir() string {
-	return ctx.Config.GetString("theme_dir")
-}
-
-func (ctx *LocaleContext) GetStaticDir() string {
-	return ctx.Config.GetString("static_dir")
-}
-
-func (ctx *LocaleContext) GetContentDir() string {
-	return ctx.Config.GetString("content_dir")
-}
-
 func (ctx *LocaleContext) GetOutputDir() string {
 	return ctx.Config.GetString("output_dir")
 }
