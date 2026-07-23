@@ -16,12 +16,17 @@ const (
 	MountStatic    = "static"
 	MountTemplates = "templates"
 	MountThemes    = "themes"
+
+	MountStrategyMount    = "mount"
+	MountStrategyBase     = "base"
+	MountStrategyOverride = "override"
 )
 
 type (
 	VirtualFS interface {
 		fs.FS
 		Mount(fs.FS, string) error
+		MountWithStrategy(fs.FS, string, string) error
 	}
 	virtualFS struct {
 		base   fs.FS
@@ -50,6 +55,19 @@ func normalizeMountTarget(target string) (string, error) {
 	return clean, nil
 }
 
+func normalizeMountStrategy(strategy string) (string, error) {
+	switch strings.TrimSpace(strategy) {
+	case "", MountStrategyMount:
+		return MountStrategyMount, nil
+	case MountStrategyBase:
+		return MountStrategyBase, nil
+	case MountStrategyOverride:
+		return MountStrategyOverride, nil
+	default:
+		return "", fs.ErrInvalid
+	}
+}
+
 func subDirFSIfExists(root fs.FS, name string) fs.FS {
 	name = normalizeVirtualPath(name)
 	if root == nil || name == "" {
@@ -70,18 +88,41 @@ func (v *virtualFS) Open(name string) (fs.File, error) {
 	if !fs.ValidPath(name) {
 		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
 	}
+
+	// only for target matching; keep name for fs.FS Open semantics
+	target := normalizeVirtualPath(name)
+	for _, item := range v.mounts {
+		if item.strategy != MountStrategyOverride {
+			continue
+		}
+		if target == item.target || item.isDir && strings.HasPrefix(target, item.target+"/") {
+			return item.Open(name)
+		}
+	}
+
 	fsys := make([]fs.FS, 0, len(v.mounts)+1)
 	for _, item := range v.mounts {
-		fsys = append(fsys, item)
+		if item.strategy == MountStrategyMount || item.strategy == MountStrategyOverride {
+			fsys = append(fsys, item)
+		}
 	}
 	if v.base != nil {
 		fsys = append(fsys, v.base)
+	}
+	for _, item := range v.mounts {
+		if item.strategy == MountStrategyBase {
+			fsys = append(fsys, item)
+		}
 	}
 	return mergefs.Merge(fsys...).Open(name)
 }
 
 func (v *virtualFS) Mount(source fs.FS, target string) error {
-	item, err := newMountEntry(source, target)
+	return v.MountWithStrategy(source, target, MountStrategyMount)
+}
+
+func (v *virtualFS) MountWithStrategy(source fs.FS, target string, strategy string) error {
+	item, err := newMountEntry(source, target, strategy)
 	if err != nil {
 		return err
 	}
@@ -91,9 +132,10 @@ func (v *virtualFS) Mount(source fs.FS, target string) error {
 
 type (
 	mountEntry struct {
-		source fs.FS
-		target string
-		isDir  bool
+		source   fs.FS
+		target   string
+		strategy string
+		isDir    bool
 	}
 	mountedDir struct {
 		name  string
@@ -105,12 +147,16 @@ type (
 	}
 )
 
-func newMountEntry(source fs.FS, target string) (*mountEntry, error) {
+func newMountEntry(source fs.FS, target string, strategy string) (*mountEntry, error) {
 	rawTarget := target
 
 	target, err := normalizeMountTarget(target)
 	if err != nil {
 		return nil, &fs.PathError{Op: "mount", Path: rawTarget, Err: fs.ErrInvalid}
+	}
+	strategy, err = normalizeMountStrategy(strategy)
+	if err != nil {
+		return nil, &fs.PathError{Op: "mount", Path: target, Err: fs.ErrInvalid}
 	}
 	if source == nil {
 		return nil, &fs.PathError{Op: "mount", Path: target, Err: fs.ErrInvalid}
@@ -120,9 +166,10 @@ func newMountEntry(source fs.FS, target string) (*mountEntry, error) {
 		return nil, err
 	}
 	return &mountEntry{
-		source: source,
-		target: target,
-		isDir:  info.IsDir(),
+		source:   source,
+		target:   target,
+		strategy: strategy,
+		isDir:    info.IsDir(),
 	}, nil
 }
 

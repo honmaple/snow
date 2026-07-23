@@ -48,6 +48,8 @@ mysite/
 
 核心目录 `content`、`static`、`templates`、`themes` 使用固定名称；扩展目录（如 `assets`、`data`、`i18n`）由各扩展按需交给虚拟文件系统读取。
 
+`mount` hook 可把外部文件或目录挂载到这些虚拟路径中。默认策略为 `mount`，同名文件使用挂载内容；也可以配置 `base` 让原目录优先，或配置 `override` 让目标路径完全由挂载内容覆盖。
+
 ## 内容目录详解
 
 ### 识别规则

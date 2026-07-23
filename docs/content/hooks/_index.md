@@ -24,6 +24,7 @@ hooks:
     option:
       - source: "/tmp/project-name/docs"
         target: "content/docs/project-name"
+        strategy: "mount"
       - source: "/tmp/project-name/static/style.css"
         target: "static/style.css"
   encrypt:
@@ -97,6 +98,7 @@ hooks:
     option:
       - source: "/tmp/project-name/docs"
         target: "content/docs/project-name"
+        strategy: "mount"
       - source: "/tmp/project-name/static/style.css"
         target: "static/style.css"
 ```
@@ -105,6 +107,15 @@ hooks:
 
 - `source` 是本地文件或目录路径。
 - `target` 是虚拟文件系统路径，不能是空路径、绝对路径，也不能包含 `.`、`./` 或 `..` 这种需要再次清理的路径片段。
+- `strategy` 可选，默认为 `mount`。
 - 目录挂载后会把目录内容暴露到 `target` 下。
 - 文件挂载后会把该文件暴露为 `target`。
 - watcher 不监听 `source` 指向的外部路径；开发时修改外部挂载文件后，需要手动触发重建或重启预览。
+
+挂载策略：
+
+| strategy | 说明 |
+|----------|------|
+| `mount` | 默认行为。挂载内容与原目录合并，同名文件使用挂载内容 |
+| `base` | 挂载内容与原目录合并，同名文件使用原目录内容 |
+| `override` | `target` 及其子路径只读取挂载内容，不再回落到原目录 |

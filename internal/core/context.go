@@ -76,7 +76,7 @@ func (ctx *Context) GetFS(name string, includeTheme bool, includeInternal bool) 
 	if includeInternal {
 		if subFS := subDirFSIfExists(theme.FS, name); subFS != nil {
 			fsys = append(fsys, subFS)
-			item, err := newMountEntry(subFS, "internal")
+			item, err := newMountEntry(subFS, "internal", MountStrategyMount)
 			if err == nil {
 				fsys = append(fsys, item)
 			}

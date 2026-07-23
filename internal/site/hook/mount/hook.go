@@ -15,8 +15,9 @@ type (
 		hook.HookImpl
 	}
 	Option struct {
-		Source string `json:"source"`
-		Target string `json:"target"`
+		Source   string `json:"source"`
+		Target   string `json:"target"`
+		Strategy string `json:"strategy"`
 	}
 )
 
@@ -36,7 +37,7 @@ func New(ctx *core.Context) (hook.Hook, error) {
 		if err != nil {
 			return nil, fmt.Errorf("hooks.mount.option[%d]: %w", i, err)
 		}
-		if err := ctx.FS.Mount(source, opt.Target); err != nil {
+		if err := ctx.FS.MountWithStrategy(source, opt.Target, opt.Strategy); err != nil {
 			return nil, fmt.Errorf("hooks.mount.option[%d]: %w", i, err)
 		}
 	}

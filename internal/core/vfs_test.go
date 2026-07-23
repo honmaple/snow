@@ -345,6 +345,119 @@ func TestVirtualFSMountFS(t *testing.T) {
 	}
 }
 
+func TestVirtualFSMountStrategies(t *testing.T) {
+	tests := []struct {
+		name         string
+		strategy     string
+		sourceIndex  string
+		wantIndex    string
+		wantIndexErr bool
+	}{
+		{
+			name:        "mount first",
+			strategy:    MountStrategyMount,
+			sourceIndex: "source index",
+			wantIndex:   "source index",
+		},
+		{
+			name:        "base first",
+			strategy:    MountStrategyBase,
+			sourceIndex: "source index",
+			wantIndex:   "base index",
+		},
+		{
+			name:         "override",
+			strategy:     MountStrategyOverride,
+			wantIndexErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeTestFile(t, filepath.Join(root, "content", "docs", "_index.md"), "base index")
+			writeTestFile(t, filepath.Join(root, "content", "docs", "base.md"), "base page")
+			writeTestFile(t, filepath.Join(root, "content", "other.md"), "other page")
+			writeTestFile(t, filepath.Join(root, "external", "docs", "mount.md"), "mount page")
+			if tt.sourceIndex != "" {
+				writeTestFile(t, filepath.Join(root, "external", "docs", "_index.md"), tt.sourceIndex)
+			}
+
+			ctx := newTestContext(t, root, DefaultConfig())
+			err := ctx.FS.MountWithStrategy(os.DirFS(filepath.Join(root, "external", "docs")), "content/docs", tt.strategy)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			got, err := fs.ReadFile(ctx.FS, "content/docs/_index.md")
+			if tt.wantIndexErr {
+				if err == nil {
+					t.Fatalf("expected _index.md to be hidden by override mount, got %q", got)
+				}
+			} else {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(got) != tt.wantIndex {
+					t.Fatalf("expected _index.md %q, got %q", tt.wantIndex, got)
+				}
+			}
+
+			got, err = fs.ReadFile(ctx.FS, "content/docs/mount.md")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != "mount page" {
+				t.Fatalf("expected mount file, got %q", got)
+			}
+
+			got, err = fs.ReadFile(ctx.FS, "content/other.md")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != "other page" {
+				t.Fatalf("expected sibling outside override target to stay visible, got %q", got)
+			}
+		})
+	}
+}
+
+func TestVirtualFSMountRejectsInvalidStrategy(t *testing.T) {
+	root := t.TempDir()
+	ctx := newTestContext(t, root, DefaultConfig())
+	err := ctx.FS.MountWithStrategy(os.DirFS(root), "content/docs", "unknown")
+	if err == nil {
+		t.Fatal("expected unknown mount strategy to be rejected")
+	}
+}
+
+func TestVirtualFSReplaceFileMountOnlyCoversExactTarget(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "static", "style.css", "nested.css"), "base nested")
+
+	ctx := newTestContext(t, root, DefaultConfig())
+	err := ctx.FS.MountWithStrategy(testSingleFileFS{name: "style.css", data: []byte("source style")}, "static/style.css", MountStrategyOverride)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := fs.ReadFile(ctx.FS, "static/style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "source style" {
+		t.Fatalf("expected exact file target to use mounted file, got %q", got)
+	}
+
+	got, err = fs.ReadFile(ctx.FS, "static/style.css/nested.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "base nested" {
+		t.Fatalf("expected file mount not to override nested path, got %q", got)
+	}
+}
+
 func TestVirtualFSMountRejectsInvalidTarget(t *testing.T) {
 	root := t.TempDir()
 	ctx := newTestContext(t, root, DefaultConfig())

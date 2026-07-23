@@ -227,11 +227,20 @@ hooks:
     option:
       - source: "/tmp/project-name/docs"
         target: "content/docs/project-name"
+        strategy: "mount"
       - source: "/tmp/project-name/static/style.css"
         target: "static/style.css"
 ```
 
 挂载目标使用虚拟路径，不需要也不能写成绝对路径；目标路径也不能包含 `.`、`./` 或 `..` 这种需要再次清理的路径片段。目录 `source` 会映射为 `target` 下的一组文件；文件 `source` 会映射为 `target` 这个单个文件。构建流程会像读取普通 `content`、`static`、`templates` 文件一样读取这些挂载内容，但开发服务器 watcher 不会监听外部 `source`。
+
+`strategy` 可选，默认为 `mount`：
+
+| strategy | 说明 |
+|----------|------|
+| `mount` | 挂载内容与原目录合并，同名文件使用挂载内容 |
+| `base` | 挂载内容与原目录合并，同名文件使用原目录内容 |
+| `override` | `target` 及其子路径只读取挂载内容，不再回落到原目录 |
 
 ## 多语言
 
