@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang }}">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ config.title }}{% endblock %}</title>
+    <style>
+     :root {
+       --bg: #fff;
+       --text: #241b1b;
+       --muted: #756868;
+       --line: #ead8d8;
+       --primary: #a40000;
+       --soft: #fff1f1;
+       --code: #f8eeee;
+     }
+     @media (prefers-color-scheme: dark) {
+       :root {
+         --bg: #181414;
+         --text: #f0e6e6;
+         --muted: #b7a6a6;
+         --line: #3a2a2a;
+         --primary: #a40000;
+         --soft: #2a1818;
+         --code: #241b1b;
+       }
+     }
+
+     * { box-sizing: border-box; }
+     body {
+       min-height: 100vh;
+       min-height: 100dvh;
+       margin: 0;
+       display: flex;
+       flex-direction: column;
+       background: var(--bg);
+       color: var(--text);
+       font: 16px/1.7 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+     }
+     a { color: var(--primary); text-decoration: none; }
+     img, video { max-width: 100%; height: auto; }
+     code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+     pre {
+       overflow-x: auto;
+       padding: 1rem;
+       border: 1px solid var(--line);
+       background: var(--code);
+     }
+     code { padding: 0.1rem 0.25rem; background: var(--code); font-size: 0.9em; }
+     pre code { padding: 0; background: transparent; }
+     blockquote { margin: 1.5rem 0; padding-left: 1rem; border-left: 3px solid var(--line); color: var(--muted); }
+     table { width: 100%; border-collapse: collapse; }
+     th, td { padding: 0.5rem; border-bottom: 1px solid var(--line); text-align: left; }
+     hr { border: 0; border-top: 1px solid var(--line); }
+
+     .wrap { width: min(100% - 2rem, 46rem); margin: 0 auto; }
+     .site-header { padding: 2rem 0 1rem; }
+     .site-headline, .page-meta, .footer-inner {
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
+       gap: 1rem;
+     }
+     .site-title { font-size: 1.25rem; font-weight: 700; text-decoration: none; }
+     .site-description { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.92rem; }
+     .site-nav ul, .footer-links, .tags, .term-cloud, .pagination {
+       display: flex;
+       flex-wrap: wrap;
+       gap: 0.5rem 1rem;
+       padding: 0;
+       list-style: none;
+     }
+     .site-nav ul { margin: 1.25rem 0 0; font-weight: 600; }
+     .site-nav a.is-active { color: var(--text); }
+     main.wrap { flex: 1; padding: 2rem 0 3rem; }
+     .site-footer {
+       width: 100%;
+       margin-top: auto;
+       padding: 1.5rem 0;
+       border-top: 1px solid var(--line);
+       color: var(--muted);
+       font-size: 0.9rem;
+     }
+     .site-footer p { margin: 0; }
+     .page-title { margin: 0 0 1.25rem; font-size: 1.75rem; line-height: 1.25; }
+     .page-meta { margin-bottom: 2rem; color: var(--muted); font-size: 0.9rem; }
+     .meta-left { display: flex; flex-wrap: wrap; gap: 0.4rem 0.8rem; }
+     .tag, .pagination a, .pagination span {
+       padding: 0.1rem 0.55rem;
+       border-radius: 999px;
+       background: var(--soft);
+       color: var(--primary);
+       font-size: 0.82rem;
+       text-decoration: none;
+     }
+     .article-list { display: grid; gap: 0.65rem; }
+     .year-heading { margin-top: 1.6rem; }
+     .year-heading h2 { margin: 0; font-size: 1.2rem; }
+     .year-heading span, .post-date { color: var(--muted); font-size: 0.85rem; }
+     .post-row { display: grid; grid-template-columns: 4rem 1fr; gap: 0.8rem; padding: 0.45rem 0; border-bottom: 1px solid var(--line); }
+     .post-line { display: flex; justify-content: space-between; gap: 1rem; }
+     .post-title { font-weight: 650; overflow-wrap: anywhere; }
+     .content :where(h2, h3, h4) { margin: 2rem 0 0.6rem; line-height: 1.3; }
+     .content :where(p, ul, ol) { margin: 1rem 0; }
+     .pager { display: flex; justify-content: space-between; gap: 1rem; margin-top: 2.5rem; padding-top: 1.25rem; border-top: 1px solid var(--line); }
+     .pager-label { color: var(--muted); font-size: 0.86rem; }
+     .pager-next { text-align: right; }
+     .pagination { margin: 2rem 0 0; }
+
+     @media (max-width: 640px) {
+       .site-headline, .page-meta, .footer-inner {
+         flex-direction: column;
+       }
+       .post-row { grid-template-columns: 1fr; gap: 0.15rem; }
+       .post-line { flex-direction: column; gap: 0.35rem; }
+     }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <div class="site-headline">
+          <div>
+            <a href="{{ config.base_url }}" class="site-title">{{ config.title }}</a>
+            {% if config.description %}<p class="site-description">{{ config.description }}</p>{% endif %}
+          </div>
+        </div>
+        <nav class="site-nav">
+          <ul>
+            {% if config.params.nav %}
+              {% for item in config.params.nav %}
+                <li><a href="{{ item.url }}"{% if item.url == '/' and current_path == '/' %} class="is-active"{% elif item.url != '/' and startsWith(current_path, item.url) %} class="is-active"{% endif %}>{{ item.name }}</a></li>
+              {% endfor %}
+            {% else %}
+              {% for section in sections %}
+                <li><a href="{{ section.Permalink }}"{% if section.Path == '/' and current_path == '/' %} class="is-active"{% elif section.Path != '/' and startsWith(current_path, section.Path) %} class="is-active"{% endif %}>{{ section.Title | capfirst }}</a></li>
+              {% endfor %}
+
+              {% for taxonomy in taxonomies %}
+                <li><a href="{{ taxonomy.Permalink }}"{% if taxonomy.Path == '/' and current_path == '/' %} class="is-active"{% elif taxonomy.Path != '/' and startsWith(current_path, taxonomy.Path) %} class="is-active"{% endif %}>{{ taxonomy.Name | capfirst }}</a></li>
+              {% endfor %}
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+    </header>
+    <main class="wrap">
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <p>&copy; {%- now "2006" %} · {{ config.title }}</p>
+        <div class="footer-links">
+          {% if config.params.social %}
+            {% for link in config.params.social %}
+              <a href="{{ link.url | safe }}" target="_blank" rel="noopener">{{ link.name }}</a>
+            {% endfor %}
+          {% else %}
+            <a href="https://github.com/honmaple/snow" target="_blank" rel="noopener">Github</a>
+          {% endif %}
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

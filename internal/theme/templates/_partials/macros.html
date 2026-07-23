@@ -1,0 +1,28 @@
+{%- macro page_list(pages) export -%}
+  <div class="article-list">
+  {% for term in pages.GroupBy("date:2006").OrderBy("name desc") %}
+    <div class="year-heading">
+      <h2>{{ term.Name }}</h2>
+      <span>({{ term.Pages | length }} 篇文章)</span>
+    </div>
+    {% for page in term.Pages.OrderBy("date desc") %}
+      <div class="post-row">
+        <time class="post-date">{{ page.Date | date:"01-02" }}</time>
+        <div class="post-body">
+          <div class="post-line">
+            <a href="{{ page.Permalink }}" class="post-title">{{ page.Title }}</a>
+            {% set tags = page.FrontMatter.Get("tags") %}
+            {% if tags %}
+              <span class="tags">
+                {% for tag in tags %}
+                  <a href="{{ get_taxonomy_term_url("tags", tag) }}" class="tag">{{ tag }}</a>
+                {% endfor %}
+              </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% endfor %}
+  </div>
+{% endmacro %}

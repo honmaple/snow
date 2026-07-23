@@ -1,47 +1,47 @@
-{% extends "base.html" %}
+{% extends "_partials/base.html" %}
 
 {% block title %}{{ page.Title }} - {{ config.title }}{% endblock %}
 
 {% block content %}
   <article>
-    <h1 class="text-2xl font-bold text-text mb-6">{{ page.Title }}</h1>
+    <h1 class="page-title">{{ page.Title }}</h1>
     {% if page.Date or page.FrontMatter.IsSet("tags") %}
-      <div class="flex items-center justify-between mb-8">
-        <div>
-          <time class="text-sm text-date/70">{{ page.Date | date:"2006-01-02" }} {{ page.Date | date:"Mon" }}</time>
+      <div class="page-meta">
+        <div class="meta-left">
+          {% if page.Date %}<time>{{ page.Date | date:"2006-01-02" }} {{ page.Date | date:"Mon" }}</time>{% endif %}
           {% if page.FrontMatter.IsSet("categories") %}
             {% for name in page.FrontMatter.GetStringSlice("categories") %}
-              <a href="{{ get_taxonomy_term_url("categories", name) }}" class="text-sm text-accent">{{ name }}</a>
+              <a href="{{ get_taxonomy_term_url("categories", name) }}">{{ name }}</a>
             {% endfor %}
           {% endif %}
         </div>
         {% if page.FrontMatter.IsSet("tags") %}
-          <div class="flex flex-wrap gap-2">
+          <div class="tags">
             {% for tag in page.FrontMatter.GetStringSlice("tags") %}
-              <a href="{{ get_taxonomy_term_url("tags", tag) }}" class="text-xs bg-accent/10 text-accent px-2.5 py-1 rounded-full hover:bg-accent/20 transition-colors">{{ tag }}</a>
+              <a href="{{ get_taxonomy_term_url("tags", tag) }}" class="tag">{{ tag }}</a>
             {% endfor %}
           </div>
         {% endif %}
       </div>
     {% endif %}
-    <div class="prose prose-neutral max-w-none">
+    <div class="content">
       {{ page.Content | safe }}
     </div>
     {% with related = pages.Related(page) %}
       {% set prev = related.Prev() %}
       {% set next = related.Next() %}
       {%- if prev or next %}
-        <nav class="flex justify-between mt-8 pt-8 border-t border-border">
-          <div class="max-w-[45%]">
+        <nav class="pager">
+          <div class="pager-item">
             {% if prev %}
-              <span class="text-text-muted text-sm">← 上一篇</span><br>
-              <a href="{{ prev.Permalink }}" class="text-accent hover:underline">{{ prev.Title }}</a>
+              <span class="pager-label">← 上一篇</span><br>
+              <a href="{{ prev.Permalink }}">{{ prev.Title }}</a>
             {% endif %}
           </div>
-          <div class="max-w-[45%] text-right">
+          <div class="pager-item pager-next">
             {% if next %}
-              <span class="text-text-muted text-sm">下一篇 →</span><br>
-              <a href="{{ next.Permalink }}" class="text-accent hover:underline">{{ next.Title }}</a>
+              <span class="pager-label">下一篇 →</span><br>
+              <a href="{{ next.Permalink }}">{{ next.Title }}</a>
             {% endif %}
           </div>
         </nav>

@@ -190,7 +190,7 @@ func TestGetFSKeepsInternalTemplatesCompatibility(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fs.ReadFile(mountFS, "base.html"); err != nil {
+	if _, err := fs.ReadFile(mountFS, "_partials/base.html"); err != nil {
 		t.Fatalf("expected templates mount to include embedded templates: %v", err)
 	}
 
@@ -198,10 +198,10 @@ func TestGetFSKeepsInternalTemplatesCompatibility(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fs.ReadFile(templatesFS, "base.html"); err != nil {
+	if _, err := fs.ReadFile(templatesFS, "_partials/base.html"); err != nil {
 		t.Fatalf("expected GetFS templates with internal=true to include embedded templates: %v", err)
 	}
-	if _, err := fs.ReadFile(templatesFS, "internal/base.html"); err != nil {
+	if _, err := fs.ReadFile(templatesFS, "internal/_partials/base.html"); err != nil {
 		t.Fatalf("expected GetFS templates with internal=true to expose embedded templates under internal prefix: %v", err)
 	}
 
@@ -209,8 +209,8 @@ func TestGetFSKeepsInternalTemplatesCompatibility(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fs.ReadFile(staticFS, "internal/css/style.css"); err != nil {
-		t.Fatalf("expected GetFS static with internal=true to expose embedded static under internal prefix: %v", err)
+	if _, err := fs.ReadFile(staticFS, "internal/css/style.css"); err == nil {
+		t.Fatal("expected internal theme not to expose embedded static files")
 	}
 }
 
@@ -222,10 +222,10 @@ func TestGetFSWithoutInternalDoesNotExposeInternalTheme(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fs.ReadFile(templatesFS, "base.html"); err == nil {
+	if _, err := fs.ReadFile(templatesFS, "_partials/base.html"); err == nil {
 		t.Fatal("expected templates with internal=false not to fall back to embedded templates")
 	}
-	if _, err := fs.ReadFile(templatesFS, "internal/base.html"); err == nil {
+	if _, err := fs.ReadFile(templatesFS, "internal/_partials/base.html"); err == nil {
 		t.Fatal("expected templates with internal=false not to expose embedded templates under internal prefix")
 	}
 
@@ -241,7 +241,7 @@ func TestGetFSWithoutInternalDoesNotExposeInternalTheme(t *testing.T) {
 	}
 }
 
-func TestGetFSStaticFallsBackToInternalThemeWhenThemeExists(t *testing.T) {
+func TestGetFSStaticDoesNotFallBackToInternalTheme(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "themes", "demo", "theme.yaml"), "name: demo")
 
@@ -253,11 +253,11 @@ func TestGetFSStaticFallsBackToInternalThemeWhenThemeExists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fs.ReadFile(staticFS, "css/style.css"); err != nil {
-		t.Fatalf("expected static mount to fall back to embedded static: %v", err)
+	if _, err := fs.ReadFile(staticFS, "css/style.css"); err == nil {
+		t.Fatal("expected static mount not to fall back to embedded static")
 	}
-	if _, err := fs.ReadFile(staticFS, "internal/css/style.css"); err != nil {
-		t.Fatalf("expected static mount to expose embedded static under internal prefix: %v", err)
+	if _, err := fs.ReadFile(staticFS, "internal/css/style.css"); err == nil {
+		t.Fatal("expected static mount not to expose embedded static under internal prefix")
 	}
 }
 

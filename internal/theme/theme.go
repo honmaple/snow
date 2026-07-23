@@ -2,5 +2,5 @@ package theme
 
 import "embed"
 
-//go:embed static templates
+//go:embed all:templates
 var FS embed.FS

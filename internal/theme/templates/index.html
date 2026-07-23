@@ -1,6 +1,6 @@
-{% extends "base.html" %}
+{% extends "_partials/base.html" %}
 
 {% block content %}
-  {% import "partials/macros.html" page_list %}
+  {% import "_partials/macros.html" page_list %}
   {{ page_list(pages) }}
 {% endblock %}

@@ -1,9 +1,9 @@
-{% extends "base.html" %}
+{% extends "_partials/base.html" %}
 
 {% block title %}{{ section.Title }} - {{ config.title }}{% endblock %}
 
 {% block content %}
-  {% import "partials/macros.html" page_list %}
-  <h1 class="text-2xl font-bold text-text mb-6">{{ section.Title }}</h1>
+  {% import "_partials/macros.html" page_list %}
+  <h1 class="page-title">{{ section.Title }}</h1>
   {{ page_list(section.Pages) }}
 {% endblock %}
