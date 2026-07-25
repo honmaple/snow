@@ -170,6 +170,7 @@ func New(opt *Option) *mdParser {
 	}
 	md := goldmark.New(
 		goldmark.WithExtensions(exts...),
+		goldmark.WithParserOptions(goldmarkParser.WithAttribute()),
 		goldmark.WithRendererOptions(rers...),
 	)
 	return &mdParser{md: md, opt: opt}

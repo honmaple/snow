@@ -6,8 +6,10 @@ import (
 	"io/fs"
 	stdpath "path"
 	"sort"
+	"strings"
 
 	"github.com/honmaple/snow/internal/core"
+	"github.com/honmaple/snow/internal/utils/slugify"
 )
 
 type (
@@ -22,6 +24,7 @@ type (
 	MarkupOption struct {
 		Style           string
 		ShowToc         bool
+		TocId           string
 		ShowLineNumbers bool
 		PreventPreCode  bool
 	}
@@ -83,9 +86,15 @@ func New(ctx *core.Context) Parser {
 	return d
 }
 
+const (
+	TocIdIndex = "index"
+	TocIdTitle = "title"
+)
+
 func NewMarkupOption(ctx *core.Context, name string) MarkupOption {
 	opt := MarkupOption{
 		Style:           ctx.GetMarkupConfig(name, "style").String(),
+		TocId:           ctx.GetMarkupConfig(name, "toc_id").String(),
 		ShowToc:         ctx.GetMarkupConfig(name, "show_toc").Bool(),
 		ShowLineNumbers: ctx.GetMarkupConfig(name, "show_line_numbers").Bool(),
 		PreventPreCode:  ctx.GetMarkupConfig(name, "prevent_pre_code").Bool(),
@@ -94,6 +103,16 @@ func NewMarkupOption(ctx *core.Context, name string) MarkupOption {
 		opt.Style = "monokai"
 	}
 	return opt
+}
+
+func (opt MarkupOption) HeadingID(title string, fallback string) string {
+	switch strings.ToLower(strings.TrimSpace(opt.TocId)) {
+	case TocIdTitle, "":
+		if id := slugify.Make(title, slugify.WithPreserveUnicode(true)); id != "" {
+			return id
+		}
+	}
+	return fallback
 }
 
 type Factory func(*core.Context) MarkupParser

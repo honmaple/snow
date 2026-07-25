@@ -78,7 +78,7 @@ markups:
 :::
 ````
 
-`:::shortcode` 会渲染为 `<shortcode ...>...</shortcode>`，块内 Markdown 会继续解析，再作为 shortcode body 传入。若 body 中还有嵌套 shortcode，会先渲染最内层 shortcode，再把渲染后的 HTML 传给外层。开头行中第二个字段是 shortcode 名称，后续 `key=value` 会转为 shortcode 属性。需要在 body 中传递 YAML、TOML 等原始配置时，使用普通 HTML 标签形式 `<shortcode name>...</shortcode>`。
+`:::shortcode` 是 Markdown 指令块中的短代码写法，详细用法见 [短代码 (Shortcode)](../shortcodes/)。
 
 HTML parser 会把 `<head>` 中的标签转换为 FrontMatter：
 
@@ -120,6 +120,13 @@ content
 启用 `markups._default.show_toc` 或对应 parser 的 `show_toc` 后，解析器会生成 `Toc`。
 
 Markdown 和 Org-mode 根据标题结构生成目录。HTML parser 会扫描 `h1`-`h6`，保留已有 `id`，并为缺少 `id` 的标题自动补上 `heading-...`。
+
+`markups._default.toc_id` 或对应 parser 的 `toc_id` 可切换自动生成的锚点：
+
+| 值 | 说明 |
+|----|------|
+| `title` | 默认值，使用标题文本生成锚点，例如 `Hello World` 生成 `hello-world`，中文会保留 |
+| `index` | 使用 `heading-1`、`heading-1.1` 这类稳定编号 |
 
 ## 模板 Filter
 

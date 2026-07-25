@@ -152,14 +152,50 @@ func TestTOC(t *testing.T) {
 	})
 
 	require.Len(t, result.Toc, 1)
+	assert.Equal(t, "one", result.Toc[0].Id)
 	assert.Equal(t, "One", result.Toc[0].Title)
 	assert.Equal(t, 1, result.Toc[0].Level)
 	require.Len(t, result.Toc[0].Children, 1)
+	assert.Equal(t, "two", result.Toc[0].Children[0].Id)
 	assert.Equal(t, "Two", result.Toc[0].Children[0].Title)
 	assert.Equal(t, 2, result.Toc[0].Children[0].Level)
 	require.Len(t, result.Toc[0].Children[0].Children, 1)
+	assert.Equal(t, "three", result.Toc[0].Children[0].Children[0].Id)
 	assert.Equal(t, "Three", result.Toc[0].Children[0].Children[0].Title)
 	assert.Equal(t, 3, result.Toc[0].Children[0].Children[0].Level)
+	assert.Contains(t, result.Content, `id="one"`)
+	assert.Contains(t, result.Content, `id="two"`)
+}
+
+func TestTOCHeadingIDFromIndex(t *testing.T) {
+	result := parseOrg(t, `* One
+** Two
+`, &Option{
+		MarkupOption: parser.MarkupOption{
+			TocId: parser.TocIdIndex,
+			Style: "none",
+		},
+	})
+
+	require.Len(t, result.Toc, 1)
+	assert.Equal(t, "heading-1", result.Toc[0].Id)
+	require.Len(t, result.Toc[0].Children, 1)
+	assert.Equal(t, "heading-1.1", result.Toc[0].Children[0].Id)
+	assert.Contains(t, result.Content, `id="heading-1"`)
+}
+
+func TestTOCHeadingIDFromTitlePreservesUnicode(t *testing.T) {
+	result := parseOrg(t, `* 你好 World
+`, &Option{
+		MarkupOption: parser.MarkupOption{
+			TocId: parser.TocIdTitle,
+			Style: "none",
+		},
+	})
+
+	require.Len(t, result.Toc, 1)
+	assert.Equal(t, "你好-world", result.Toc[0].Id)
+	assert.Contains(t, result.Content, `id="你好-world"`)
 }
 
 func TestDottedPropertyMerge(t *testing.T) {

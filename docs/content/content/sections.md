@@ -3,9 +3,7 @@ title: "栏目 (Section)"
 weight: 20
 ---
 
-Section 是组织 Pages 的树状层级结构。包含 `_index.{md,org,html}` 文件的目录即为 Section。
-
-`.html` Section 文件需要先启用 `markups.html.enabled: true`；Markdown 和 Org-mode 默认启用。
+Section 是组织 Pages 的树状层级结构。包含 `_index.{md,org,html}` 文件的目录即为 Section。支持的扩展名和启用方式见 [解析器](../parsers/)。
 
 ## 目录示例
 
@@ -51,7 +49,7 @@ template: "custom-section.html"
 | `formats.{name}.path` | string | 格式输出路径 |
 | `formats.{name}.template` | string | 格式输出模板 |
 
-注意：`title` 留空时自动取目录名，根 Section 默认为 `index`。`assets` 字段用于声明栏目附属资源，详见 [附件资源](/content/assets)。
+注意：`title` 留空时自动取目录名，根 Section 默认为 `index`。`assets` 字段用于声明栏目附属资源，详见 [附件资源](../assets/)。
 
 ## 配置
 
@@ -75,7 +73,7 @@ Section 类型由目录名确定（如 `posts`、`pages`、`tutorials`）。配�
 2. 父目录 — 如 `posts`
 3. `sections._default`
 
-`paginate_path` 未设置或为空字符串时会按 Section 输出路径类型选择默认值；分页路径变量和模板对象见 [分页](/content/pagination)。
+`paginate_path` 未设置或为空字符串时会按 Section 输出路径类型选择默认值；分页路径变量和模板对象见 [分页](../pagination/)。
 
 ## 路径变量
 

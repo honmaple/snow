@@ -92,21 +92,19 @@ func (d *htmlParser) toc(body *html.Node) []*parser.Heading {
 			counters[len(stack)]++
 		}
 
-		id := attr(n, "id")
-		if id == "" {
+		heading := &parser.Heading{
+			Id:       attr(n, "id"),
+			Title:    strings.TrimSpace(nodeText(n)),
+			Level:    level,
+			Children: make([]*parser.Heading, 0),
+		}
+		if heading.Id == "" {
 			parts := make([]string, 0, len(counters))
 			for _, c := range counters {
 				parts = append(parts, strconv.Itoa(c))
 			}
-			id = "heading-" + strings.Join(parts, ".")
-			setAttr(n, "id", id)
-		}
-
-		heading := &parser.Heading{
-			Id:       id,
-			Title:    strings.TrimSpace(nodeText(n)),
-			Level:    level,
-			Children: make([]*parser.Heading, 0),
+			heading.Id = d.opt.HeadingID(heading.Title, "heading-"+strings.Join(parts, "."))
+			setAttr(n, "id", heading.Id)
 		}
 		if len(stack) == 0 {
 			toc = append(toc, heading)

@@ -14,7 +14,9 @@ import (
 
 var tocKey = parser.NewContextKey()
 
-type tocExtension struct{}
+type tocExtension struct {
+	opt *Option
+}
 
 func (e *tocExtension) Extend(m goldmark.Markdown) {
 	m.Parser().AddOptions(
@@ -29,6 +31,22 @@ func (e *tocExtension) headingTitle(h *ast.Heading, source []byte) string {
 	var buf bytes.Buffer
 	e.writeNodeText(&buf, h, source)
 	return strings.TrimSpace(buf.String())
+}
+
+func (e *tocExtension) headingID(h *ast.Heading, title string, fallback string) string {
+	if id, ok := h.AttributeString("id"); ok {
+		switch v := id.(type) {
+		case string:
+			if v != "" {
+				return v
+			}
+		case []byte:
+			if len(v) > 0 {
+				return string(v)
+			}
+		}
+	}
+	return e.opt.HeadingID(title, fallback)
 }
 
 func (e *tocExtension) writeNodeText(buf *bytes.Buffer, node ast.Node, source []byte) {
@@ -68,19 +86,17 @@ func (e *tocExtension) Transform(node *ast.Document, reader text.Reader, pc pars
 				counters[len(stack)]++
 			}
 
-			parts := make([]string, 0)
+			parts := make([]string, 0, len(counters))
 			for _, c := range counters {
 				parts = append(parts, fmt.Sprintf("%d", c))
 			}
-			id := "heading-" + strings.Join(parts, ".")
-			heading.SetAttributeString("id", []byte(id))
-
 			child := &Heading{
-				Id:       id,
 				Title:    e.headingTitle(heading, source),
 				Level:    heading.Level,
 				Children: make([]*Heading, 0),
 			}
+			child.Id = e.headingID(heading, child.Title, "heading-"+strings.Join(parts, "."))
+			heading.SetAttributeString("id", []byte(child.Id))
 
 			if len(stack) == 0 {
 				toc = append(toc, child)
@@ -99,6 +115,6 @@ func (e *tocExtension) Transform(node *ast.Document, reader text.Reader, pc pars
 }
 
 func NewTocExtension(opt *Option) goldmark.Extender {
-	r := &tocExtension{}
+	r := &tocExtension{opt: opt}
 	return r
 }

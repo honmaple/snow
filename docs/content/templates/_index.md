@@ -196,7 +196,7 @@ print("hello")
 </shortcode>
 ```
 
-Shortcode 模板位于 `templates/shortcodes/`。模板中可用 `params`、`body`、`name`、`counter`、`current_lang`，页面内容提供 `page`，Section 内容提供 `section`。详细说明见 [短代码 (Shortcode)](/content/shortcodes/)。
+Shortcode 模板位于 `templates/shortcodes/`。模板中可用 `params`、`body`、`name`、`counter`、`current_lang`，页面内容提供 `page`，Section 内容提供 `section`。详细说明见 [短代码 (Shortcode)](../content/shortcodes/)。
 
 ## Assets
 
@@ -206,7 +206,7 @@ Shortcode 模板位于 `templates/shortcodes/`。模板中可用 `params`、`bod
 {% endassets %}
 ```
 
-需启用 `hooks.assets`。
+需启用 `hooks.assets`，详细配置见 [assets hook](../hooks/assets/)。
 
 ## Scratch 与数据
 

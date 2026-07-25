@@ -94,10 +94,10 @@ snow server -D
 
 ## 文档
 
-- [快速开始](/getting-started) — 安装、构建、开发服务器
-- [目录结构](/directory-structure) — 站点文件布局
-- [配置](/configuration) — 完整配置参考
-- [内容管理](/content) — 页面、栏目、分类、多语言
-- [模板](/templates) — 模板语法与变量
-- [主题](/themes) — 主题创建与使用
-- [插件](/hooks) — 插件系统
+- [快速开始](getting-started/) — 安装、构建、开发服务器
+- [目录结构](directory-structure/) — 站点文件布局
+- [配置](configuration/) — 完整配置参考
+- [内容管理](content/) — 页面、栏目、分类、多语言
+- [模板](templates/) — 模板语法与变量
+- [主题](themes/) — 主题创建与使用
+- [插件](hooks/) — 插件系统

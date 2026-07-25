@@ -174,7 +174,7 @@ Date 格式参考：
 {% endassets %}
 ```
 
-需在配置中启用 `hooks.assets`。`sass_compiler` 可使用 `libscss`、`dartsass`，只影响 `.scss` / `.sass` 文件；模板内联 `filters` 支持字符串形式的 `cssmin`、`jsmin`，用于合并后的处理。带参数的 `image` filter 建议写在 `hooks.assets.option` 配置中。`dartsass` 需要本机可执行文件 `sass` 在 `PATH` 中可用，并支持 `sass --embedded`。
+需启用 `hooks.assets`。资源合并、Sass 编译、压缩和图片处理的配置见 [assets hook](../../hooks/assets/)。
 
 ## Shortcode
 
@@ -185,4 +185,4 @@ print("hello")
 </shortcode>
 ```
 
-Shortcode 模板位于 `templates/shortcodes/`。模板中可用 `params`、`body`、`name`、`counter`、`current_lang`，页面内容提供 `page`，Section 内容提供 `section`。详细说明见 [短代码 (Shortcode)](/content/shortcodes/)。
+Shortcode 模板位于 `templates/shortcodes/`。模板中可用 `params`、`body`、`name`、`counter`、`current_lang`，页面内容提供 `page`，Section 内容提供 `section`。详细说明见 [短代码 (Shortcode)](../../content/shortcodes/)。

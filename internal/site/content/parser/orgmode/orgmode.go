@@ -46,13 +46,26 @@ func (m *orgParser) parse(data []byte) ([]*parser.Heading, string, error) {
 	ch = func(children []*orgmodeParser.Section) []*parser.Heading {
 		headings := make([]*parser.Heading, 0)
 		for _, child := range children {
-			h := &parser.Heading{
+			heading := &parser.Heading{
 				Id:       child.Id(),
 				Title:    rd.RenderNodes(child.Title, ""),
 				Level:    child.Stars,
 				Children: ch(child.Children),
 			}
-			headings = append(headings, h)
+			if child.Properties == nil || child.Properties.Get("CUSTOM_ID") == "" {
+				fallback := heading.Id
+				heading.Id = m.opt.HeadingID(heading.Title, fallback)
+				if heading.Id != fallback {
+					if child.Properties == nil {
+						child.Properties = &orgmodeParser.Drawer{
+							Type:       "PROPERTIES",
+							Properties: make(map[string]string),
+						}
+					}
+					child.Properties.Properties["CUSTOM_ID"] = heading.Id
+				}
+			}
+			headings = append(headings, heading)
 		}
 		return headings
 	}

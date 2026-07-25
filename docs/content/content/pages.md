@@ -7,9 +7,7 @@ Page 是 Snow 中最基本的内容单元。
 
 ## 创建页面
 
-在 `content/` 下创建 `.md`、`.org` 或 `.html` 文件：
-
-`.html` 页面需要先启用 `markups.html.enabled: true`；Markdown 和 Org-mode 默认启用。
+在 `content/` 下创建内容文件。支持的扩展名和启用方式见 [解析器](../parsers/)。
 
 ```
 content/
@@ -21,7 +19,7 @@ content/
         └── image.png      # 附属资源
 ```
 
-**Page Bundle**：包含 `index.{md,org,html}` 的目录视为一个页面整体。目录内其他文件可以作为附属资源，详见 [附件资源](/content/assets)。
+**Page Bundle**：包含 `index.{md,org,html}` 的目录视为一个页面整体。目录内其他文件可以作为附属资源，详见 [附件资源](../assets/)。
 
 ## FrontMatter
 

@@ -75,6 +75,7 @@ markups:
 | `enabled` | bool | Markdown/Org-mode 为 `true`，HTML/niklasfasching 为 `false` | 是否启用该解析器 |
 | `style` | string | `monokai` | chroma 语法高亮样式 |
 | `show_toc` | bool | `true` | 显示文章目录 |
+| `toc_id` | string | 空 | 自动生成目录锚点的方式，可选 `title`、`index`；为空时使用默认标题锚点 |
 | `show_line_numbers` | bool | `true` | 显示行号 |
 | `prevent_pre_code` | bool | `true` | 高亮代码块时避免额外包裹 pre/code |
 | `unsafe` | bool | `false` | Markdown 专用；允许 goldmark 输出原始 HTML |
@@ -82,9 +83,7 @@ markups:
 
 常见样式：`monokai`、`github`、`dracula`、`solarized-dark`。
 
-`markups._default` 为所有解析器提供默认渲染选项；`markups.markdown`、`markups.orgmode`、`markups.niklasfasching`、`markups.html` 可以分别覆盖。默认启用 Markdown 和 Org-mode，HTML 与 `niklasfasching` parser 已内置注册但默认未启用；解析 `.html` 内容文件时需要设置 `markups.html.enabled: true`。
-
-`show_toc` 对 Markdown、Org-mode、`niklasfasching` 和 HTML 都生效。HTML parser 会根据 `h1`-`h6` 生成目录，并给缺少 `id` 的标题自动补充 `heading-...`。
+`markups._default` 为所有解析器提供默认渲染选项；`markups.markdown`、`markups.orgmode`、`markups.niklasfasching`、`markups.html` 可以分别覆盖。默认启用 Markdown 和 Org-mode，HTML 与 `niklasfasching` parser 已内置注册但默认未启用。解析器行为见 [解析器](../content/parsers/)。
 
 ## 输出格式 (Formats)
 
@@ -125,7 +124,7 @@ sections:
 | `paginate_path` | 自动 | 分页路径 |
 | `template` | — | 无默认，按 `section.html` 查找 |
 
-未设置或设为空字符串时，分页器会按输出路径类型选择默认值：pretty 路径使用 `page/{number}/`，ugly 路径使用 `{name}{number}{extension}`；详见 [分页](/content/pagination)。
+未设置或设为空字符串时，分页器会按输出路径类型选择默认值：pretty 路径使用 `page/{number}/`，ugly 路径使用 `{name}{number}{extension}`；详见 [分页](../content/pagination/)。
 
 ## Page 配置
 
@@ -216,31 +215,7 @@ taxonomies:
 | `minify` | false | `70` |
 | `alias` | false | `80` |
 
-`weight` 越小越先执行；权重相同时按 Hook 名称排序。如果显式配置 `hooks.<name>.enabled: true`，但对应 Hook 未注册，构建会返回错误。
-
-`mount` 可把站点外部的本地文件或目录挂载到虚拟文件系统中，例如：
-
-```yaml
-hooks:
-  mount:
-    enabled: true
-    option:
-      - source: "/tmp/project-name/docs"
-        target: "content/docs/project-name"
-        strategy: "mount"
-      - source: "/tmp/project-name/static/style.css"
-        target: "static/style.css"
-```
-
-挂载目标使用虚拟路径，不需要也不能写成绝对路径；目标路径也不能包含 `.`、`./` 或 `..` 这种需要再次清理的路径片段。目录 `source` 会映射为 `target` 下的一组文件；文件 `source` 会映射为 `target` 这个单个文件。构建流程会像读取普通 `content`、`static`、`templates` 文件一样读取这些挂载内容，但开发服务器 watcher 不会监听外部 `source`。
-
-`strategy` 可选，默认为 `mount`：
-
-| strategy | 说明 |
-|----------|------|
-| `mount` | 挂载内容与原目录合并，同名文件使用挂载内容 |
-| `base` | 挂载内容与原目录合并，同名文件使用原目录内容 |
-| `override` | `target` 及其子路径只读取挂载内容，不再回落到原目录 |
+`weight` 越小越先执行；权重相同时按 Hook 名称排序。如果显式配置 `hooks.<name>.enabled: true`，但对应 Hook 未注册，构建会返回错误。各 Hook 的具体配置见 [插件](../hooks/)。
 
 ## 多语言
 

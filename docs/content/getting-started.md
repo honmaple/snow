@@ -73,11 +73,11 @@ snow build
 snow build --mode publish --clean 
 ```
 
-更多命令和参数见 [命令行使用](/cli-usage)。
+更多命令和参数见 [命令行使用](../cli-usage/)。
 
 ## 下一步
 
-- [命令行使用](/cli-usage) — 完整 CLI 参数
-- [目录结构](/directory-structure) — 站点文件组织
-- [配置](/configuration) — 完整配置参考
-- [内容管理](/content) — 页面、栏目、分类
+- [命令行使用](../cli-usage/) — 完整 CLI 参数
+- [目录结构](../directory-structure/) — 站点文件组织
+- [配置](../configuration/) — 完整配置参考
+- [内容管理](../content/) — 页面、栏目、分类

@@ -134,14 +134,19 @@ func TestTOC(t *testing.T) {
 	})
 
 	require.Len(t, result.Toc, 1)
+	assert.Equal(t, "headline-1", result.Toc[0].Id)
 	assert.Equal(t, "One", result.Toc[0].Title)
 	assert.Equal(t, 1, result.Toc[0].Level)
 	require.Len(t, result.Toc[0].Children, 1)
+	assert.Equal(t, "headline-2", result.Toc[0].Children[0].Id)
 	assert.Equal(t, "Two", result.Toc[0].Children[0].Title)
 	assert.Equal(t, 2, result.Toc[0].Children[0].Level)
 	require.Len(t, result.Toc[0].Children[0].Children, 1)
+	assert.Equal(t, "headline-3", result.Toc[0].Children[0].Children[0].Id)
 	assert.Equal(t, "Three", result.Toc[0].Children[0].Children[0].Title)
 	assert.Equal(t, 3, result.Toc[0].Children[0].Children[0].Level)
+	assert.Contains(t, result.Content, `id="headline-1"`)
+	assert.Contains(t, result.Content, `id="headline-2"`)
 }
 
 func TestReaderErrorIsReturned(t *testing.T) {

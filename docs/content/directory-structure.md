@@ -46,9 +46,9 @@ mysite/
 | `i18n/` | i18n 模板扩展默认读取的翻译目录 |
 | `output/` | 默认构建输出目录，可通过 `output_dir` 修改 |
 
-核心目录 `content`、`static`、`templates`、`themes` 使用固定名称；扩展目录（如 `assets`、`data`、`i18n`）由各扩展按需交给虚拟文件系统读取。
+核心目录 `content`、`static`、`templates`、`themes` 使用固定名称；扩展目录（如 `assets`、`data`、`i18n`）由各扩展按需读取。
 
-`mount` hook 可把外部文件或目录挂载到这些虚拟路径中。默认策略为 `mount`，同名文件使用挂载内容；也可以配置 `base` 让原目录优先，或配置 `override` 让目标路径完全由挂载内容覆盖。
+如果需要把站点外部的文件或目录接入构建流程，可以使用 [mount hook](../hooks/mount/)。
 
 ## 内容目录详解
 
@@ -61,7 +61,7 @@ mysite/
 | `index.{md,org,html}` | Page Bundle 标记 |
 | `_*` / `.*` 开头 | 默认忽略 |
 
-`.html` 内容文件需要启用 `markups.html.enabled: true` 后才会被解析；默认启用的是 Markdown 和 Org-mode。
+支持的内容扩展名、启用方式和解析细节见 [解析器](../content/parsers/)。
 
 ### Page
 

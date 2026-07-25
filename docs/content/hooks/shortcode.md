@@ -17,4 +17,4 @@ print("hello")
 </shortcode>
 ```
 
-完整用法、模板变量、`:::shortcode` 语法与错误回退行为见 [短代码 (Shortcode)](/content/shortcodes/)。
+完整用法、模板变量、`:::shortcode` 语法与错误回退行为见 [短代码 (Shortcode)](../../content/shortcodes/)。

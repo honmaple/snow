@@ -165,7 +165,7 @@ func TestToc(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, result.Toc, 1)
-	assert.Equal(t, "heading-1", result.Toc[0].Id)
+	assert.Equal(t, "one", result.Toc[0].Id)
 	assert.Equal(t, "One", result.Toc[0].Title)
 	assert.Equal(t, 1, result.Toc[0].Level)
 	require.Len(t, result.Toc[0].Children, 1)
@@ -173,7 +173,51 @@ func TestToc(t *testing.T) {
 	assert.Equal(t, "Two", result.Toc[0].Children[0].Title)
 	assert.Equal(t, 2, result.Toc[0].Children[0].Level)
 	require.Len(t, result.Toc[0].Children[0].Children, 1)
-	assert.Equal(t, "heading-1.1.1", result.Toc[0].Children[0].Children[0].Id)
-	assert.Contains(t, result.Content, `<h1 id="heading-1">One</h1>`)
+	assert.Equal(t, "three", result.Toc[0].Children[0].Children[0].Id)
+	assert.Contains(t, result.Content, `<h1 id="one">One</h1>`)
 	assert.Contains(t, result.Content, `<h2 id="two">Two</h2>`)
+}
+
+func TestTocHeadingIDFromIndex(t *testing.T) {
+	r := &htmlParser{
+		opt: parser.MarkupOption{
+			ShowToc: true,
+			TocId:   parser.TocIdIndex,
+		},
+	}
+	result, err := r.Parse(strings.NewReader(`<html><body>
+<h1>One</h1>
+<h2>Two</h2>
+</body></html>`))
+	require.NoError(t, err)
+
+	require.Len(t, result.Toc, 1)
+	assert.Equal(t, "heading-1", result.Toc[0].Id)
+	require.Len(t, result.Toc[0].Children, 1)
+	assert.Equal(t, "heading-1.1", result.Toc[0].Children[0].Id)
+	assert.Contains(t, result.Content, `<h1 id="heading-1">One</h1>`)
+}
+
+func TestTocHeadingIDFromTitlePreservesUnicode(t *testing.T) {
+	r := &htmlParser{
+		opt: parser.MarkupOption{
+			ShowToc: true,
+			TocId:   parser.TocIdTitle,
+		},
+	}
+	result, err := r.Parse(strings.NewReader(`<html><body>
+<h1>One Two</h1>
+<h2>你好 World</h2>
+<h2 id="custom">Custom ID</h2>
+</body></html>`))
+	require.NoError(t, err)
+
+	require.Len(t, result.Toc, 1)
+	assert.Equal(t, "one-two", result.Toc[0].Id)
+	require.Len(t, result.Toc[0].Children, 2)
+	assert.Equal(t, "你好-world", result.Toc[0].Children[0].Id)
+	assert.Equal(t, "custom", result.Toc[0].Children[1].Id)
+	assert.Contains(t, result.Content, `<h1 id="one-two">One Two</h1>`)
+	assert.Contains(t, result.Content, `<h2 id="你好-world">你好 World</h2>`)
+	assert.Contains(t, result.Content, `<h2 id="custom">Custom ID</h2>`)
 }
