@@ -77,6 +77,10 @@ func (h *ShortcodeSet) executeShortcode(source Source, token *shortcodeToken, bo
 		if attr.Key == "_name" || (attr.Key == token.name && attr.Val == "") {
 			continue
 		}
+		if attr.Val == "" {
+			params[attr.Key] = true
+			continue
+		}
 		params[attr.Key] = attr.Val
 	}
 

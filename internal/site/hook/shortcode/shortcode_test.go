@@ -188,11 +188,12 @@ func TestRenderShortcodeKeepsLegacyNameAttribute(t *testing.T) {
 func TestParamsString(t *testing.T) {
 	params := Params{
 		"id":       "a&b",
-		"disabled": "",
+		"disabled": true,
+		"empty":    "",
 		"class":    "video",
 	}
 
-	assert.Equal(t, `class="video" disabled id="a&amp;b"`, params.String())
+	assert.Equal(t, `class="video" disabled empty="" id="a&amp;b"`, params.String())
 }
 
 func TestParamsPop(t *testing.T) {
@@ -232,6 +233,24 @@ func TestRenderShortcodeCountersUseSourceState(t *testing.T) {
 	})
 
 	assert.Equal(t, `item:0wrap:0[item:1]item:2`, result)
+}
+
+func TestRenderShortcodeTreatsBooleanAttributesAsTrue(t *testing.T) {
+	set := testShortcodeSet(map[string]*testTemplate{
+		"xxx": {
+			execute: func(vars map[string]any) (string, error) {
+				params := vars["params"].(Params)
+				assert.Equal(t, true, params.Get("checked"))
+				return params.String(), nil
+			},
+		},
+	})
+
+	result := set.Render("content/test.md", `<shortcode xxx checked />`, map[string]any{
+		"page": testPage(),
+	})
+
+	assert.Equal(t, `checked`, result)
 }
 
 func TestRenderShortcodePreservesNonShortcodeHTML(t *testing.T) {

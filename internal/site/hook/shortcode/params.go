@@ -34,9 +34,13 @@ func (p Params) String() string {
 
 	attrs := make([]string, 0, len(keys))
 	for _, key := range keys {
+		if cast.ToBool(p[key]) {
+			attrs = append(attrs, html.EscapeString(key))
+			continue
+		}
 		value := cast.ToString(p[key])
 		if value == "" {
-			attrs = append(attrs, html.EscapeString(key))
+			attrs = append(attrs, fmt.Sprintf(`%s=""`, html.EscapeString(key)))
 			continue
 		}
 		attrs = append(attrs, fmt.Sprintf(`%s="%s"`, html.EscapeString(key), html.EscapeString(value)))
