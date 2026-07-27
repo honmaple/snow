@@ -11,6 +11,7 @@ import (
 
 type (
 	Option struct {
+		Mode        string `json:"mode"`
 		Password    string `json:"password"`
 		Description string `json:"description"`
 	}
@@ -34,8 +35,12 @@ func (h *EncryptHook) HandlePage(page *content.Page) *content.Page {
 	if description == "" {
 		description = "这是一篇加密的文章，你需要输入正确的密码."
 	}
-	page.Summary = fmt.Sprintf(`<shortcode encrypt password="%s" description="%s">%s</shortcode>`, password, description, page.Summary)
-	page.Content = fmt.Sprintf(`<shortcode encrypt password="%s" description="%s">%s</shortcode>`, password, description, page.Content)
+	modeAttr := ""
+	if h.opt.Mode != "" {
+		modeAttr = fmt.Sprintf(` mode="%s"`, h.opt.Mode)
+	}
+	page.Summary = fmt.Sprintf(`<shortcode encrypt password="%s" description="%s"%s>%s</shortcode>`, password, description, modeAttr, page.Summary)
+	page.Content = fmt.Sprintf(`<shortcode encrypt password="%s" description="%s"%s>%s</shortcode>`, password, description, modeAttr, page.Content)
 	return page
 }
 
@@ -44,6 +49,11 @@ func New(ctx *core.Context) (hook.Hook, error) {
 	if err := hook.Unmarshal(ctx.Config.Get("hooks.encrypt.option"), &opt); err != nil {
 		return nil, err
 	}
+	mode, err := normalizeMode(opt.Mode)
+	if err != nil {
+		return nil, err
+	}
+	opt.Mode = mode
 
 	e := &EncryptHook{
 		ctx: ctx,

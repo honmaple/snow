@@ -13,8 +13,11 @@ hooks:
     enabled: true
     weight: 2
     option:
+      mode: "cbc"
       password: "默认密码"
 ```
+
+`mode` 支持 `cbc`、`ctr`、`cfb`、`ofb`，默认 `cbc`。
 
 ### 全篇加密
 
