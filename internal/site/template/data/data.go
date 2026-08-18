@@ -3,6 +3,8 @@ package data
 import (
 	"encoding/json"
 	"io/fs"
+	"net/url"
+	stdpath "path"
 	"strings"
 
 	"github.com/go-resty/resty/v2"
@@ -15,7 +17,28 @@ import (
 
 type Data struct {
 	ctx    *core.Context
+	dataFS fs.FS
 	client *resty.Client
+}
+
+func (d *Data) resolveFormat(path string, format string) string {
+	format = strings.TrimPrefix(strings.ToLower(format), ".")
+	if format != "" {
+		return format
+	}
+	if u, err := url.Parse(path); err == nil && u.Path != "" {
+		path = u.Path
+	}
+	switch strings.ToLower(stdpath.Ext(path)) {
+	case ".json":
+		return "json"
+	case ".yaml", ".yml":
+		return "yaml"
+	case ".toml":
+		return "toml"
+	default:
+		return ""
+	}
 }
 
 func (d *Data) loadFromBytes(data []byte, format string) (any, error) {
@@ -50,11 +73,7 @@ func (d *Data) loadFromURL(url string, format string) (any, error) {
 }
 
 func (d *Data) loadFromFile(path string, format string) (any, error) {
-	subFS, err := d.ctx.GetFS("data", true, false)
-	if err != nil {
-		return nil, err
-	}
-	data, err := fs.ReadFile(subFS, path)
+	data, err := fs.ReadFile(d.dataFS, path)
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +85,8 @@ func (d *Data) Load(path string, format string) any {
 		err    error
 		result any
 	)
+
+	format = d.resolveFormat(path, format)
 	if strings.HasPrefix(path, "https://") || strings.HasPrefix(path, "http://") {
 		result, err = d.loadFromURL(path, format)
 	} else {
@@ -79,8 +100,13 @@ func (d *Data) Load(path string, format string) any {
 }
 
 func New(ctx *core.Context) (*Data, error) {
+	dataFS, err := ctx.GetFS("data", true, false)
+	if err != nil {
+		return nil, err
+	}
 	d := &Data{
 		ctx:    ctx,
+		dataFS: dataFS,
 		client: resty.New(),
 	}
 	return d, nil

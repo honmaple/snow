@@ -218,7 +218,7 @@ Shortcode 模板位于 `templates/shortcodes/`。模板中可用 `params`、`bod
 {% set data = load_data("links.yaml", "yaml") %}
 ```
 
-`scratch` 是全局临时存储；需要局部存储时使用 `newScratch()`。`load_data` 可读取 `data/` 目录或 HTTP(S) URL，格式支持 `yaml`、`json`，其他格式返回原始字符串。
+`scratch` 是全局临时存储；需要局部存储时使用 `newScratch()`。`load_data` 可读取 `data/` 目录或 HTTP(S) URL，格式支持 `yaml`、`yml`、`toml`、`json`；format 为空时按文件扩展名自动识别。
 
 ## 配置访问
 

@@ -158,9 +158,10 @@ Date 格式参考：
 ```html
 {% set data = load_data("links.yaml", "yaml") %}
 {% set remote = load_data("https://example.com/data.json", "json") %}
+{% set inferred = load_data("links.yaml", "") %}
 ```
 
-本地路径从站点或主题的 `data/` 目录读取；`format` 支持 `yaml`、`toml`、`json`，其他格式按字符串返回。读取失败时返回 `nil` 并记录 warn 日志。
+本地路径从站点或主题的 `data/` 目录读取；`format` 支持 `yaml`、`yml`、`toml`、`json`。`format` 为空时会根据文件扩展名自动识别，其他格式按字符串返回。读取失败时返回 `nil` 并记录 warn 日志。
 
 ## Assets 块
 
