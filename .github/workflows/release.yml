@@ -51,6 +51,5 @@ jobs:
           name: ${{ github.ref_name }}
           files: |
             snow-${{ matrix.archive-name }}
-          generate_release_notes: true
           fail_on_unmatched_files: true
           token: ${{ secrets.GITHUB_TOKEN }}
