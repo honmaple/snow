@@ -1,13 +1,9 @@
 name: Release
 
 on:
-  release:
-    types: [published]
-    paths:
-      - "**/*.go"
-      - "go.mod"
-      - "go.sum"
-      - ".github/workflows/*.yml"
+  push:
+    tags:
+      - "v*"
 
 jobs:
   build:
@@ -49,9 +45,12 @@ jobs:
         run: tar zcvf snow-${{ matrix.archive-name }} snow LICENSE
 
       - name: Release version
-        uses: softprops/action-gh-release@v2
-        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           files: |
             snow-${{ matrix.archive-name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
           token: ${{ secrets.GITHUB_TOKEN }}
