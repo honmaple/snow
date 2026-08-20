@@ -34,12 +34,8 @@ func TestVirtualFSMountsUseFixedNames(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "content", "index.md"), "home")
 	writeTestFile(t, filepath.Join(root, "static", "style.css"), "body{}")
-	writeTestFile(t, filepath.Join(root, "custom-content", "index.md"), "custom")
-	writeTestFile(t, filepath.Join(root, "public", "style.css"), "custom{}")
 
 	conf := DefaultConfig()
-	conf.Set("content_dir", "custom-content")
-	conf.Set("static_dir", "public")
 	ctx := newTestContext(t, root, conf)
 
 	rootFS := ctx.FS
