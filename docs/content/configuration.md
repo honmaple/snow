@@ -23,6 +23,21 @@ Snow 使用 YAML 格式配置，默认为站点根目录下的 `config.yaml`，�
 
 Snow 使用固定项目目录：`content/`、`static/`、`templates/`、`themes/`。这些目录名不可通过配置修改；主题名称仍通过 `theme` 配置选择，对应 `themes/{theme}/`。
 
+### 静态文件输出路径
+
+默认情况下，`static/css/style.css` 会复制到 `{output_dir}/css/style.css`。使用 `statics` 可以只修改指定文件或目录的输出位置：
+
+```yaml
+statics:
+  css: static/css
+  js: static/js
+  site.webmanifest: static/site.webmanifest
+```
+
+键是相对于 `static/` 的源路径，不区分大小写；值是相对于 `output_dir` 的目标路径。两者都不加开头或结尾的斜杠，也不能包含 `.` 或 `..` 路径段。目录规则保留其下的相对路径；多条规则匹配时，最具体的一条优先。没有匹配的文件保持原位置，例如 `static/robots.txt` 仍输出到 `{output_dir}/robots.txt`。
+
+规则同时适用于项目、主题和挂载到 `static/` 的文件，不影响附件或 assets 插件的输出。`ignored_static` 仍按源路径匹配。模板、正文和 CSS 中的资源引用不会自动改写，需使用新的输出路径。
+
 ## 内容处理
 
 | 配置项 | 类型 | 默认值 | 说明 |

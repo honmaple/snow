@@ -105,7 +105,7 @@ func (s *Server) watchFiles() {
 		}
 		for _, templateDir := range templatesDirs {
 			if strings.HasPrefix(file, templateDir+"/") {
-				if err := s.reloadTemplate(file, info); err != nil {
+				if err := s.reloadSite(); err != nil {
 					s.ctx.Logger.Errorf("Reload templates err: %s", err.Error())
 				}
 				return
@@ -153,31 +153,10 @@ func (s *Server) reloadStatic(baseDir string, file string, info fs.FileInfo) err
 		return nil
 	}
 
-	staticFS, err := s.ctx.GetFS(core.MountStatic, true, true)
-	if err != nil {
-		return err
-	}
-
-	src, err := staticFS.Open(srcPath)
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-
-	dstPath := srcPath
-	if !strings.HasPrefix(dstPath, "/") {
-		dstPath = "/" + dstPath
-	}
-	if err := s.fs.WriteFile(context.TODO(), dstPath, src); err != nil {
-		return err
-	}
-	if s.livereload != nil {
-		s.livereload.Notify(dstPath)
-	}
-	return nil
+	return s.reloadSite()
 }
 
-func (s *Server) reloadTemplate(file string, info fs.FileInfo) error {
+func (s *Server) reloadSite() error {
 	s.fs.Reset()
 
 	if err := s.site.Build(context.TODO(), s.fs); err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"io/fs"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/afero"
@@ -14,17 +15,11 @@ type MemoryWriter struct {
 }
 
 func (m *MemoryWriter) Reset() {
-	afero.Walk(m.fs, ".", func(path string, info fs.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			m.fs.RemoveAll(path)
-			return fs.SkipDir
-		}
-		m.fs.Remove(path)
-		return nil
-	})
+	root := string(filepath.Separator)
+	entries, _ := afero.ReadDir(m.fs, root)
+	for _, entry := range entries {
+		m.fs.RemoveAll(filepath.Join(root, entry.Name()))
+	}
 }
 
 func (m *MemoryWriter) Open(file string) (fs.File, error) {

@@ -3,11 +3,29 @@ package site
 import (
 	"context"
 	"io/fs"
+	stdpath "path"
+	"strings"
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/honmaple/snow/internal/core"
 )
+
+func (site *Site) resolveStaticPath(path string, customPaths map[string]string) string {
+	if len(customPaths) == 0 {
+		return path
+	}
+	if target := customPaths[strings.ToLower(path)]; target != "" {
+		return target
+	}
+
+	for parent := stdpath.Dir(path); parent != "."; parent = stdpath.Dir(parent) {
+		if target := customPaths[strings.ToLower(parent)]; target != "" {
+			return stdpath.Join(target, strings.TrimPrefix(path, parent+"/"))
+		}
+	}
+	return path
+}
 
 func (site *Site) IsIgnoredStatic(path string, isDir bool) bool {
 	// path 是 static FS 内部路径，不包含 static 前缀。
@@ -37,6 +55,13 @@ func (site *Site) BuildStatic(ctx context.Context, writer core.Writer) error {
 	if err != nil {
 		return err
 	}
+
+	paths := make(map[string]string)
+	if sc := site.ctx.Config.Sub("statics"); sc != nil {
+		for _, k := range sc.AllKeys() {
+			paths[k] = sc.GetString(k)
+		}
+	}
 	if err := fs.WalkDir(staticFS, ".", func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -57,8 +82,10 @@ func (site *Site) BuildStatic(ctx context.Context, writer core.Writer) error {
 		}
 		defer src.Close()
 
-		site.ctx.Logger.Debugf("copy static file [%s] -> %s", path, path)
-		return writer.WriteFile(ctx, path, src)
+		customPath := site.resolveStaticPath(path, paths)
+
+		site.ctx.Logger.Debugf("copy static file [%s] -> %s", path, customPath)
+		return writer.WriteFile(ctx, customPath, src)
 	}); err != nil {
 		return err
 	}

@@ -16,7 +16,7 @@ mysite/
 │       ├── hello.md     # Page
 │       └── tutorials/   # 子 Section
 │           └── _index.md
-├── static/              # 静态文件（固定名，原样复制到输出）
+├── static/              # 静态文件（固定名）
 ├── templates/           # 站点自定义模板（覆盖主题模板）
 ├── themes/              # 主题目录（固定名）
 │   └── snow/            # 主题名称 = theme
@@ -38,7 +38,7 @@ mysite/
 | 目录 | 说明 |
 |------|------|
 | `content/` | 内容目录 |
-| `static/` | 静态文件目录，原样复制到输出 |
+| `static/` | 静态文件目录，默认按相对路径复制到输出，可用 [`statics`](./configuration.md#静态文件输出路径) 调整 |
 | `templates/` | 站点模板目录，优先于主题模板 |
 | `themes/` | 主题目录，`theme` 对应 `themes/{name}/` |
 | `assets/` | assets hook 默认读取的资源目录 |

@@ -30,21 +30,6 @@ type (
 	Sections []*Section
 )
 
-func (sec *Section) IsHome() bool {
-	return sec.File.Dir == ""
-}
-
-func (sec *Section) Ancestors() Sections {
-	if sec == nil {
-		return nil
-	}
-	sections := make(Sections, 0)
-	for current := sec.Parent; current != nil; current = current.Parent {
-		sections = append(sections, current)
-	}
-	return sections
-}
-
 func SortSections(sections Sections, key string, recursive bool) {
 	sort.SliceStable(sections, utils.Sort(key, func(k string, i int, j int) int {
 		switch k {
@@ -65,6 +50,21 @@ func SortSections(sections Sections, key string, recursive bool) {
 			SortSections(section.Children, key, true)
 		}
 	}
+}
+
+func (sec *Section) IsHome() bool {
+	return sec.File.Dir == ""
+}
+
+func (sec *Section) Ancestors() Sections {
+	if sec == nil {
+		return nil
+	}
+	sections := make(Sections, 0)
+	for current := sec.Parent; current != nil; current = current.Parent {
+		sections = append(sections, current)
+	}
+	return sections
 }
 
 func (sec *Section) AllPages() Pages {
