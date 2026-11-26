@@ -30,7 +30,7 @@ import (
 
 const (
 	PROCESS     = "snow"
-	VERSION     = "0.1.11"
+	VERSION     = "0.1.12"
 	DESCRIPTION = "snow is a static site generator."
 )
 
